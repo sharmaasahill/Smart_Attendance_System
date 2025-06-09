@@ -1,0 +1,310 @@
+# ===========================================
+# Face Recognition Attendance System
+# .gitignore file
+# ===========================================
+
+# ============ Python Backend ============
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+attendance_env/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ============ Node.js / React Frontend ============
+# Dependencies
+frontend/node_modules/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Production build
+frontend/build/
+frontend/dist/
+
+# Runtime data
+frontend/pids
+frontend/*.pid
+frontend/*.seed
+frontend/*.pid.lock
+
+# Coverage directory used by tools like istanbul
+frontend/coverage/
+frontend/.nyc_output
+
+# ESLint cache
+frontend/.eslintcache
+
+# Optional npm cache directory
+frontend/.npm
+
+# Optional REPL history
+frontend/.node_repl_history
+
+# Output of 'npm pack'
+frontend/*.tgz
+
+# Yarn Integrity file
+frontend/.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+frontend/.cache
+frontend/.parcel-cache
+
+# ============ Project Specific ============
+# Database files
+backend/attendance_system.db
+backend/attendance_system.db-journal
+backend/*.db
+backend/*.db-journal
+*.sqlite
+*.sqlite3
+
+# Face recognition data and models
+backend/dataset/
+backend/uploads/
+dataset/
+uploads/
+*.pkl
+*.h5
+*.model
+
+# Temporary face images
+temp_*.jpg
+temp_*.png
+*_processed.jpg
+*_processed.png
+
+# Log files
+*.log
+logs/
+backend/logs/
+frontend/logs/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env
+
+# Configuration files with sensitive data
+config.json
+secrets.json
+credentials.json
+
+# ============ IDE / Editor ============
+# VS Code
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# ============ Operating System ============
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.tmp
+*.temp
+Desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============ TensorFlow/ML Models ============
+# TensorFlow models
+*.pb
+*.pbtxt
+*.ckpt
+*.ckpt.*
+saved_model/
+checkpoints/
+
+# DeepFace models (old)
+.deepface/
+
+# Face recognition models cache
+~/.face_recognition_models/
+
+# ============ Backup Files ============
+*.bak
+*.backup
+*.old
+*.orig
+
+# ============ Compressed Files ============
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ============ Documentation ============
+# Sphinx documentation
+docs/_build/
+
+# ============ Docker ============
+# Docker
+.dockerignore
+docker-compose.override.yml
+.docker/
+
+# ============ Jupyter Notebook ============
+.ipynb_checkpoints
+
+# ============ Package Lock Files ============
+# Keep package.json but ignore lock files for flexibility
+frontend/package-lock.json
+frontend/yarn.lock
+
+# ============ Test Files ============
+test_*.py
+*_test.py
+test_images/
+test_uploads/
+test_installation.py
+test_imports*.py
+
+# ============ Installation Scripts ============
+# Keep main installation scripts but ignore test files
+fix_*.py
+setup_test.py
+
+# ============ Performance and Profiling ============
+*.prof
+*.profile
+
+# ============ Security ============
+# SSH keys
+*.pem
+*.key
+*.crt
+*.csr
+
+# JWT secrets
+jwt_secret.txt
+secret_key.txt 

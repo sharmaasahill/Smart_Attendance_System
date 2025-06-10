@@ -9,6 +9,10 @@ import Register from './components/Register';
 import FaceCapture from './components/FaceCapture';
 import MarkAttendance from './components/MarkAttendance';
 import AdminDashboard from './components/AdminDashboard';
+import EmployeeDashboard from './components/EmployeeDashboard';
+import UserProfile from './components/UserProfile';
+import UserAttendance from './components/UserAttendance';
+import Settings from './components/Settings';
 import Navbar from './components/Navbar';
 
 // Create Auth Context
@@ -92,10 +96,28 @@ function App() {
             element={user ? <Navigate to="/dashboard" /> : <Register />} 
           />
           
-          {/* Protected Routes */}
+          {/* Protected Routes - Admin Only */}
+          <Route 
+            path="/admin" 
+            element={user && user.role === 'admin' ? <AdminDashboard /> : <Navigate to="/login" />} 
+          />
+          
+          {/* Protected Routes - All Users */}
           <Route 
             path="/dashboard" 
-            element={user ? <AdminDashboard /> : <Navigate to="/login" />} 
+            element={user ? (user.role === 'admin' ? <AdminDashboard /> : <EmployeeDashboard />) : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/profile" 
+            element={user ? <UserProfile /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/settings" 
+            element={user ? <Settings /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/attendance" 
+            element={user ? <UserAttendance /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/face-capture" 

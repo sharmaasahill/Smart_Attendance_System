@@ -294,17 +294,133 @@ test_imports*.py
 fix_*.py
 setup_test.py
 
+# Batch files (keep main ones, ignore temp)
+start_temp.bat
+install_temp.bat
+temp_*.bat
+
 # ============ Performance and Profiling ============
 *.prof
 *.profile
 
-# ============ Security ============
-# SSH keys
-*.pem
-*.key
-*.crt
-*.csr
+# ============ Modern JavaScript/TypeScript ============
+# Vite cache (if you switch to Vite)
+frontend/.vite/
+frontend/vite.config.js.timestamp-*
 
-# JWT secrets
-jwt_secret.txt
-secret_key.txt 
+# Next.js (if you switch to Next.js)
+frontend/.next/
+frontend/out/
+
+# SWC cache
+frontend/.swc/
+
+# ============ Python Package Management ============
+# Poetry
+poetry.lock
+.venv/
+
+# Pipenv
+Pipfile.lock
+
+# Conda
+.conda/
+environment.yml.lock
+
+# ============ Face Recognition Specific ============
+# Face encoding files
+face_encodings.json
+*.face_encoding
+encoding_*.json
+
+# Processed face data
+processed_faces/
+face_data/
+known_faces/
+
+# Temporary webcam captures
+webcam_capture_*.jpg
+captured_face_*.png
+recognition_temp_*.jpg
+
+# ============ Development & Testing ============
+# React development files
+frontend/.env.development
+frontend/.env.production
+
+# Backend development files
+backend/test_db.sqlite
+backend/dev.db
+backend/development.db
+
+# Debug files
+debug_*.log
+debug_output/
+crash_*.log
+
+# ============ Modern Python Tools ============
+# Black formatter
+.black
+
+# Ruff linter
+.ruff_cache/
+
+# isort
+.isort.cfg
+
+# ============ Security & Secrets ============
+# API keys and secrets
+api_keys.txt
+secret.key
+private_key.pem
+public_key.pem
+oauth_secrets.json
+
+# Database passwords
+db_password.txt
+admin_credentials.json
+
+# ============ Deployment ============
+# Docker volumes
+volumes/
+docker-data/
+
+# Kubernetes
+k8s-secrets/
+*.kubeconfig
+
+# Cloud deployment
+.aws/
+.gcp/
+.azure/
+
+# ============ Monitoring & Analytics ============
+# Application logs
+app_*.log
+error_*.log
+access_*.log
+
+# Metrics
+metrics/
+analytics/
+stats/
+
+# ============ Backup & Recovery ============
+# Database backups
+backup_*.sql
+backup_*.db
+db_backup_*/
+
+# System backups
+system_backup/
+full_backup/
+
+# ============ AI/ML Cache ============
+# Hugging Face cache
+.cache/huggingface/
+
+# OpenCV cache
+.opencv/
+
+# Dlib models cache
+.dlib/ 

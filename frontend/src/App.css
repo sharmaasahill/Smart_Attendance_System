@@ -1,0 +1,413 @@
+/* Existing styles... */
+
+/* Advanced Face Detection Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scanning {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(200%);
+    opacity: 0;
+  }
+}
+
+@keyframes detectPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 20px rgba(255, 0, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 0, 0, 0);
+  }
+}
+
+@keyframes glowBorder {
+  0% {
+    border-color: #1976d2;
+    box-shadow: 0 0 5px rgba(25, 118, 210, 0.5);
+  }
+  50% {
+    border-color: #ff0000;
+    box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+  }
+  100% {
+    border-color: #1976d2;
+    box-shadow: 0 0 5px rgba(25, 118, 210, 0.5);
+  }
+}
+
+@keyframes matrixEffect {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+}
+
+/* New Enhanced Animations for Optimized Mark Attendance */
+@keyframes slideInFromLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-100px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  0% {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromTop {
+  0% {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  0% {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardGlow {
+  0% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(25, 118, 210, 0.3);
+  }
+  100% {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@keyframes progressGradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes statusPulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+@keyframes heartbeat {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(1);
+  }
+  75% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Smart Webcam Styles */
+.smart-webcam-container {
+  position: relative;
+  display: inline-block;
+}
+
+.smart-webcam-container.detecting {
+  animation: detectPulse 2s infinite;
+}
+
+.face-capture-grid {
+  animation: fadeIn 0.5s ease;
+}
+
+.face-preview {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #4caf50;
+  margin: 4px;
+  animation: fadeIn 0.5s ease;
+  transition: all 0.3s ease;
+}
+
+.face-preview:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+/* Enhanced Mark Attendance Styles */
+.attendance-terminal {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  animation: cardGlow 3s infinite;
+}
+
+.status-avatar {
+  animation: statusPulse 2s infinite;
+}
+
+.scanning-progress {
+  background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
+  background-size: 200% 200%;
+  animation: progressGradient 2s ease infinite;
+}
+
+.biometric-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.biometric-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.biometric-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.biometric-button:hover::before {
+  left: 100%;
+}
+
+.user-profile-card {
+  transition: all 0.3s ease;
+  animation: slideInFromRight 0.8s ease;
+}
+
+.user-profile-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(76, 175, 80, 0.2);
+}
+
+.instructions-card {
+  animation: slideInFromLeft 1s ease;
+}
+
+.success-alert {
+  animation: slideInFromTop 0.6s ease;
+}
+
+.error-alert {
+  animation: heartbeat 1s ease;
+}
+
+/* HUD Elements */
+.security-hud {
+  font-family: 'Courier New', monospace;
+  background: rgba(0, 0, 0, 0.8);
+  color: #00ff00;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 10;
+  animation: slideInFromTop 0.5s ease;
+}
+
+.detection-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  border-radius: 12px;
+}
+
+/* Loading Spinner for Camera */
+.camera-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border-radius: 12px;
+  min-height: 300px;
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 50%,
+    #f0f0f0 75%
+  );
+  background-size: 1000px 100%;
+}
+
+/* Status Indicators */
+.status-chip {
+  animation: pulse 2s infinite;
+  font-weight: bold !important;
+}
+
+.detection-chip {
+  animation: pulse 1s infinite;
+  font-weight: bold !important;
+}
+
+/* Time Display */
+.time-display {
+  font-family: 'Arial', sans-serif;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  animation: statusPulse 3s infinite;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(45deg, #1976d2, #42a5f5, #64b5f6);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: progressGradient 3s ease infinite;
+}
+
+/* Enhanced Card Animations */
+.card-entrance {
+  animation: slideInFromBottom 0.8s ease;
+}
+
+.card-hover-effect {
+  transition: all 0.3s ease;
+}
+
+.card-hover-effect:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .smart-webcam-container {
+    width: 100%;
+  }
+  
+  .smart-webcam-container video {
+    width: 100%;
+    height: auto;
+  }
+
+  .attendance-terminal {
+    margin: 10px;
+    padding: 15px;
+  }
+
+  .biometric-button {
+    width: 100%;
+    padding: 15px;
+    font-size: 1rem;
+  }
+}
+
+/* Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+  .security-hud {
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid #00ff00;
+  }
+
+  .attendance-terminal {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  }
+} 

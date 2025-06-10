@@ -13,6 +13,7 @@ class User(Base):
     unique_id = Column(String, unique=True, index=True, nullable=False)
     phone_number = Column(String, nullable=True)
     department = Column(String, nullable=True)
+    role = Column(String, default="user", nullable=False)  # "admin" or "user"
     is_active = Column(Boolean, default=True)
     face_registered = Column(Boolean, default=False)
     face_encoding_path = Column(String, nullable=True)

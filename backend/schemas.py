@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
     unique_id: str
     phone_number: Optional[str]
     department: Optional[str]
+    role: str
     is_active: bool
     face_registered: bool
     created_at: datetime
@@ -26,6 +27,15 @@ class UserResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class UserUpdateProfile(BaseModel):
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None
+    department: Optional[str] = None
+    
+class UserChangePassword(BaseModel):
+    current_password: str
+    new_password: str
 
 class AttendanceResponse(BaseModel):
     id: int

@@ -150,6 +150,17 @@ export const adminAPI = {
   exportAttendance: (params) => api.get('/admin/attendance/export', { params }),
 };
 
+// Analytics APIs
+export const analyticsAPI = {
+  getDashboard: (period = 'week') => api.get(`/analytics/dashboard?period=${period}`),
+  exportData: (format = 'json', period = 'week') => 
+    api.get(`/analytics/export?format=${format}&period=${period}`),
+  getAutomatedReport: (reportType = 'weekly') => 
+    api.get(`/analytics/reports/automated?report_type=${reportType}`),
+  getAnomalies: (days = 7, severity = 'all') => 
+    api.get(`/analytics/anomalies?days=${days}&severity=${severity}`),
+};
+
 // Utility function to convert webcam capture to file
 export const webcamCaptureToFile = (imageSrc, filename = 'webcam-capture.jpg') => {
   return fetch(imageSrc)

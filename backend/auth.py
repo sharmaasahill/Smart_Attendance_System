@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -7,7 +8,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 # Configuration
-SECRET_KEY = "your-secret-key-here-make-it-secure-in-production"
+SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here-make-it-secure-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

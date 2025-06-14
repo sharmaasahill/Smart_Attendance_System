@@ -748,16 +748,6 @@ If this project helped you, please consider:
 
 ---
 
-### 🏆 **Recognition**
-
-> *"Revolutionary approach to attendance management with cutting-edge AI"*  
-> — **Tech Innovation Award 2024**
-
-> *"Best Open Source Project for HR Technology"*  
-> — **Open Source Excellence Awards**
-
----
-
 **Built with 💖 by [Sahil Sharma](https://github.com/sharmaasahill)**
 
 *Empowering organizations with intelligent attendance solutions*

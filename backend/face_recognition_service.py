@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class FaceRecognitionService:
     def __init__(self):
-        self.model = "hog"  # Use HOG model (faster) or 'cnn' for better accuracy
+        self.model = "hog"  # HOG model (faster) or 'cnn' for better accuracy
         self.tolerance = 0.6  # Lower is more strict
         self.num_jitters = 1  # Number of times to re-sample face when calculating encoding
     

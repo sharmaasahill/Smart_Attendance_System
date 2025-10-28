@@ -46,6 +46,7 @@ const UserAttendance = () => {
   useEffect(() => {
     fetchAttendanceData();
     fetchAttendanceStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAttendanceData = async (filters = {}) => {

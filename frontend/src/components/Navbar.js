@@ -9,26 +9,17 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  Tooltip,
-  Chip,
   useTheme,
   useMediaQuery,
-  Slide,
-  Fade,
-  Badge,
   Divider,
-  Stack,
 } from '@mui/material';
 import {
-  AccountCircle,
   ExitToApp,
   Dashboard,
-  Person,
   Settings,
   AdminPanelSettings,
   CameraAlt,
   Logout,
-  Menu as MenuIcon,
   MoreVert,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';

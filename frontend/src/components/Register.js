@@ -39,7 +39,6 @@ import { toast } from 'react-toastify';
 
 const Register = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const { login } = useAuth();
   

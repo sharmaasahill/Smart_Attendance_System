@@ -1,7 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Container,
-  Paper,
   Typography,
   Button,
   Box,
@@ -24,10 +23,6 @@ import {
   CheckCircle, 
   Refresh, 
   Close,
-  Security,
-  Fingerprint,
-  VerifiedUser,
-  Person,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';

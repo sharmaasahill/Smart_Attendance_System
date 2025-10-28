@@ -11,7 +11,7 @@ export const exportToPDF = async (data) => {
   // Header
   pdf.setFontSize(20);
   pdf.setTextColor(25, 118, 210);
-  pdf.text('📊 Attendance Analytics Report', 20, 25);
+  pdf.text('Attendance Analytics Report', 20, 25);
   
   pdf.setFontSize(12);
   pdf.setTextColor(100, 100, 100);
@@ -26,7 +26,7 @@ export const exportToPDF = async (data) => {
   // Live Statistics
   pdf.setFontSize(16);
   pdf.setTextColor(0, 0, 0);
-  pdf.text('📈 Current Statistics', 20, yPos);
+  pdf.text('Current Statistics', 20, yPos);
   yPos += 15;
   
   const stats = [
@@ -46,7 +46,7 @@ export const exportToPDF = async (data) => {
   
   // Department Performance
   pdf.setFontSize(16);
-  pdf.text('🏢 Department Performance', 20, yPos);
+  pdf.text('Department Performance', 20, yPos);
   yPos += 15;
   
   pdf.setFontSize(10);
@@ -60,7 +60,7 @@ export const exportToPDF = async (data) => {
     yPos += 10;
     pdf.setFontSize(16);
     pdf.setTextColor(255, 152, 0);
-    pdf.text('⚠️ Detected Anomalies', 20, yPos);
+    pdf.text('Detected Anomalies', 20, yPos);
     yPos += 15;
     
     pdf.setFontSize(10);

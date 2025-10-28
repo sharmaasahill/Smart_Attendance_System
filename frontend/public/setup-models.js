@@ -2,7 +2,7 @@
 // This file helps download the required models for face detection
 
 console.log(`
-🤖 Face Detection Models Setup
+Face Detection Models Setup
 ===============================
 
 For the advanced face detection feature to work, you need to download the face-api.js models.

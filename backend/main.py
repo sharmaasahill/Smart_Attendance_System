@@ -591,7 +591,7 @@ async def get_user_attendance_stats(
     }
 
 # ======================================
-# 🚀 ADVANCED ANALYTICS ENDPOINTS
+# ADVANCED ANALYTICS ENDPOINTS
 # ======================================
 
 @app.get("/analytics/dashboard")
@@ -687,16 +687,16 @@ async def generate_automated_report(
         today = datetime.now()
         if report_type == "daily":
             start_date = today.replace(hour=0, minute=0, second=0)
-            title = "📊 Daily Attendance Report"
+            title = "Daily Attendance Report"
         elif report_type == "weekly":
             start_date = today - timedelta(days=7)
-            title = "📅 Weekly Attendance Report"
+            title = "Weekly Attendance Report"
         elif report_type == "monthly":
             start_date = today - timedelta(days=30)
-            title = "📈 Monthly Attendance Report"
+            title = "Monthly Attendance Report"
         else:
             start_date = today - timedelta(days=7)
-            title = "📅 Weekly Attendance Report"
+            title = "Weekly Attendance Report"
         
         # Get data
         attendance_records = db.query(Attendance).filter(

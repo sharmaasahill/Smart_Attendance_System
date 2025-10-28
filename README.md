@@ -1,8 +1,8 @@
-# 🎯 Face Recognition Attendance System
+# Face Recognition Attendance System
 
 <div align="center">
 
-### 🚀 **Next-Generation AI-Powered Attendance Management** 🚀
+### **Next-Generation AI-Powered Attendance Management**
 
 *Revolutionize your organization's attendance tracking with cutting-edge facial recognition technology*
 
@@ -20,48 +20,48 @@
 
 ---
 
-## 📋 **Table of Contents**
+## Table of Contents
 
-- [🌟 Features](#-features)
-- [🎥 Demo](#-demo)
-- [🏗️ Architecture](#️-system-architecture)
-- [🛠️ Technology Stack](#️-technology-stack)
-- [⚡ Quick Start](#-quick-start)
-- [🔧 Installation](#-installation--setup)
-- [⚙️ Configuration](#️-configuration)
-- [📖 Usage Guide](#-usage-guide)
-- [📚 API Documentation](#-api-documentation)
-- [🔒 Security](#-security-considerations)
-- [🐛 Troubleshooting](#-troubleshooting)
-- [🗺️ Roadmap](#️-roadmap)
-- [🤝 Contributing](#-contributing)
-
----
-
-### ✨ **Key Highlights**
-- 🚀 **Lightning Fast**: Sub-second face recognition
-- 🎯 **99% Accuracy**: Advanced dlib-based face recognition
-- 📱 **Responsive Design**: Works on desktop, tablet, and mobile
-- 🔐 **Enterprise Security**: JWT authentication with role-based access
-- 📊 **Real-time Analytics**: Live dashboard with business insights
+- [Features](#features)
+- [Demo](#demo)
+- [Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Quick Start](#quick-start)
+- [Installation](#installation--setup)
+- [Configuration](#configuration)
+- [Usage Guide](#usage-guide)
+- [API Documentation](#api-documentation)
+- [Security](#security-considerations)
+- [Troubleshooting](#troubleshooting)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
 
 ---
 
-## 🌟 Features
+### **Key Highlights**
+- **Lightning Fast**: Sub-second face recognition
+- **99% Accuracy**: Advanced dlib-based face recognition
+- **Responsive Design**: Works on desktop, tablet, and mobile
+- **Enterprise Security**: JWT authentication with role-based access
+- **Real-time Analytics**: Live dashboard with business insights
 
-### 🔐 **Authentication & Security**
+---
+
+## Features
+
+### **Authentication & Security**
 - **JWT-based Authentication**: Secure token-based authentication system
 - **Role-based Access Control**: Admin and User roles with different permissions
 - **Password Security**: Bcrypt hashing for secure password storage
 - **Session Management**: Automatic token refresh and secure logout
 
-### 👥 **User Management**
+### **User Management**
 - **User Registration**: Easy signup process with email verification
 - **Profile Management**: Users can update their personal information
 - **Department Assignment**: Organize users by departments
 - **Face Registration**: Secure facial data enrollment process
 
-### 🤖 **AI-Powered Face Recognition**
+### **AI-Powered Face Recognition**
 - **Advanced Face Recognition**: State-of-the-art dlib-based face recognition engine
 - **Real-time Face Detection**: OpenCV-powered face detection with HOG/CNN models  
 - **High Accuracy**: 99%+ recognition accuracy with optimized face encodings
@@ -70,14 +70,14 @@
 - **Quick Training**: Only 5 face samples needed for registration
 - **Pickle Encoding Storage**: Efficient face encoding serialization and storage
 
-### 📊 **Attendance Management**
+### **Attendance Management**
 - **Automatic Check-in**: Hands-free attendance marking via face recognition
 - **Manual Override**: Admin can manually mark attendance
 - **Status Tracking**: Present, Absent, Late arrival tracking
 - **Real-time Updates**: Live attendance status updates
 - **Bulk Operations**: Mass attendance updates for administrators
 
-### 📈 **Advanced Analytics Dashboard**
+### **Advanced Analytics Dashboard**
 - **Real-time Metrics**: Live attendance statistics and KPIs
 - **Trend Analysis**: Daily, weekly, and monthly attendance patterns
 - **Department Analytics**: Performance comparison across departments
@@ -85,21 +85,21 @@
 - **Anomaly Detection**: ML-based detection of unusual attendance patterns
 - **Business Intelligence**: Actionable insights and recommendations
 
-### 📋 **Reporting & Export**
+### **Reporting & Export**
 - **Multiple Export Formats**: PDF, Excel, CSV, JSON exports
 - **Automated Reports**: Scheduled report generation
 - **Custom Date Ranges**: Flexible reporting periods
 - **Visual Charts**: Interactive graphs and visualizations
 - **Employee Performance**: Individual performance metrics
 
-### 🔧 **Admin Dashboard**
+### **Admin Dashboard**
 - **User Management**: Add, edit, delete user accounts
 - **Attendance Control**: Manual attendance management
 - **System Monitoring**: Real-time system status
 - **Analytics Overview**: Comprehensive business metrics
 - **Export Tools**: Data export in multiple formats
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -119,7 +119,7 @@
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### **Backend**
 - **Framework**: FastAPI (Python 3.8+) - Modern async Python web framework
@@ -152,39 +152,39 @@
 - **Code Quality**: ESLint, Prettier
 - **Version Control**: Git
 
-## ⚡ **Quick Start**
+## **Quick Start**
 
 > Get up and running in under 5 minutes!
 
 ```bash
-# 1️⃣ Clone the repository
+# 1. Clone the repository
 git clone https://github.com/sharmaasahill/Smart_Attendance_System.git
 cd Smart_Attendance_System
 
-# 2️⃣ Run the automated setup script
+# 2. Run the automated setup script
 python install_dependencies.py
 
-# 3️⃣ Start backend server
+# 3. Start backend server
 cd backend && python main.py
 
-# 4️⃣ Start frontend (new terminal)
+# 4. Start frontend (new terminal)
 cd frontend && npm start
 
-# 🎉 Open http://localhost:3000 and start using the system!
+# Open http://localhost:3000 and start using the system!
 ```
 
 ---
 
-## 🔧 **Installation & Setup**
+## **Installation & Setup**
 
-### **📋 Prerequisites**
+### **Prerequisites**
 
 <table>
 <tr>
-<th>🐍 Python</th>
-<th>📦 Node.js</th>
-<th>🌐 Browser</th>
-<th>📹 Hardware</th>
+<th>Python</th>
+<th>Node.js</th>
+<th>Browser</th>
+<th>Hardware</th>
 </tr>
 <tr>
 <td>
@@ -218,7 +218,7 @@ cd frontend && npm start
 </tr>
 </table>
 
-### **🛠️ Detailed Installation Steps**
+### **Detailed Installation Steps**
 
 #### **Step 1: Clone & Navigate**
 ```bash
@@ -226,7 +226,7 @@ git clone https://github.com/sharmaasahill/Smart_Attendance_System.git
 cd Smart_Attendance_System
 ```
 
-#### **Step 2: Backend Setup** 🐍
+#### **Step 2: Backend Setup**
 ```bash
 # Navigate to backend directory
 cd backend
@@ -252,10 +252,10 @@ python init_db.py
 python main.py
 ```
 
-> ✅ **Backend Server**: `http://localhost:8000`  
-> 📖 **API Docs**: `http://localhost:8000/docs`
+> **Backend Server**: `http://localhost:8000`  
+> **API Docs**: `http://localhost:8000/docs`
 
-#### **Step 3: Frontend Setup** ⚛️
+#### **Step 3: Frontend Setup**
 ```bash
 # Open new terminal and navigate to frontend
 cd frontend
@@ -267,16 +267,16 @@ npm install
 npm start
 ```
 
-> ✅ **Frontend App**: `http://localhost:3000`
+> **Frontend App**: `http://localhost:3000`
 
-#### **Step 4: System Verification** ✅
+#### **Step 4: System Verification**
 ```bash
 # Check if both servers are running
 curl http://localhost:8000/health  # Backend health check
 curl http://localhost:3000         # Frontend accessibility
 ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### **Backend Configuration**
 
@@ -323,7 +323,7 @@ REACT_APP_ENABLE_ANALYTICS=true
 REACT_APP_ENABLE_EXPORT=true
 ```
 
-## 🎯 Usage Guide
+## Usage Guide
 
 ### **1. Initial Setup**
 
@@ -348,37 +348,23 @@ REACT_APP_ENABLE_EXPORT=true
 4. **Mark Attendance** → Automatic face recognition check-in
 5. **View Statistics** → Personal attendance history and metrics
 
-### **4. Face Registration Process** 📸
-
-<div align="center">
-
-```mermaid
-graph LR
-    A[Login] --> B[Face Registration]
-    B --> C[Camera Access]
-    C --> D[Position Face]
-    D --> E[Capture 5 Photos]
-    E --> F[Training Complete]
-    F --> G[Ready for Attendance]
-```
-
-</div>
+### **4. Face Registration Process**
 
 #### **Step-by-Step Guide:**
 
-1. **🔐 Login** to your user account
-2. **📷 Navigate** to Face Registration section in dashboard
-3. **✋ Allow Camera** permissions when browser prompts
-4. **👤 Position Face** in the green detection frame
-5. **📸 Capture 5 Photos** - system automatically captures from different angles
-6. **🎯 Confirm Training** - wait for face encoding processing
-7. **✅ Registration Complete** - you're ready to mark attendance!
+1. **Login** to your user account
+2. **Navigate** to Face Registration section in dashboard
+3. **Allow Camera** permissions when browser prompts
+4. **Position Face** in the green detection frame
+5. **Capture 5 Photos** - system automatically captures from different angles
+6. **Confirm Training** - wait for face encoding processing
+7. **Registration Complete** - you're ready to mark attendance!
 
-#### **💡 Best Practices:**
-- 🌟 **Good Lighting**: Natural light or bright room lighting
-- 📐 **Multiple Angles**: Slight head movements for better training
-- 👓 **With/Without Glasses**: Register with accessories you commonly wear
-- 😊 **Neutral Expression**: Natural facial expression works best
+#### **Best Practices:**
+- **Good Lighting**: Natural light or bright room lighting
+- **Multiple Angles**: Slight head movements for better training
+- **With/Without Glasses**: Register with accessories you commonly wear
+- **Neutral Expression**: Natural facial expression works best
 
 ### **5. Attendance Marking**
 
@@ -388,7 +374,7 @@ graph LR
 4. **Wait for recognition** (1-3 seconds)
 5. **Receive confirmation** of attendance status
 
-## 📚 API Documentation
+## API Documentation
 
 The API documentation is automatically generated and available at:
 - **Swagger UI**: `http://localhost:8000/docs`
@@ -432,7 +418,7 @@ GET  /analytics/export      # Export analytics data
 GET  /analytics/reports/automated # Automated reports
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 face-recognition-attendance/
@@ -477,7 +463,7 @@ face-recognition-attendance/
 └── LICENSE                  # MIT License
 ```
 
-## 🎨 Features Showcase
+## Features Showcase
 
 ### **Dashboard Overview**
 - **Real-time Statistics**: Live employee count, attendance rates
@@ -503,7 +489,7 @@ face-recognition-attendance/
 - **Performance**: Optimized for fast loading and smooth interactions
 - **Mobile Responsive**: Full functionality on all device sizes
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### **Common Issues**
 
@@ -513,7 +499,7 @@ face-recognition-attendance/
 - Try different browser (Chrome recommended)
 - Use localhost for development, HTTPS for production
 
-#### **🤖 Face Recognition Issues**
+#### **Face Recognition Issues**
 
 | Issue | Symptoms | Solutions |
 |-------|----------|-----------|
@@ -535,7 +521,7 @@ rm -rf face_encodings/
 mkdir face_encodings
 ```
 
-#### **💾 Database Issues**
+#### **Database Issues**
 
 ```bash
 # Complete database reset
@@ -548,7 +534,7 @@ python init_db.py
 cp attendance.db attendance_backup.db
 ```
 
-#### **🌐 API Connection Issues**
+#### **API Connection Issues**
 
 ```bash
 # Check backend server status
@@ -562,7 +548,7 @@ cd frontend
 cat .env | grep REACT_APP_API_URL
 ```
 
-#### **📦 Dependency Issues**
+#### **Dependency Issues**
 
 ```bash
 # Reinstall all dependencies
@@ -573,10 +559,10 @@ cd ../frontend
 npm install --force
 ```
 
-#### **🔧 Common Fixes**
+#### **Common Fixes**
 
 <details>
-<summary><strong>🚨 Critical Error Solutions</strong></summary>
+<summary><strong>Critical Error Solutions</strong></summary>
 
 **CMake Not Found Error:**
 ```bash
@@ -607,7 +593,7 @@ pip install dlib-binary
 
 </details>
 
-## 🔒 Security Considerations
+## Security Considerations
 
 ### **Authentication Security**
 - JWT tokens with short expiration times
@@ -627,7 +613,7 @@ pip install dlib-binary
 - Rate limiting protection
 - Secure error handling
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please follow these steps:
 
@@ -643,11 +629,11 @@ We welcome contributions! Please follow these steps:
 - Document complex logic and functions
 - Write unit tests for new features
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **[FastAPI](https://fastapi.tiangolo.com/)** - Modern Python web framework
 - **[React](https://reactjs.org/)** - JavaScript library for building user interfaces
@@ -656,7 +642,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **[OpenCV](https://opencv.org/)** - Computer vision library
 - **[SQLAlchemy](https://sqlalchemy.org/)** - Python SQL toolkit and ORM
 
-## 📞 Support
+## Support
 
 If you need help:
 1. Check the documentation above
@@ -664,81 +650,58 @@ If you need help:
 3. Create a new issue with detailed description
 4. Join our community discussions
 
-## 🗺️ **Roadmap**
+## **Roadmap**
 
 <div align="center">
 
-### **🎯 Version 2.1.0 - Q1 2024**
+### **Version 2.1.0 - Q1 2024**
 </div>
 
 | Feature | Status | Priority | Description |
 |---------|--------|----------|-------------|
-| 📱 **Mobile Apps** | 🔄 In Progress | 🔥 High | iOS & Android native apps |
-| 🔧 **Docker Support** | ⏳ Planned | 🔥 High | Container deployment |
-| 🌍 **Multi-language** | ⏳ Planned | 🟡 Medium | i18n support |
-| 📧 **Email Notifications** | ⏳ Planned | 🟡 Medium | Automated email alerts |
+| **Mobile Apps** | In Progress | High | iOS & Android native apps |
+| **Docker Support** | Planned | High | Container deployment |
+| **Multi-language** | Planned | Medium | i18n support |
+| **Email Notifications** | Planned | Medium | Automated email alerts |
 
 <div align="center">
 
-### **🚀 Version 3.0.0 - Q2 2024**
+### **Version 3.0.0 - Q2 2024**
 </div>
 
 | Feature | Status | Priority | Description |
 |---------|--------|----------|-------------|
-| ☁️ **Cloud Deployment** | 📋 Research | 🔥 High | AWS/Azure deployment guides |
-| 🔐 **2FA Authentication** | 📋 Research | 🔥 High | Enhanced security |
-| 🤖 **Advanced ML Analytics** | 📋 Research | 🟡 Medium | Behavior pattern analysis |
-| 🏢 **HR Integrations** | 📋 Research | 🟢 Low | HRIS system connectors |
+| **Cloud Deployment** | Research | High | AWS/Azure deployment guides |
+| **2FA Authentication** | Research | High | Enhanced security |
+| **Advanced ML Analytics** | Research | Medium | Behavior pattern analysis |
+| **HR Integrations** | Research | Low | HRIS system connectors |
 
-<div align="center">
-
-### **⚡ Performance & Technical Roadmap**
-</div>
-
-```mermaid
-graph TD
-    A[Current v2.0] --> B[Performance Optimization]
-    B --> C[Scalability Enhancement]
-    C --> D[Comprehensive Testing]
-    D --> E[CI/CD Pipeline]
-    E --> F[Production Ready v3.0]
-    
-    B --> G[Face Recognition Speed]
-    B --> H[Database Optimization]
-    C --> I[Load Balancing]
-    C --> J[Microservices]
-```
-
-### **🎯 Contribution Opportunities**
+### **Contribution Opportunities**
 
 > **Want to contribute? Here are areas where we need help:**
 
-- 🐛 **Bug Fixes**: Help identify and fix issues
-- 📖 **Documentation**: Improve guides and tutorials  
-- 🧪 **Testing**: Write unit and integration tests
-- 🎨 **UI/UX**: Enhance user interface design
-- 📱 **Mobile Development**: React Native expertise
-- ☁️ **DevOps**: Docker, Kubernetes, CI/CD
+- **Bug Fixes**: Help identify and fix issues
+- **Documentation**: Improve guides and tutorials  
+- **Testing**: Write unit and integration tests
+- **UI/UX**: Enhance user interface design
+- **Mobile Development**: React Native expertise
+- **DevOps**: Docker, Kubernetes, CI/CD
 
 ---
 
 <div align="center">
 
-## 🌟 **Star History**
-
-[![Star History Chart](https://api.star-history.com/svg?repos=sharmaasahill/Smart_Attendance_System&type=Date)](https://star-history.com/#sharmaasahill/Smart_Attendance_System&Date)
-
-## 💖 **Support the Project**
+## **Support the Project**
 
 If this project helped you, please consider:
 
-[![⭐ Star on GitHub](https://img.shields.io/badge/⭐_Star_on_GitHub-black?style=for-the-badge&logo=github)](https://github.com/sharmaasahill/Smart_Attendance_System)
-[![🐛 Report Issues](https://img.shields.io/badge/🐛_Report_Issues-red?style=for-the-badge&logo=github)](https://github.com/sharmaasahill/Smart_Attendance_System/issues)
-[![💡 Feature Requests](https://img.shields.io/badge/💡_Feature_Request-blue?style=for-the-badge&logo=github)](https://github.com/sharmaasahill/Smart_Attendance_System/issues/new)
+[![Star on GitHub](https://img.shields.io/badge/Star_on_GitHub-black?style=for-the-badge&logo=github)](https://github.com/sharmaasahill/Smart_Attendance_System)
+[![Report Issues](https://img.shields.io/badge/Report_Issues-red?style=for-the-badge&logo=github)](https://github.com/sharmaasahill/Smart_Attendance_System/issues)
+[![Feature Requests](https://img.shields.io/badge/Feature_Request-blue?style=for-the-badge&logo=github)](https://github.com/sharmaasahill/Smart_Attendance_System/issues/new)
 
 ---
 
-### 📊 **Project Stats**
+### **Project Stats**
 
 ![GitHub last commit](https://img.shields.io/github/last-commit/sharmaasahill/Smart_Attendance_System?style=flat-square)
 ![GitHub issues](https://img.shields.io/github/issues/sharmaasahill/Smart_Attendance_System?style=flat-square)
@@ -748,7 +711,7 @@ If this project helped you, please consider:
 
 ---
 
-**Built with 💖 by [Sahil Sharma](https://github.com/sharmaasahill)**
+**Built with care by [Sahil Sharma](https://github.com/sharmaasahill)**
 
 *Empowering organizations with intelligent attendance solutions*
 

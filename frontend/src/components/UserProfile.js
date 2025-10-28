@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   Container,
-  Paper,
   Typography,
   Box,
   Grid,
   TextField,
   Button,
   Card,
-  CardContent,
-  Divider,
   Alert,
   Dialog,
   DialogTitle,

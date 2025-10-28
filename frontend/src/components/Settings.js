@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Container,
   Typography,
@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   Switch,
-  FormControlLabel,
   Button,
   Divider,
   Alert,
@@ -19,27 +18,17 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
-  TextField,
 } from '@mui/material';
 import {
   Settings as SettingsIcon,
   Person,
   Security,
   Notifications,
-  Palette,
-  Language,
   Storage,
-  Info,
   Edit,
   Save,
   Close,
-  CheckCircle,
-  Warning,
-  Lock,
-  Camera,
   Download,
-  Delete,
 } from '@mui/icons-material';
 import { useAuth } from '../App';
 import { toast } from 'react-toastify';
@@ -69,7 +58,6 @@ const Settings = () => {
     systemMaintenance: true,
   });
 
-  const [editMode, setEditMode] = useState({});
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 

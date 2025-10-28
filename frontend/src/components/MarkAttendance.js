@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Container,
-  Paper,
   Typography,
   Button,
   Box,
@@ -11,13 +10,11 @@ import {
   CardContent,
   Chip,
   Grid,
-  Divider,
   Fade,
   Slide,
   LinearProgress,
   Avatar,
   IconButton,
-  Tooltip,
   useTheme,
   useMediaQuery,
   Stack,
@@ -25,19 +22,10 @@ import {
 import { 
   CameraAlt, 
   CheckCircle, 
-  Person, 
-  Schedule, 
   Security,
-  Refresh,
-  LocationOn,
   AccessTime,
-  Fingerprint,
   VerifiedUser,
   Warning,
-  Info,
-  RadioButtonUnchecked,
-  RadioButtonChecked,
-  Visibility,
   Speed,
   Close,
 } from '@mui/icons-material';
@@ -359,7 +347,7 @@ const MarkAttendance = () => {
                       }}
                     >
                       {faceDetected 
-                        ? '✓ Face detected and ready for capture' 
+                        ? 'Face detected and ready for capture' 
                         : 'Position your face within the camera frame'
                       }
                     </Typography>
@@ -573,7 +561,7 @@ const MarkAttendance = () => {
                             mb: 1
                           }}
                         >
-                          {faceDetected ? '✓' : '○'}
+                          {faceDetected ? 'OK' : '--'}
                         </Box>
                         <Typography variant="caption" fontWeight="500" sx={{ color: '#6b7280' }}>
                           Face Detection

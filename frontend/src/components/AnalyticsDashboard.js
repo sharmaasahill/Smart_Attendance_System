@@ -23,23 +23,15 @@ import {
 import {
   TrendingUp,
   People,
-  Schedule,
   Assessment,
   Warning,
   Download,
-  Today,
-  CalendarToday,
-  AccessTime,
   CheckCircle,
-  Cancel,
   Analytics,
   Speed,
-  Timeline,
   Refresh,
 } from '@mui/icons-material';
 import {
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -48,16 +40,11 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  PieChart,
-  Pie,
-  Cell,
   Area,
   AreaChart,
-  RadialBarChart,
-  RadialBar,
 } from 'recharts';
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
-import { attendanceAPI, analyticsAPI } from '../services/api';
+import { format, subDays } from 'date-fns';
+import { analyticsAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
 const AnalyticsDashboard = () => {
@@ -74,10 +61,6 @@ const AnalyticsDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [reportData, setReportData] = useState(null);
-
-  // Color schemes for charts
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
-  const GRADIENT_COLORS = ['#667eea', '#764ba2', '#f093fb', '#f5576c'];
 
   // Fetch analytics data from backend
   const fetchAnalytics = async () => {
@@ -102,13 +85,13 @@ const AnalyticsDashboard = () => {
       setAnalytics(enhancedData);
       setReportData(reportResponse.data);
       setLastUpdated(new Date());
-      toast.success('📊 Analytics data updated successfully');
+      toast.success('Analytics data updated successfully');
     } catch (error) {
       console.error('Analytics fetch error:', error);
       // Fallback to enhanced mock data if API fails
       const mockData = generateRealisticAnalytics();
       setAnalytics(mockData);
-      toast.warning('📊 Using offline analytics data');
+      toast.warning('Using offline analytics data');
     } finally {
       setLoading(false);
     }
@@ -425,6 +408,7 @@ const AnalyticsDashboard = () => {
     fetchAnalytics();
     const interval = setInterval(fetchAnalytics, 30000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeframe]); // Re-fetch when timeframe changes
 
   const exportData = async (format) => {
@@ -435,30 +419,30 @@ const AnalyticsDashboard = () => {
           // Generate PDF report
           const { exportToPDF } = await import('./ExportUtils');
           await exportToPDF({...analytics, reportData, timeframe});
-          toast.success('📄 PDF report generated successfully!');
+          toast.success('PDF report generated successfully!');
           break;
         case 'excel':
           // Use backend export endpoint
           response = await analyticsAPI.exportData('excel', timeframe);
           downloadFile(response.data, `analytics-${timeframe}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-          toast.success('📊 Excel report generated successfully!');
+          toast.success('Excel report generated successfully!');
           break;
         case 'csv':
           response = await analyticsAPI.exportData('csv', timeframe);
           downloadFile(response.data, `analytics-${timeframe}.csv`, 'text/csv');
-          toast.success('📋 CSV report generated successfully!');
+          toast.success('CSV report generated successfully!');
           break;
         case 'json':
           const jsonData = JSON.stringify(analytics, null, 2);
           downloadFile(jsonData, `analytics-${timeframe}.json`, 'application/json');
-          toast.success('📄 JSON data exported successfully!');
+          toast.success('JSON data exported successfully!');
           break;
         default:
-          toast.error('❌ Unsupported export format');
+          toast.error('Unsupported export format');
       }
     } catch (error) {
       console.error('Export error:', error);
-      toast.error('❌ Export failed: ' + (error.response?.data?.detail || error.message));
+      toast.error('Export failed: ' + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -558,7 +542,7 @@ const AnalyticsDashboard = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h4" fontWeight="bold" gutterBottom>
-            📊 Analytics Dashboard
+            Analytics Dashboard
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Last updated: {format(lastUpdated, 'HH:mm:ss')}
@@ -725,7 +709,7 @@ const AnalyticsDashboard = () => {
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid item xs={12}>
             <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-              💡 Business Insights
+              Business Insights
               <Chip label="AI Powered" size="small" color="info" />
             </Typography>
           </Grid>
@@ -754,7 +738,7 @@ const AnalyticsDashboard = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                🏢 Department Status - Live
+                Department Status - Live
                 <Chip label="Real-time" size="small" color="success" />
               </Typography>
               <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -801,7 +785,7 @@ const AnalyticsDashboard = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                📈 Comprehensive Attendance Analysis
+                Comprehensive Attendance Analysis
               </Typography>
               <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Chip 
@@ -884,7 +868,7 @@ const AnalyticsDashboard = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                📅 Weekly Performance Patterns
+                Weekly Performance Patterns
               </Typography>
               <ResponsiveContainer width="100%" height={350}>
                 <BarChart data={analytics.weeklyStats || []}>
@@ -917,7 +901,7 @@ const AnalyticsDashboard = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                🏢 Department Performance Analytics
+                Department Performance Analytics
               </Typography>
               <Box sx={{ mt: 2 }}>
                 {analytics.productivity?.departments?.length > 0 ? (
@@ -977,7 +961,7 @@ const AnalyticsDashboard = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                🔍 Intelligent Anomaly Detection
+                Intelligent Anomaly Detection
                 <Chip label="ML Powered" size="small" color="secondary" />
               </Typography>
               <Box sx={{ mt: 2, maxHeight: 400, overflowY: 'auto' }}>
@@ -1015,7 +999,7 @@ const AnalyticsDashboard = () => {
                         </Typography>
                         {anomaly.suggestedAction && (
                           <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                            💡 Suggested: {anomaly.suggestedAction}
+                            Suggested: {anomaly.suggestedAction}
                           </Typography>
                         )}
                       </Box>
@@ -1024,7 +1008,7 @@ const AnalyticsDashboard = () => {
                 ) : (
                   <Alert severity="success">
                     <Typography variant="body2">
-                      🎉 No anomalies detected - All systems running smoothly!
+                      No anomalies detected - All systems running smoothly!
                     </Typography>
                   </Alert>
                 )}
@@ -1038,7 +1022,7 @@ const AnalyticsDashboard = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                🏆 Employee Performance Rankings
+                Employee Performance Rankings
                 <Chip label="Top 5" size="small" color="primary" />
               </Typography>
               <Box sx={{ overflowX: 'auto' }}>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Container,
-  Paper,
   TextField,
   Button,
   Typography,
@@ -15,7 +14,6 @@ import {
   CardContent,
   Avatar,
   useTheme,
-  useMediaQuery,
   Divider,
   Stack,
 } from '@mui/material';
@@ -34,7 +32,6 @@ import { toast } from 'react-toastify';
 
 const Login = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const { login } = useAuth();
   

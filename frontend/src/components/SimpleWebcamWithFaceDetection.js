@@ -9,7 +9,6 @@ const SimpleWebcamWithFaceDetection = forwardRef(({
   ...props 
 }, ref) => {
   const webcamRef = useRef(null);
-  const canvasRef = useRef(null);
   const detectionIntervalRef = useRef(null);
   
   const [faceDetected, setFaceDetected] = useState(false);
@@ -222,6 +221,7 @@ const SimpleWebcamWithFaceDetection = forwardRef(({
         clearInterval(detectionIntervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cameraReady]);
 
   const handleUserMedia = () => {

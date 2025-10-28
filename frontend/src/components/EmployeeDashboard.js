@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Container,
-  Paper,
   Typography,
   Box,
   Grid,
@@ -10,7 +9,6 @@ import {
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Button,
@@ -20,13 +18,10 @@ import {
   LinearProgress,
   Fade,
   useTheme,
-  useMediaQuery,
-  Alert,
   IconButton,
   Tooltip,
 } from '@mui/material';
 import {
-  Dashboard,
   CheckCircle,
   Cancel,
   Schedule,
@@ -35,24 +30,20 @@ import {
   Person,
   CameraAlt,
   History,
-  Analytics,
   Today,
   Refresh,
   Download,
-  AssignmentTurnedIn,
-  AccessTime,
   DateRange,
   Edit,
   Lock,
 } from '@mui/icons-material';
-import { attendanceAPI, userAPI } from '../services/api';
+import { userAPI } from '../services/api';
 import { useAuth } from '../App';
 import { toast } from 'react-toastify';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 const EmployeeDashboard = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -357,7 +348,7 @@ const EmployeeDashboard = () => {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Box sx={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Typography variant="body2" sx={{ color: '#6b7280' }}>📞</Typography>
+                          <Typography variant="body2" sx={{ color: '#6b7280' }}>Phone:</Typography>
                         </Box>
                         <Typography variant="body2" sx={{ color: '#1f2937' }}>
                           {user?.phone || 'Not provided'}
@@ -365,7 +356,7 @@ const EmployeeDashboard = () => {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Box sx={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Typography variant="body2" sx={{ color: '#6b7280' }}>🏢</Typography>
+                          <Typography variant="body2" sx={{ color: '#6b7280' }}>Dept:</Typography>
                         </Box>
                         <Typography variant="body2" sx={{ color: '#1f2937' }}>
                           {user?.department || 'Not specified'}

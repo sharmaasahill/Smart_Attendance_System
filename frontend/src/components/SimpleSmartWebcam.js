@@ -15,12 +15,6 @@ const scanning = keyframes`
   100% { transform: translateY(100%); opacity: 0; }
 `;
 
-const stableGlow = keyframes`
-  0% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.3); }
-  50% { box-shadow: 0 0 30px rgba(0, 255, 0, 0.6); }
-  100% { box-shadow: 0 0 20px rgba(0, 255, 0, 0.3); }
-`;
-
 const SimpleSmartWebcam = forwardRef(({ 
   onCapture, 
   height = 400, 
@@ -374,7 +368,7 @@ const SimpleSmartWebcam = forwardRef(({
           }}
         >
           <Chip 
-            label="🔒 BIOMETRIC SECURITY ACTIVE" 
+            label="BIOMETRIC SECURITY ACTIVE" 
             size="small" 
             sx={{ 
               bgcolor: cameraReady ? 'success.main' : 'grey.500',
@@ -385,7 +379,7 @@ const SimpleSmartWebcam = forwardRef(({
           />
           {faceDetected && (
             <Chip 
-              label={detectionStable ? `🎯 LOCKED (${detectionConfidence}%)` : `⏳ ACQUIRING (${detectionConfidence}%)`}
+              label={detectionStable ? `LOCKED (${detectionConfidence}%)` : `ACQUIRING (${detectionConfidence}%)`}
               size="small" 
               sx={{ 
                 bgcolor: detectionStable ? 'success.main' : 'warning.main',
@@ -500,7 +494,7 @@ const SimpleSmartWebcam = forwardRef(({
               fontSize: '12px'
             }}
           >
-            🔍 {getStatusMessage()}
+            {getStatusMessage()}
           </Typography>
         </Box>
       )}

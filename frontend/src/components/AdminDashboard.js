@@ -21,46 +21,34 @@ import {
   InputLabel,
   Menu,
   MenuItem,
-  Paper,
   Select,
-  Stack,
   Tab,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Tabs,
   TextField,
   Tooltip,
   Typography,
-  useMediaQuery,
   useTheme,
 } from '@mui/material';
 import {
   AccessTime,
   Analytics,
   Cancel,
-  Check,
   CheckCircle,
   Close,
   Dashboard,
   Delete,
-  Download,
-  Edit,
   Group,
   ManageAccounts,
   MoreVert,
-  People,
-  PersonAdd,
-  PersonOff,
   Refresh,
   Save,
-  Schedule,
   Schedule as ScheduleIcon,
   Search,
-  TrendingUp,
 } from '@mui/icons-material';
 import { adminAPI, attendanceAPI } from '../services/api';
 import { useAuth } from '../App';
@@ -70,7 +58,6 @@ import { format, parseISO } from 'date-fns';
 
 const AdminDashboard = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -112,6 +99,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.date]);
 
   const handleDeleteUser = async () => {

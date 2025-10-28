@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Container,
@@ -11,7 +11,6 @@ import {
   Chip,
   Avatar,
   Stack,
-  LinearProgress,
   useTheme,
   useMediaQuery,
 } from '@mui/material';
@@ -26,11 +25,8 @@ import {
   Analytics,
   Group,
   Schedule,
-  Shield,
   Cloud,
   Smartphone,
-  VerifiedUser,
-  AccessTime,
   Storage,
   Settings,
 } from '@mui/icons-material';
@@ -762,7 +758,7 @@ const Home = () => {
               <Stack spacing={3}>
                 <Box>
                   <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#1f2937', mb: 1 }}>
-                    🤖 AI Technology
+                    AI Technology
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#6b7280' }}>
                     DeepFace library with multiple deep learning models for accurate face recognition
@@ -771,7 +767,7 @@ const Home = () => {
 
                 <Box>
                   <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#1f2937', mb: 1 }}>
-                    🚀 Performance
+                    Performance
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#6b7280' }}>
                     FastAPI backend with real-time processing and responsive React frontend
@@ -780,7 +776,7 @@ const Home = () => {
 
                 <Box>
                   <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#1f2937', mb: 1 }}>
-                    🔒 Privacy
+                    Privacy
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#6b7280' }}>
                     Local SQLite database storage ensures your data stays on your servers
@@ -789,7 +785,7 @@ const Home = () => {
 
                 <Box>
                   <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#1f2937', mb: 1 }}>
-                    📱 Accessibility
+                    Accessibility
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#6b7280' }}>
                     Responsive design works perfectly on desktop, tablet, and mobile devices

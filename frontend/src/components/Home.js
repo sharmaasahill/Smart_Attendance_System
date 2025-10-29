@@ -42,9 +42,9 @@ const Home = () => {
   const features = [
     {
       icon: <Face />,
-      title: 'DeepFace Recognition',
-      description: 'Advanced AI-powered face recognition using DeepFace library for accurate identification',
-      highlight: 'DeepFace Technology',
+      title: 'Face Recognition',
+      description: 'AI-powered face recognition using face_recognition library (dlib-based) for accurate identification',
+      highlight: 'Face Recognition Technology',
     },
     {
       icon: <Speed />,
@@ -81,7 +81,7 @@ const Home = () => {
   const systemSpecs = [
     { 
       label: 'Recognition Technology', 
-      value: 'DeepFace AI',
+      value: 'Face Recognition AI',
       icon: <Face />,
       description: 'Advanced neural networks for face recognition'
     },
@@ -138,7 +138,7 @@ const Home = () => {
                   fontWeight: 400
                 }}
               >
-                Automated attendance tracking powered by DeepFace AI technology. 
+                Automated attendance tracking powered by face recognition technology. 
                 Secure, fast, and easy to use for any organization.
               </Typography>
 
@@ -429,14 +429,14 @@ const Home = () => {
                     </Typography>
                     
                     <Typography variant="body1" sx={{ color: '#6b7280', mb: 4, lineHeight: 1.6 }}>
-                      Simply look at the camera to mark attendance. The DeepFace AI instantly 
+                      Simply look at the camera to mark attendance. The face recognition system instantly 
                       recognizes faces and records attendance with timestamp.
                     </Typography>
 
                     <Stack spacing={2} sx={{ mb: 4 }}>
                       {[
                         'Position face in camera view',
-                        'DeepFace AI analyzes features',
+                        'Face recognition analyzes features',
                         'System verifies identity',
                         'Attendance marked automatically'
                       ].map((step, i) => (
@@ -747,8 +747,8 @@ const Home = () => {
               </Typography>
               
               <Typography variant="body1" sx={{ color: '#6b7280', mb: 4, lineHeight: 1.6 }}>
-                This attendance system combines cutting-edge AI technology with a robust web infrastructure. 
-                The DeepFace library provides state-of-the-art face recognition capabilities, while the 
+                This attendance system combines AI technology with a robust web infrastructure. 
+                The face_recognition library (dlib-based) provides face recognition capabilities, while the 
                 FastAPI backend ensures high performance and scalability.
               </Typography>
 
@@ -758,7 +758,7 @@ const Home = () => {
                     AI Technology
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                    DeepFace library with multiple deep learning models for accurate face recognition
+                    face_recognition library (dlib-based) for accurate face recognition
                   </Typography>
                 </Box>
 

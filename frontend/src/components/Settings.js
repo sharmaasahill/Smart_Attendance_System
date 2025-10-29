@@ -22,13 +22,9 @@ import {
 import {
   Settings as SettingsIcon,
   Person,
-  Security,
-  Notifications,
   Storage,
   Edit,
-  Save,
   Close,
-  Download,
 } from '@mui/icons-material';
 import { useAuth } from '../App';
 import { toast } from 'react-toastify';
@@ -36,191 +32,36 @@ import { toast } from 'react-toastify';
 const Settings = () => {
   const { user } = useAuth();
   const [settings, setSettings] = useState({
-    // Profile Settings
-    emailNotifications: true,
+    // Face Recognition - this is always enabled (no toggle functionality implemented)
     faceRecognitionEnabled: true,
-    autoLogout: false,
-    
-    // Security Settings
-    twoFactorAuth: false,
-    sessionTimeout: '30',
-    loginAlerts: true,
-    
-    // System Settings
-    theme: 'light',
-    language: 'en',
-    timezone: 'UTC',
-    dataRetention: '90',
-    
-    // Notification Settings
-    attendanceReminders: true,
-    weeklyReports: false,
-    systemMaintenance: true,
   });
 
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
   const handleSettingChange = (category, setting, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [setting]: value
-    }));
-    
-    // Auto-save for switches
-    if (typeof value === 'boolean') {
-      toast.success(`${setting.replace(/([A-Z])/g, ' $1').toLowerCase()} ${value ? 'enabled' : 'disabled'}`);
-    }
+    // Settings are read-only (no backend API implemented)
+    toast.info('Settings management is not yet implemented in the backend.');
   };
 
   const handleSaveSettings = async () => {
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setSuccess('Settings saved successfully!');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (error) {
-      setError('Failed to save settings. Please try again.');
-    }
+    // Note: Settings API not implemented in backend
+    toast.info('Settings functionality is not yet implemented. Profile management is available in Profile page.');
   };
 
   const settingsCategories = [
     {
-      id: 'profile',
-      title: 'Profile & Account',
-      icon: <Person />,
-      description: 'Manage your personal information and account preferences',
+      id: 'system',
+      title: 'System Information',
+      icon: <Storage />,
+      description: 'View system information and preferences',
       settings: [
-        {
-          key: 'emailNotifications',
-          label: 'Email Notifications',
-          description: 'Receive email updates about your attendance',
-          type: 'switch',
-          value: settings.emailNotifications,
-        },
         {
           key: 'faceRecognitionEnabled',
           label: 'Face Recognition',
-          description: 'Allow face recognition for attendance marking',
-          type: 'switch',
+          description: 'Face recognition is enabled for attendance marking (always active)',
+          type: 'display',
           value: settings.faceRecognitionEnabled,
-        },
-        {
-          key: 'autoLogout',
-          label: 'Auto Logout',
-          description: 'Automatically log out after inactivity',
-          type: 'switch',
-          value: settings.autoLogout,
-        },
-      ],
-    },
-    {
-      id: 'security',
-      title: 'Security & Privacy',
-      icon: <Security />,
-      description: 'Configure security settings and privacy preferences',
-      settings: [
-        {
-          key: 'twoFactorAuth',
-          label: 'Two-Factor Authentication',
-          description: 'Add extra security to your account',
-          type: 'switch',
-          value: settings.twoFactorAuth,
-        },
-        {
-          key: 'sessionTimeout',
-          label: 'Session Timeout',
-          description: 'Automatically log out after specified minutes',
-          type: 'select',
-          value: settings.sessionTimeout,
-          options: [
-            { value: '15', label: '15 minutes' },
-            { value: '30', label: '30 minutes' },
-            { value: '60', label: '1 hour' },
-            { value: '120', label: '2 hours' },
-          ],
-        },
-        {
-          key: 'loginAlerts',
-          label: 'Login Alerts',
-          description: 'Get notified about new login attempts',
-          type: 'switch',
-          value: settings.loginAlerts,
-        },
-      ],
-    },
-    {
-      id: 'notifications',
-      title: 'Notifications',
-      icon: <Notifications />,
-      description: 'Choose what notifications you want to receive',
-      settings: [
-        {
-          key: 'attendanceReminders',
-          label: 'Attendance Reminders',
-          description: 'Daily reminders to mark attendance',
-          type: 'switch',
-          value: settings.attendanceReminders,
-        },
-        {
-          key: 'weeklyReports',
-          label: 'Weekly Reports',
-          description: 'Receive weekly attendance summary reports',
-          type: 'switch',
-          value: settings.weeklyReports,
-        },
-        {
-          key: 'systemMaintenance',
-          label: 'System Maintenance',
-          description: 'Notifications about system updates and maintenance',
-          type: 'switch',
-          value: settings.systemMaintenance,
-        },
-      ],
-    },
-    {
-      id: 'system',
-      title: 'System Preferences',
-      icon: <Storage />,
-      description: 'Configure system-wide settings and preferences',
-      settings: [
-        {
-          key: 'theme',
-          label: 'Theme',
-          description: 'Choose your preferred interface theme',
-          type: 'select',
-          value: settings.theme,
-          options: [
-            { value: 'light', label: 'Light' },
-            { value: 'dark', label: 'Dark' },
-            { value: 'system', label: 'System Default' },
-          ],
-        },
-        {
-          key: 'language',
-          label: 'Language',
-          description: 'Select your preferred language',
-          type: 'select',
-          value: settings.language,
-          options: [
-            { value: 'en', label: 'English' },
-            { value: 'es', label: 'Spanish' },
-            { value: 'fr', label: 'French' },
-            { value: 'de', label: 'German' },
-          ],
-        },
-        {
-          key: 'dataRetention',
-          label: 'Data Retention',
-          description: 'How long to keep attendance records',
-          type: 'select',
-          value: settings.dataRetention,
-          options: [
-            { value: '30', label: '30 days' },
-            { value: '90', label: '90 days' },
-            { value: '180', label: '6 months' },
-            { value: '365', label: '1 year' },
-          ],
         },
       ],
     },
@@ -431,50 +272,15 @@ const Settings = () => {
 
                             {/* Setting Control */}
                             <Box sx={{ ml: 3 }}>
-                              {setting.type === 'switch' && (
-                                <Switch
-                                  checked={setting.value}
-                                  onChange={(e) => handleSettingChange(category.id, setting.key, e.target.checked)}
+                              {setting.type === 'display' && (
+                                <Chip
+                                  label={setting.value ? 'Enabled' : 'Disabled'}
                                   sx={{
-                                    '& .MuiSwitch-switchBase.Mui-checked': {
-                                      color: '#3b82f6',
-                                    },
-                                    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                                      backgroundColor: '#3b82f6',
-                                    },
+                                    background: setting.value ? '#dcfce7' : '#fee2e2',
+                                    color: setting.value ? '#16a34a' : '#dc2626',
+                                    fontWeight: '500',
                                   }}
                                 />
-                              )}
-
-                              {setting.type === 'select' && (
-                                <FormControl size="small" sx={{ minWidth: 150 }}>
-                                  <Select
-                                    value={setting.value}
-                                    onChange={(e) => handleSettingChange(category.id, setting.key, e.target.value)}
-                                    sx={{
-                                      borderRadius: '8px',
-                                      background: '#f9fafb',
-                                      border: '1px solid #e5e7eb',
-                                      '& fieldset': {
-                                        border: 'none',
-                                      },
-                                      '&:hover': {
-                                        background: '#f3f4f6',
-                                      },
-                                      '&.Mui-focused': {
-                                        background: '#ffffff',
-                                        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-                                        border: '1px solid #3b82f6',
-                                      },
-                                    }}
-                                  >
-                                    {setting.options.map((option) => (
-                                      <MenuItem key={option.value} value={option.value}>
-                                        {option.label}
-                                      </MenuItem>
-                                    ))}
-                                  </Select>
-                                </FormControl>
                               )}
                             </Box>
                           </Box>
@@ -497,8 +303,8 @@ const Settings = () => {
             <Button
               variant="contained"
               size="large"
-              startIcon={<Save />}
-              onClick={handleSaveSettings}
+              startIcon={<Person />}
+              onClick={() => window.location.href = '/profile'}
               sx={{
                 py: 2,
                 px: 4,
@@ -514,28 +320,7 @@ const Settings = () => {
                 },
               }}
             >
-              Save All Settings
-            </Button>
-            <Button
-              variant="outlined"
-              size="large"
-              startIcon={<Download />}
-              sx={{
-                py: 2,
-                px: 4,
-                fontSize: '1rem',
-                fontWeight: '600',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                color: '#6b7280',
-                textTransform: 'none',
-                '&:hover': {
-                  border: '1px solid #d1d5db',
-                  background: '#f9fafb',
-                },
-              }}
-            >
-              Export Settings
+              Profile Management
             </Button>
           </Box>
         </Fade>

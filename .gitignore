@@ -1,426 +1,65 @@
 # ===========================================
-# Face Recognition Attendance System
-# .gitignore file
+# Smart Attendance System
+# .gitignore
 # ===========================================
 
-# ============ Python Backend ============
+# ============ Python ============
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-pip-wheel-metadata/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
 # Virtual environments
-.env
-.venv
-env/
 venv/
+env/
+.venv/
 ENV/
-env.bak/
-venv.bak/
-attendance_env/
 
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# ============ Node.js / React Frontend ============
+# ============ React/Frontend ============
 # Dependencies
-frontend/node_modules/
-frontend/npm-debug.log*
-frontend/yarn-debug.log*
-frontend/yarn-error.log*
+node_modules/
+package-lock.json
 
 # Production build
 frontend/build/
 frontend/dist/
 
-# Runtime data
-frontend/pids
-frontend/*.pid
-frontend/*.seed
-frontend/*.pid.lock
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Coverage directory used by tools like istanbul
-frontend/coverage/
-frontend/.nyc_output
-
-# ESLint cache
-frontend/.eslintcache
-
-# Optional npm cache directory
-frontend/.npm
-
-# Optional REPL history
-frontend/.node_repl_history
-
-# Output of 'npm pack'
-frontend/*.tgz
-
-# Yarn Integrity file
-frontend/.yarn-integrity
-
-# parcel-bundler cache (https://parceljs.org/)
-frontend/.cache
-frontend/.parcel-cache
-
-# ============ Project Specific ============
-# Database files
-backend/attendance_system.db
-backend/attendance_system.db-journal
-backend/*.db
-backend/*.db-journal
+# ============ Database Files ============
+*.db
 *.sqlite
 *.sqlite3
 
-# Face recognition data and models
+# ============ Face Recognition Data ============
+# User face encodings and training images
 backend/dataset/
 backend/uploads/
-dataset/
-uploads/
+
+# Face encoding files
 *.pkl
-*.h5
-*.model
+encoding*.json
 
-# Temporary face images
-temp_*.jpg
-temp_*.png
-*_processed.jpg
-*_processed.png
-
-# Log files
-*.log
-logs/
-backend/logs/
-frontend/logs/
-
-# Environment variables
+# ============ Environment Variables ============
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
-backend/.env
-frontend/.env
-
-# Configuration files with sensitive data
-config.json
-secrets.json
-credentials.json
+.env.development
+.env.production
 
 # ============ IDE / Editor ============
-# VS Code
 .vscode/
-*.code-workspace
-
-# PyCharm
 .idea/
-*.iml
-*.iws
-
-# Sublime Text
-*.sublime-project
-*.sublime-workspace
-
-# Vim
 *.swp
 *.swo
 *~
 
-# Emacs
-*~
-\#*\#
-/.emacs.desktop
-/.emacs.desktop.lock
-*.elc
-auto-save-list
-tramp
-.\#*
-
-# ============ Operating System ============
+# ============ OS Files ============
 # macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-Icon
-._*
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
 
 # Windows
 Thumbs.db
-Thumbs.db:encryptable
-ehthumbs.db
-ehthumbs_vista.db
-*.tmp
-*.temp
 Desktop.ini
-$RECYCLE.BIN/
-*.cab
-*.msi
-*.msix
-*.msm
-*.msp
-*.lnk
-
-# Linux
-*~
-.fuse_hidden*
-.directory
-.Trash-*
-.nfs*
-
-# ============ TensorFlow/ML Models ============
-# TensorFlow models
-*.pb
-*.pbtxt
-*.ckpt
-*.ckpt.*
-saved_model/
-checkpoints/
-
-# DeepFace models (old)
-.deepface/
-
-# Face recognition models cache
-~/.face_recognition_models/
-
-# ============ Backup Files ============
-*.bak
-*.backup
-*.old
-*.orig
-
-# ============ Compressed Files ============
-*.zip
-*.tar.gz
-*.rar
-*.7z
-
-# ============ Documentation ============
-# Sphinx documentation
-docs/_build/
-
-# ============ Docker ============
-# Docker
-.dockerignore
-docker-compose.override.yml
-.docker/
-
-# ============ Jupyter Notebook ============
-.ipynb_checkpoints
-
-# ============ Package Lock Files ============
-# Keep package.json but ignore lock files for flexibility
-frontend/package-lock.json
-frontend/yarn.lock
-
-# ============ Test Files ============
-test_*.py
-*_test.py
-test_images/
-test_uploads/
-test_installation.py
-test_imports*.py
-
-# ============ Installation Scripts ============
-# Keep main installation scripts but ignore test files
-fix_*.py
-setup_test.py
-
-# Batch files (keep main ones, ignore temp)
-start_temp.bat
-install_temp.bat
-temp_*.bat
-
-# ============ Performance and Profiling ============
-*.prof
-*.profile
-
-# ============ Modern JavaScript/TypeScript ============
-# Vite cache (if you switch to Vite)
-frontend/.vite/
-frontend/vite.config.js.timestamp-*
-
-# Next.js (if you switch to Next.js)
-frontend/.next/
-frontend/out/
-
-# SWC cache
-frontend/.swc/
-
-# ============ Python Package Management ============
-# Poetry
-poetry.lock
-.venv/
-
-# Pipenv
-Pipfile.lock
-
-# Conda
-.conda/
-environment.yml.lock
-
-# ============ Face Recognition Specific ============
-# Face encoding files
-face_encodings.json
-*.face_encoding
-encoding_*.json
-
-# Processed face data
-processed_faces/
-face_data/
-known_faces/
-
-# Temporary webcam captures
-webcam_capture_*.jpg
-captured_face_*.png
-recognition_temp_*.jpg
-
-# ============ Development & Testing ============
-# React development files
-frontend/.env.development
-frontend/.env.production
-
-# Backend development files
-backend/test_db.sqlite
-backend/dev.db
-backend/development.db
-
-# Debug files
-debug_*.log
-debug_output/
-crash_*.log
-
-# ============ Modern Python Tools ============
-# Black formatter
-.black
-
-# Ruff linter
-.ruff_cache/
-
-# isort
-.isort.cfg
-
-# ============ Security & Secrets ============
-# API keys and secrets
-api_keys.txt
-secret.key
-private_key.pem
-public_key.pem
-oauth_secrets.json
-
-# Database passwords
-db_password.txt
-admin_credentials.json
-
-# ============ Deployment ============
-# Docker volumes
-volumes/
-docker-data/
-
-# Kubernetes
-k8s-secrets/
-*.kubeconfig
-
-# Cloud deployment
-.aws/
-.gcp/
-.azure/
-
-# ============ Monitoring & Analytics ============
-# Application logs
-app_*.log
-error_*.log
-access_*.log
-
-# Metrics
-metrics/
-analytics/
-stats/
-
-# ============ Backup & Recovery ============
-# Database backups
-backup_*.sql
-backup_*.db
-db_backup_*/
-
-# System backups
-system_backup/
-full_backup/
-
-# ============ AI/ML Cache ============
-# Hugging Face cache
-.cache/huggingface/
-
-# OpenCV cache
-.opencv/
-
-# Dlib models cache
-.dlib/ 

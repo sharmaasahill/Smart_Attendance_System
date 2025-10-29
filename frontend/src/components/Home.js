@@ -123,11 +123,8 @@ const Home = () => {
                   lineHeight: 1.2 
                 }}
               >
-                Smart Face Recognition
-                <br />
-                <Box component="span" sx={{ color: '#3b82f6' }}>
-                  Attendance System
-                </Box>
+                <Box component="span">Smart Attendance </Box>
+                <Box component="span" sx={{ color: '#3b82f6' }}>System</Box>
               </Typography>
               
               <Typography

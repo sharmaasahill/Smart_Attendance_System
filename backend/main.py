@@ -13,7 +13,7 @@ from schemas import UserCreate, UserResponse, LoginRequest, AttendanceResponse, 
 from auth import create_access_token, verify_token, get_password_hash, verify_password, get_current_user, get_current_admin_user
 from face_recognition_service import FaceRecognitionService
 
-app = FastAPI(title="Smart Face Recognition Attendance System", version="1.0.0")
+app = FastAPI(title="Smart Attendance System", version="1.0.0")
 
 # CORS middleware
 app.add_middleware(
@@ -37,7 +37,7 @@ async def startup_event():
 
 @app.get("/")
 async def root():
-    return {"message": "Smart Face Recognition Attendance System API"}
+    return {"message": "Smart Attendance System API"}
 
 @app.post("/auth/register")
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):

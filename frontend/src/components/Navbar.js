@@ -87,37 +87,22 @@ const Navbar = () => {
         <Box 
           display="flex" 
           alignItems="center" 
-          gap={2} 
           sx={{ 
             flexGrow: isMobile ? 1 : 0,
             cursor: 'pointer',
           }}
           onClick={() => navigateToPage('/')}
         >
-          <Avatar
+          <Typography 
+            variant="h6" 
+            fontWeight="600" 
             sx={{
-              width: 32,
-              height: 32,
-              background: '#1f2937',
-              fontSize: '1rem',
-              fontWeight: 'bold'
+              color: '#1f2937',
+              letterSpacing: '-0.025em'
             }}
           >
-            A
-          </Avatar>
-          
-          {!isMobile && (
-            <Typography 
-              variant="h6" 
-              fontWeight="600" 
-              sx={{
-                color: '#1f2937',
-                letterSpacing: '-0.025em'
-              }}
-            >
-              Attendance System
-            </Typography>
-          )}
+            SAS
+          </Typography>
         </Box>
 
         {/* Desktop Navigation */}

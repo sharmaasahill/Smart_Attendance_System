@@ -75,7 +75,11 @@ const UserProfile = () => {
     }
   };
 
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   const handleProfileUpdate = async () => {
+    setUpdateLoading(true);
     try {
       setError('');
       setSuccess('');
@@ -85,22 +89,37 @@ const UserProfile = () => {
       setSuccess('Profile updated successfully!');
       setEditMode(false);
     } catch (error) {
-      setError(error.response?.data?.detail || 'Failed to update profile');
+      let errorMsg = 'Failed to update profile';
+      if (error.response?.status === 400) {
+        errorMsg = error.response?.data?.detail || 'Invalid data. Please check your inputs.';
+      } else if (error.response?.status === 401) {
+        errorMsg = 'Authentication expired. Please log in again.';
+      } else if (error.response?.status === 409) {
+        errorMsg = 'Email already in use by another account.';
+      } else if (error.response?.data?.detail) {
+        errorMsg = error.response.data.detail;
+      }
+      setError(errorMsg);
+    } finally {
+      setUpdateLoading(false);
     }
   };
 
   const handlePasswordChange = async () => {
+    setPasswordLoading(true);
     try {
       setError('');
       setSuccess('');
 
       if (passwordForm.new_password !== passwordForm.confirm_password) {
-        setError('New passwords do not match');
+        setError('New passwords do not match. Please re-enter your password.');
+        setPasswordLoading(false);
         return;
       }
 
       if (passwordForm.new_password.length < 6) {
-        setError('New password must be at least 6 characters long');
+        setError('Password must be at least 6 characters long.');
+        setPasswordLoading(false);
         return;
       }
 
@@ -117,7 +136,17 @@ const UserProfile = () => {
         confirm_password: '',
       });
     } catch (error) {
-      setError(error.response?.data?.detail || 'Failed to change password');
+      let errorMsg = 'Failed to change password';
+      if (error.response?.status === 400) {
+        errorMsg = error.response?.data?.detail || 'Invalid password. Please check your current password.';
+      } else if (error.response?.status === 401) {
+        errorMsg = 'Current password is incorrect. Please try again.';
+      } else if (error.response?.data?.detail) {
+        errorMsg = error.response.data.detail;
+      }
+      setError(errorMsg);
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -213,7 +242,8 @@ const UserProfile = () => {
                     <>
                       <Button
                         variant="contained"
-                        startIcon={<SaveIcon />}
+                        disabled={updateLoading}
+                        startIcon={updateLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : <SaveIcon />}
                         onClick={handleProfileUpdate}
                         sx={{
                           borderRadius: '8px',
@@ -225,9 +255,13 @@ const UserProfile = () => {
                             background: '#2563eb',
                             boxShadow: 'none',
                           },
+                          '&:disabled': {
+                            background: '#3b82f6',
+                            opacity: 0.6,
+                          },
                         }}
                       >
-                        Save
+                        {updateLoading ? 'Saving...' : 'Save'}
                       </Button>
                       <Button
                         variant="outlined"
@@ -639,6 +673,8 @@ const UserProfile = () => {
             <Button 
               onClick={handlePasswordChange} 
               variant="contained"
+              disabled={passwordLoading}
+              startIcon={passwordLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : null}
               sx={{
                 borderRadius: '8px',
                 background: '#3b82f6',
@@ -649,9 +685,13 @@ const UserProfile = () => {
                   background: '#2563eb',
                   boxShadow: 'none',
                 },
+                '&:disabled': {
+                  background: '#3b82f6',
+                  opacity: 0.6,
+                },
               }}
             >
-              Change Password
+              {passwordLoading ? 'Changing...' : 'Change Password'}
             </Button>
           </DialogActions>
         </Dialog>

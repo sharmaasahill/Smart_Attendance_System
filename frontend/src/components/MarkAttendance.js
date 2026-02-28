@@ -19,9 +19,9 @@ import {
   useMediaQuery,
   Stack,
 } from '@mui/material';
-import { 
-  CameraAlt, 
-  CheckCircle, 
+import {
+  CameraAlt,
+  CheckCircle,
   Security,
   AccessTime,
   VerifiedUser,
@@ -30,7 +30,6 @@ import {
   Close,
 } from '@mui/icons-material';
 import { attendanceAPI, webcamCaptureToFile } from '../services/api';
-import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 import SimpleWebcamWithFaceDetection from './SimpleWebcamWithFaceDetection';
 
@@ -38,7 +37,7 @@ const MarkAttendance = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const webcamRef = useRef(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(null);
   const [error, setError] = useState('');
@@ -60,7 +59,7 @@ const MarkAttendance = () => {
   const markAttendance = async () => {
     if (!webcamRef.current) {
       setError('Camera not initialized. Please refresh the page and try again.');
-      toast.error('Camera not ready. Please refresh the page.');
+      setError('Camera not ready. Please refresh the page.');
       return;
     }
 
@@ -74,27 +73,25 @@ const MarkAttendance = () => {
       await new Promise(resolve => setTimeout(resolve, 800));
       setAttendanceStatus('processing');
       await new Promise(resolve => setTimeout(resolve, 1200));
-      
+
       let imageSrc;
       if (webcamRef.current && webcamRef.current.getScreenshot) {
         imageSrc = webcamRef.current.getScreenshot();
       }
-      
+
       if (!imageSrc) {
         throw new Error('Failed to capture image. Please ensure your camera is working and try again.');
       }
 
       const imageFile = await webcamCaptureToFile(imageSrc, 'attendance.jpg');
       const response = await attendanceAPI.markAttendance(imageFile);
-      
+
       setSuccess(response.data);
       setAttendanceStatus('success');
-      toast.success('Attendance marked successfully!');
     } catch (error) {
       const errorMessage = error.response?.data?.detail || error.message || 'Authentication failed. Please try again.';
       setError(errorMessage);
       setAttendanceStatus('error');
-      toast.error('Authentication failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -133,10 +130,10 @@ const MarkAttendance = () => {
         {/* Clean Header */}
         <Fade in timeout={800}>
           <Box sx={{ mb: 6, textAlign: 'center' }}>
-            <Typography 
-              variant="h3" 
-              fontWeight="600" 
-              sx={{ 
+            <Typography
+              variant="h3"
+              fontWeight="600"
+              sx={{
                 color: '#1f2937',
                 mb: 2,
                 letterSpacing: '-0.025em'
@@ -144,9 +141,9 @@ const MarkAttendance = () => {
             >
               Mark Attendance
             </Typography>
-            <Typography 
-              variant="body1" 
-              sx={{ 
+            <Typography
+              variant="body1"
+              sx={{
                 color: '#6b7280',
                 fontSize: '1.1rem',
                 maxWidth: '600px',
@@ -157,11 +154,11 @@ const MarkAttendance = () => {
             >
               Use face recognition technology to quickly and securely mark your attendance
             </Typography>
-            
+
             {/* Time Display */}
-            <Card 
+            <Card
               elevation={0}
-              sx={{ 
+              sx={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 2,
@@ -184,9 +181,9 @@ const MarkAttendance = () => {
           {/* Main Camera Section */}
           <Grid item xs={12} lg={8}>
             <Slide direction="up" in timeout={1000}>
-              <Card 
+              <Card
                 elevation={0}
-                sx={{ 
+                sx={{
                   border: '1px solid #e5e7eb',
                   borderRadius: '16px',
                   overflow: 'hidden',
@@ -194,8 +191,8 @@ const MarkAttendance = () => {
                 }}
               >
                 {/* Status Header */}
-                <Box 
-                  sx={{ 
+                <Box
+                  sx={{
                     p: 4,
                     borderBottom: '1px solid #f3f4f6',
                     background: success ? '#f0fdf4' : error ? '#fef2f2' : '#ffffff'
@@ -216,7 +213,7 @@ const MarkAttendance = () => {
                     >
                       {getStatusIcon()}
                     </Box>
-                    
+
                     <Box sx={{ flexGrow: 1 }}>
                       <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937', mb: 0.5 }}>
                         {attendanceStatus === 'ready' && faceDetected && 'Face Detected - Ready to Capture'}
@@ -236,9 +233,9 @@ const MarkAttendance = () => {
                     </Box>
 
                     {(success || error) && (
-                      <IconButton 
+                      <IconButton
                         onClick={resetAttendance}
-                        sx={{ 
+                        sx={{
                           background: '#f3f4f6',
                           '&:hover': { background: '#e5e7eb' }
                         }}
@@ -249,8 +246,8 @@ const MarkAttendance = () => {
                   </Stack>
 
                   {loading && (
-                    <LinearProgress 
-                      sx={{ 
+                    <LinearProgress
+                      sx={{
                         mt: 3,
                         height: 8,
                         borderRadius: 4,
@@ -298,14 +295,14 @@ const MarkAttendance = () => {
                     startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <CameraAlt />}
                     onClick={markAttendance}
                     disabled={loading || success}
-                    sx={{ 
+                    sx={{
                       py: 3,
                       fontSize: '1.1rem',
                       fontWeight: '600',
                       borderRadius: '12px',
-                      background: loading 
-                        ? '#9ca3af' 
-                        : success 
+                      background: loading
+                        ? '#9ca3af'
+                        : success
                           ? '#10b981'
                           : faceDetected
                             ? '#3b82f6'
@@ -314,9 +311,9 @@ const MarkAttendance = () => {
                       textTransform: 'none',
                       boxShadow: 'none',
                       '&:hover': {
-                        background: loading 
+                        background: loading
                           ? '#9ca3af'
-                          : success 
+                          : success
                             ? '#059669'
                             : faceDetected
                               ? '#2563eb'
@@ -335,19 +332,19 @@ const MarkAttendance = () => {
                     {!loading && !success && faceDetected && 'Mark Attendance'}
                     {!loading && !success && !faceDetected && 'Position Face to Continue'}
                   </Button>
-                  
+
                   {!success && !loading && (
-                    <Typography 
-                      variant="body2" 
-                      textAlign="center" 
-                      sx={{ 
-                        mt: 3, 
+                    <Typography
+                      variant="body2"
+                      textAlign="center"
+                      sx={{
+                        mt: 3,
                         color: faceDetected ? '#10b981' : '#6b7280',
                         fontWeight: 500
                       }}
                     >
-                      {faceDetected 
-                        ? 'Face detected and ready for capture' 
+                      {faceDetected
+                        ? 'Face detected and ready for capture'
                         : 'Position your face within the camera frame'
                       }
                     </Typography>
@@ -360,13 +357,13 @@ const MarkAttendance = () => {
           {/* Side Panel */}
           <Grid item xs={12} lg={4}>
             <Stack spacing={4}>
-              
+
               {/* Status Alerts */}
               {error && (
                 <Fade in timeout={500}>
-                  <Alert 
-                    severity="error" 
-                    sx={{ 
+                  <Alert
+                    severity="error"
+                    sx={{
                       borderRadius: '12px',
                       border: '1px solid #fecaca',
                       background: '#fef2f2',
@@ -394,9 +391,9 @@ const MarkAttendance = () => {
 
               {success && (
                 <Fade in timeout={500}>
-                  <Alert 
-                    severity="success" 
-                    sx={{ 
+                  <Alert
+                    severity="success"
+                    sx={{
                       borderRadius: '12px',
                       border: '1px solid #bbf7d0',
                       background: '#f0fdf4',
@@ -426,11 +423,11 @@ const MarkAttendance = () => {
               )}
 
               {/* User Information */}
-              {success && (
+              {success && success.user && (
                 <Slide direction="left" in timeout={1200}>
-                  <Card 
+                  <Card
                     elevation={0}
-                    sx={{ 
+                    sx={{
                       border: '1px solid #e5e7eb',
                       borderRadius: '12px',
                       background: '#ffffff'
@@ -440,11 +437,11 @@ const MarkAttendance = () => {
                       <Typography variant="h6" fontWeight="600" gutterBottom sx={{ color: '#1f2937' }}>
                         Employee Information
                       </Typography>
-                      
+
                       <Stack direction="row" spacing={3} sx={{ mb: 3 }}>
-                        <Avatar 
-                          sx={{ 
-                            width: 48, 
+                        <Avatar
+                          sx={{
+                            width: 48,
                             height: 48,
                             background: '#3b82f6',
                             color: '#ffffff',
@@ -470,7 +467,7 @@ const MarkAttendance = () => {
                           />
                         </Box>
                       </Stack>
-                      
+
                       <Stack spacing={2}>
                         <Box display="flex" justifyContent="space-between">
                           <Typography variant="body2" sx={{ color: '#6b7280' }}>Employee ID</Typography>
@@ -497,9 +494,9 @@ const MarkAttendance = () => {
               )}
 
               {/* Guidelines Card */}
-              <Card 
+              <Card
                 elevation={0}
-                sx={{ 
+                sx={{
                   border: '1px solid #e5e7eb',
                   borderRadius: '12px',
                   background: '#ffffff'
@@ -509,7 +506,7 @@ const MarkAttendance = () => {
                   <Typography variant="h6" fontWeight="600" gutterBottom sx={{ color: '#1f2937' }}>
                     Recognition Guidelines
                   </Typography>
-                  
+
                   <Stack spacing={2}>
                     {[
                       'Position your face clearly within the camera frame',
@@ -530,9 +527,9 @@ const MarkAttendance = () => {
               </Card>
 
               {/* System Status */}
-              <Card 
+              <Card
                 elevation={0}
-                sx={{ 
+                sx={{
                   border: '1px solid #e5e7eb',
                   borderRadius: '12px',
                   background: '#ffffff'
@@ -542,20 +539,20 @@ const MarkAttendance = () => {
                   <Typography variant="h6" fontWeight="600" gutterBottom sx={{ color: '#1f2937' }}>
                     System Status
                   </Typography>
-                  
+
                   <Grid container spacing={2}>
                     <Grid item xs={6}>
-                      <Box 
-                        textAlign="center" 
-                        sx={{ 
-                          p: 3, 
+                      <Box
+                        textAlign="center"
+                        sx={{
+                          p: 3,
                           background: faceDetected ? '#f0fdf4' : '#f9fafb',
                           borderRadius: '8px',
                           border: `1px solid ${faceDetected ? '#bbf7d0' : '#e5e7eb'}`
                         }}
                       >
-                        <Box 
-                          sx={{ 
+                        <Box
+                          sx={{
                             fontSize: '1.5rem',
                             color: faceDetected ? '#10b981' : '#6b7280',
                             mb: 1
@@ -569,10 +566,10 @@ const MarkAttendance = () => {
                       </Box>
                     </Grid>
                     <Grid item xs={6}>
-                      <Box 
-                        textAlign="center" 
-                        sx={{ 
-                          p: 3, 
+                      <Box
+                        textAlign="center"
+                        sx={{
+                          p: 3,
                           background: '#f0f9ff',
                           borderRadius: '8px',
                           border: '1px solid #bae6fd'

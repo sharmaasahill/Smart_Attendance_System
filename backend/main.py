@@ -6,6 +6,10 @@ import uvicorn
 import os
 from datetime import datetime, timedelta
 import json
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from database import get_db, init_db
 from models import User, Attendance
@@ -51,7 +55,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     unique_id = f"USR{datetime.now().strftime('%Y%m%d%H%M%S')}"
     
     # Set role based on email - admin for specific email, user for others
-    user_role = "admin" if user_data.email == "i.sahilkrsharma@gmail.com" else "user"
+    admin_email = os.getenv("ADMIN_EMAIL", "")
+    user_role = "admin" if admin_email and user_data.email == admin_email else "user"
     
     db_user = User(
         email=user_data.email,
@@ -80,8 +85,12 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 @app.post("/auth/login")
 async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
-    if not user or not verify_password(login_data.password, user.password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not verify_password(login_data.password, user.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is deactivated. Please contact administrator.")
     
     access_token = create_access_token(data={"sub": user.email})
     
@@ -90,6 +99,7 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
         "token_type": "bearer",
         "user": UserResponse.from_orm(user)
     }
+
 
 @app.post("/face/register")
 async def register_face(

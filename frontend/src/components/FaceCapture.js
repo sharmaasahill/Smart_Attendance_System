@@ -27,7 +27,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { faceAPI, webcamCaptureToFile } from '../services/api';
-import { toast } from 'react-toastify';
 import SimpleSmartWebcam from './SimpleSmartWebcam';
 
 const FaceCapture = () => {
@@ -141,11 +140,11 @@ const FaceCapture = () => {
       // Upload to backend
       await faceAPI.registerFace(files);
       
-      toast.success('Face registration completed successfully!');
+      setSuccess('Face registration completed successfully!');
       navigate('/profile');
     } catch (error) {
       setError(error.response?.data?.detail || 'Face registration failed');
-      toast.error('Face registration failed. Please try again.');
+      setError('Face registration failed. Please try again.');
     } finally {
       setLoading(false);
     }

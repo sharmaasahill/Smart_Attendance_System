@@ -24,7 +24,6 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../App';
-import { toast } from 'react-toastify';
 
 const Navbar = () => {
   const theme = useTheme();
@@ -53,7 +52,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     logout();
-    toast.success('Logged out successfully');
+    // Logged out successfully
     navigate('/login');
     handleMenuClose();
   };

@@ -39,7 +39,6 @@ import {
 } from '@mui/icons-material';
 import { userAPI } from '../services/api';
 import { useAuth } from '../App';
-import { toast } from 'react-toastify';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 const EmployeeDashboard = () => {
@@ -103,7 +102,7 @@ const EmployeeDashboard = () => {
       setWeeklyData(thisWeekRecords);
     } catch (error) {
       console.error('Failed to fetch attendance data:', error);
-      toast.error('Failed to fetch attendance data');
+      setError('Failed to fetch attendance data');
     } finally {
       setLoading(false);
     }

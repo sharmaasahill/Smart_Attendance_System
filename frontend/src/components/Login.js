@@ -13,9 +13,13 @@ import {
   Card,
   CardContent,
   Avatar,
-  useTheme,
   Divider,
   Stack,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Link as MuiLink,
 } from '@mui/material';
 import {
   Email,
@@ -28,10 +32,8 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { authAPI } from '../services/api';
-import { toast } from 'react-toastify';
 
 const Login = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { login } = useAuth();
   
@@ -57,13 +59,24 @@ const Login = () => {
       const response = await authAPI.login(formData);
       const { access_token, user } = response.data;
       
-      login(user, access_token);
-      toast.success(`Welcome back, ${user.full_name}!`);
-      navigate('/dashboard');
+        login(user, access_token);
+        navigate('/dashboard');
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Login failed. Please check your credentials.';
-      setError(errorMessage);
-      toast.error(errorMessage);
+      let errorMessage = 'Login failed. Please try again.';
+      if (error.response?.status === 401) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (error.response?.status === 400) {
+        errorMessage = error.response?.data?.detail || 'Invalid input. Please check your email and password format.';
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later or contact support.';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = `Connection error: ${error.message}. Please check your internet connection.`;
+        }
+        setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -72,6 +85,7 @@ const Login = () => {
   const handleTogglePassword = () => {
     setShowPassword(!showPassword);
   };
+
 
   return (
     <Box
@@ -282,6 +296,7 @@ const Login = () => {
 
               <Divider sx={{ my: 4 }} />
 
+
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="body2" sx={{ color: '#6b7280' }}>
                   Don't have an account?{' '}
@@ -301,6 +316,7 @@ const Login = () => {
           </Card>
         </Fade>
       </Container>
+
     </Box>
   );
 };

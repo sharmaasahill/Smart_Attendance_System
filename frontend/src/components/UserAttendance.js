@@ -27,6 +27,7 @@ import {
   Cancel as CancelIcon,
   FilterList as FilterIcon,
   Assessment as AssessmentIcon,
+  Download as DownloadIcon,
 } from '@mui/icons-material';
 import { userAPI } from '../services/api';
 
@@ -305,9 +306,45 @@ const UserAttendance = () => {
       {/* Attendance Records Table */}
       <Paper elevation={2}>
         <Box p={3}>
-          <Typography variant="h6" gutterBottom>
-            Attendance Records ({attendanceRecords.length} records)
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6">
+              Attendance Records ({attendanceRecords.length} records)
+            </Typography>
+            {attendanceRecords.length > 0 && (
+              <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                onClick={() => {
+                  const csv = [
+                    ['Date', 'Time In', 'Status', 'Recorded At'],
+                    ...attendanceRecords.map(record => [
+                      new Date(record.date).toLocaleDateString(),
+                      record.time_in || '-',
+                      record.status,
+                      new Date(record.created_at).toLocaleString(),
+                    ])
+                  ].map(row => row.join(',')).join('\n');
+                  
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `attendance-${new Date().toISOString().split('T')[0]}.csv`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  window.URL.revokeObjectURL(url);
+                }}
+                sx={{
+                  borderRadius: '8px',
+                  textTransform: 'none',
+                  fontWeight: '500',
+                }}
+              >
+                Export CSV
+              </Button>
+            )}
+          </Box>
           
           {loading ? (
             <Box display="flex" justifyContent="center" p={3}>

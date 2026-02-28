@@ -7,6 +7,10 @@ Run this script to update your existing database with the new role-based system
 import sqlite3
 import os
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 def migrate_database():
     """Add role column to users table and set admin role for specific email"""
@@ -36,7 +40,7 @@ def migrate_database():
             print("[SUCCESS] Role column added successfully.")
         
         # Set admin role for the specific email
-        admin_email = "i.sahilkrsharma@gmail.com"
+        admin_email = os.getenv("ADMIN_EMAIL", "")
         cursor.execute("UPDATE users SET role = 'admin' WHERE email = ?", (admin_email,))
         
         if cursor.rowcount > 0:
@@ -65,7 +69,7 @@ def migrate_database():
         print("\n[SUCCESS] Database migration completed successfully!")
         print("\n[SUMMARY]")
         print("   - Role-based access control is now active")
-        print("   - Admin account: i.sahilkrsharma@gmail.com")
+        print(f"   - Admin account: {admin_email}")
         print("   - All other users have 'user' role by default")
         print("   - You can now restart your system to use the new features")
         

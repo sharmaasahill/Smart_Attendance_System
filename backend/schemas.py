@@ -28,6 +28,7 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserUpdateProfile(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
@@ -46,4 +47,4 @@ class AttendanceResponse(BaseModel):
     created_at: datetime
     
     class Config:
-        from_attributes = True 
+        from_attributes = True

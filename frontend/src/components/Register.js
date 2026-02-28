@@ -13,8 +13,6 @@ import {
   Card,
   CardContent,
   Avatar,
-  useTheme,
-  useMediaQuery,
   Divider,
   Stack,
   Grid,
@@ -35,10 +33,8 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { authAPI } from '../services/api';
-import { toast } from 'react-toastify';
 
 const Register = () => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const { login } = useAuth();
   
@@ -52,15 +48,75 @@ const Register = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const validateField = (name, value) => {
+    const errors = { ...fieldErrors };
+    switch (name) {
+      case 'full_name':
+        if (!value.trim()) {
+          errors.full_name = 'Full name is required';
+        } else if (value.trim().length < 2) {
+          errors.full_name = 'Full name must be at least 2 characters';
+        } else {
+          delete errors.full_name;
+        }
+        break;
+      case 'email':
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!value.trim()) {
+          errors.email = 'Email is required';
+        } else if (!emailRegex.test(value)) {
+          errors.email = 'Please enter a valid email address';
+        } else {
+          delete errors.email;
+        }
+        break;
+      case 'password':
+        if (!value) {
+          errors.password = 'Password is required';
+        } else if (value.length < 6) {
+          errors.password = 'Password must be at least 6 characters';
+        } else {
+          delete errors.password;
+        }
+        // Re-validate confirm password if it exists
+        if (formData.confirmPassword) {
+          if (value !== formData.confirmPassword) {
+            errors.confirmPassword = 'Passwords do not match';
+          } else {
+            delete errors.confirmPassword;
+          }
+        }
+        break;
+      case 'confirmPassword':
+        if (!value) {
+          errors.confirmPassword = 'Please confirm your password';
+        } else if (value !== formData.password) {
+          errors.confirmPassword = 'Passwords do not match';
+        } else {
+          delete errors.confirmPassword;
+        }
+        break;
+      default:
+        break;
+    }
+    setFieldErrors(errors);
+  };
+
   const handleChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
     setError('');
+    // Real-time validation
+    if (name === 'full_name' || name === 'email' || name === 'password' || name === 'confirmPassword') {
+      validateField(name, value);
+    }
   };
 
   const getPasswordStrength = (password) => {
@@ -116,12 +172,25 @@ const Register = () => {
       const { access_token, user } = response.data;
       
       login(user, access_token);
-      toast.success(`Welcome ${user.full_name}! Please complete face registration.`);
       navigate('/face-capture');
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Registration failed. Please try again.';
+      let errorMessage = 'Registration failed. Please try again.';
+      if (error.response?.status === 400) {
+        if (error.response?.data?.detail?.includes('already')) {
+          errorMessage = 'This email is already registered. Please use a different email or try logging in.';
+        } else {
+          errorMessage = error.response?.data?.detail || 'Invalid input. Please check all fields and try again.';
+        }
+      } else if (error.response?.status === 422) {
+        errorMessage = 'Invalid email format. Please enter a valid email address.';
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server error. Please try again later or contact support.';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = `Connection error: ${error.message}. Please check your internet connection.`;
+      }
       setError(errorMessage);
-      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -239,6 +308,8 @@ const Register = () => {
                     required
                     disabled={loading}
                     autoFocus
+                    error={!!fieldErrors.full_name}
+                    helperText={fieldErrors.full_name || ''}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -259,6 +330,8 @@ const Register = () => {
                     onChange={handleChange}
                     required
                     disabled={loading}
+                    error={!!fieldErrors.email}
+                    helperText={fieldErrors.email || ''}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -320,6 +393,8 @@ const Register = () => {
                       onChange={handleChange}
                       required
                       disabled={loading}
+                      error={!!fieldErrors.password}
+                      helperText={fieldErrors.password || ''}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
@@ -402,6 +477,8 @@ const Register = () => {
                       onChange={handleChange}
                       required
                       disabled={loading}
+                      error={!!fieldErrors.confirmPassword}
+                      helperText={fieldErrors.confirmPassword || ''}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">

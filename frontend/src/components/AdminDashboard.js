@@ -32,7 +32,6 @@ import {
   TextField,
   Tooltip,
   Typography,
-  useTheme,
 } from '@mui/material';
 import {
   AccessTime,
@@ -52,12 +51,10 @@ import {
 } from '@mui/icons-material';
 import { adminAPI, attendanceAPI } from '../services/api';
 import { useAuth } from '../App';
-import { toast } from 'react-toastify';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import { format, parseISO } from 'date-fns';
 
 const AdminDashboard = () => {
-  const theme = useTheme();
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [attendance, setAttendance] = useState([]);
@@ -88,9 +85,9 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error fetching data:', error);
       if (error.response?.status === 401) {
-        toast.error('Authentication failed. Please log in again.');
+        setError('Authentication failed. Please log in again.');
       } else {
-        toast.error(`Failed to fetch data: ${error.response?.data?.detail || error.message}`);
+        setError(`Failed to fetch data: ${error.response?.data?.detail || error.message}`);
       }
     } finally {
       setLoading(false);
@@ -102,18 +99,31 @@ const AdminDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.date]);
 
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const handleDeleteUser = async () => {
+    setDeleteLoading(true);
     try {
       await adminAPI.deleteUser(deleteDialog.user.unique_id);
-      toast.success(`User ${deleteDialog.user.full_name} deleted successfully`);
+        // User deleted successfully
       setDeleteDialog({ open: false, user: null });
-      fetchData();
+      await fetchData();
     } catch (error) {
-      toast.error('Failed to delete user');
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to delete user';
+      if (error.response?.status === 404) {
+        setError('User not found. It may have already been deleted.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to delete users.');
+      } else {
+        setError(`Failed to delete user: ${errorMsg}`);
+      }
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
   // New attendance management functions
+
   const handleMarkPresent = async (record) => {
     try {
       const currentTime = new Date().toLocaleTimeString('en-US', { 
@@ -128,12 +138,20 @@ const AdminDashboard = () => {
         time_in: currentTime
       });
       
-      toast.success(`Marked ${record.user.full_name} as present`);
-      fetchData();
+      // Marked as present successfully
+      await fetchData();
     } catch (error) {
-      toast.error('Failed to mark as present');
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to mark attendance';
+      if (error.response?.status === 404) {
+        setError('Attendance record not found. Please refresh the page.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to modify this attendance record.');
+      } else {
+        setError(`Failed to mark as present: ${errorMsg}`);
+      }
+    } finally {
+      setActionMenu({ anchorEl: null, record: null });
     }
-    setActionMenu({ anchorEl: null, record: null });
   };
 
   const handleMarkAbsent = async (record) => {
@@ -144,12 +162,20 @@ const AdminDashboard = () => {
         time_in: null
       });
       
-      toast.success(`Marked ${record.user.full_name} as absent`);
-      fetchData();
+      // Marked as absent successfully
+      await fetchData();
     } catch (error) {
-      toast.error('Failed to mark as absent');
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to mark attendance';
+      if (error.response?.status === 404) {
+        setError('Attendance record not found. Please refresh the page.');
+      } else if (error.response?.status === 403) {
+        setError('You do not have permission to modify this attendance record.');
+      } else {
+        setError(`Failed to mark as absent: ${errorMsg}`);
+      }
+    } finally {
+      setActionMenu({ anchorEl: null, record: null });
     }
-    setActionMenu({ anchorEl: null, record: null });
   };
 
   const handleEditTime = (record) => {
@@ -184,7 +210,10 @@ const AdminDashboard = () => {
     }
   };
 
+  const [editAttendanceLoading, setEditAttendanceLoading] = useState(false);
+
   const handleSaveAttendanceEdit = async () => {
+    setEditAttendanceLoading(true);
     try {
       const updatedRecord = {
         ...editAttendanceDialog.record,
@@ -192,11 +221,20 @@ const AdminDashboard = () => {
       };
       
       await updateAttendanceRecord(updatedRecord);
-      toast.success('Attendance record updated successfully');
+      // Attendance record updated successfully
       setEditAttendanceDialog({ open: false, record: null });
-      fetchData();
+      await fetchData();
     } catch (error) {
-      toast.error('Failed to update attendance record');
+      const errorMsg = error.response?.data?.detail || error.message || 'Failed to update attendance record';
+      if (error.response?.status === 400) {
+        setError(`Invalid data: ${errorMsg}`);
+      } else if (error.response?.status === 404) {
+        setError('Attendance record not found. Please refresh the page.');
+      } else {
+        setError(`Failed to update attendance record: ${errorMsg}`);
+      }
+    } finally {
+      setEditAttendanceLoading(false);
     }
   };
 
@@ -861,7 +899,8 @@ const AdminDashboard = () => {
             <Button 
               onClick={handleSaveAttendanceEdit}
               variant="contained"
-              startIcon={<Save />}
+              disabled={editAttendanceLoading}
+              startIcon={editAttendanceLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : <Save />}
               sx={{
                 borderRadius: '8px',
                 background: '#3b82f6',
@@ -872,9 +911,13 @@ const AdminDashboard = () => {
                   background: '#2563eb',
                   boxShadow: 'none',
                 },
+                '&:disabled': {
+                  background: '#3b82f6',
+                  opacity: 0.6,
+                },
               }}
             >
-              Save Changes
+              {editAttendanceLoading ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -914,6 +957,8 @@ const AdminDashboard = () => {
             <Button 
               onClick={handleDeleteUser} 
               variant="contained"
+              disabled={deleteLoading}
+              startIcon={deleteLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : null}
               sx={{
                 borderRadius: '8px',
                 background: '#dc2626',
@@ -924,9 +969,13 @@ const AdminDashboard = () => {
                   background: '#b91c1c',
                   boxShadow: 'none',
                 },
+                '&:disabled': {
+                  background: '#dc2626',
+                  opacity: 0.6,
+                },
               }}
             >
-              Delete User
+              {deleteLoading ? 'Deleting...' : 'Delete User'}
             </Button>
           </DialogActions>
         </Dialog>

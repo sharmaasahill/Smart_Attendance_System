@@ -27,7 +27,6 @@ import {
   Close,
 } from '@mui/icons-material';
 import { useAuth } from '../App';
-import { toast } from 'react-toastify';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -41,12 +40,12 @@ const Settings = () => {
 
   const handleSettingChange = (category, setting, value) => {
     // Settings are read-only (no backend API implemented)
-    toast.info('Settings management is not yet implemented in the backend.');
+    setError('Settings management is not yet implemented in the backend.');
   };
 
   const handleSaveSettings = async () => {
     // Note: Settings API not implemented in backend
-    toast.info('Settings functionality is not yet implemented. Profile management is available in Profile page.');
+    setError('Settings functionality is not yet implemented. Profile management is available in Profile page.');
   };
 
   const settingsCategories = [

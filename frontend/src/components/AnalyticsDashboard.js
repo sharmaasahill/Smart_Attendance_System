@@ -45,7 +45,6 @@ import {
 } from 'recharts';
 import { format, subDays } from 'date-fns';
 import { analyticsAPI } from '../services/api';
-import { toast } from 'react-toastify';
 
 const AnalyticsDashboard = () => {
   const [timeframe, setTimeframe] = useState('week');
@@ -78,330 +77,28 @@ const AnalyticsDashboard = () => {
         ...dashboardResponse.data,
         anomalies: anomaliesResponse.data.anomalies || [],
       };
-
-      // Fill in missing data with enhanced mock data if needed
-      const enhancedData = enhanceAnalyticsData(realAnalytics);
       
-      setAnalytics(enhancedData);
+      setAnalytics(realAnalytics);
       setReportData(reportResponse.data);
       setLastUpdated(new Date());
-      toast.success('Analytics data updated successfully');
     } catch (error) {
       console.error('Analytics fetch error:', error);
-      // Fallback to enhanced mock data if API fails
-      const mockData = generateRealisticAnalytics();
-      setAnalytics(mockData);
-      toast.warning('Using offline analytics data');
+      // Show empty state if API fails
+      setAnalytics({
+        dailyTrends: [],
+        weeklyStats: [],
+        monthlyPatterns: [],
+        userStats: [],
+        anomalies: [],
+        productivity: { overall: 0, trend: '0%', departments: [] },
+        liveStats: {}
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Enhanced analytics data processing
-  const enhanceAnalyticsData = (realData) => {
-    // If we have real data, use it as-is (backend should provide complete data)
-    if (realData.dailyTrends && realData.dailyTrends.length > 0) {
-      return {
-        ...realData,
-        // Fill in missing data with defaults if not provided by backend
-        monthlyPatterns: realData.monthlyPatterns || [],
-        weeklyStats: realData.weeklyStats || [],
-        productivity: realData.productivity || { overall: 85, trend: '+3%', departments: [] },
-      };
-    }
-    
-    // Fallback to realistic mock data
-    return generateRealisticAnalytics();
-  };
 
-  // Generate more realistic mock analytics data with business insights
-  const generateRealisticAnalytics = () => {
-    const today = new Date();
-    const dates = Array.from({ length: 30 }, (_, i) => subDays(today, 29 - i));
-    
-    // More realistic daily trends with patterns
-    const dailyTrends = dates.map((date, index) => {
-      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-      const isMonday = date.getDay() === 1;
-      const isFriday = date.getDay() === 5;
-      
-      // Simulate realistic attendance patterns
-      let baseAttendance = isWeekend ? 
-        Math.floor(Math.random() * 30) + 20 : // Weekend: 20-50%
-        Math.floor(Math.random() * 15) + 85;  // Weekday: 85-100%
-      
-      // Monday lower attendance, Friday slightly lower
-      if (isMonday) baseAttendance -= Math.floor(Math.random() * 10) + 5;
-      if (isFriday) baseAttendance -= Math.floor(Math.random() * 5) + 2;
-      
-      const onTime = Math.max(0, baseAttendance - Math.floor(Math.random() * 15) - 5);
-      const late = Math.min(baseAttendance - onTime, Math.floor(Math.random() * 8) + 2);
-      const absent = Math.max(0, 100 - baseAttendance);
-      
-      // Productivity correlates with attendance but has its own patterns
-      const productivity = Math.min(100, 
-        baseAttendance * 0.8 + Math.floor(Math.random() * 20) + 
-        (isFriday ? -5 : 0) + (isMonday ? -3 : 0)
-      );
-
-      return {
-        date: format(date, 'MMM dd'),
-        fullDate: format(date, 'yyyy-MM-dd'),
-        attendance: Math.max(0, baseAttendance),
-        onTime,
-        late,
-        absent,
-        productivity: Math.max(50, productivity),
-        workingHours: isWeekend ? 
-          Math.random() * 4 + 2 : 
-          Math.random() * 2 + 7.5, // 7.5-9.5 hours weekdays
-      };
-    });
-
-    // Enhanced weekly patterns with realistic business insights
-    const weeklyStats = [
-      { 
-        name: 'Monday', 
-        attendance: 88, 
-        productivity: 82, 
-        avgHours: 8.1,
-        lateArrivals: 12,
-        earlyDepartures: 8
-      },
-      { 
-        name: 'Tuesday', 
-        attendance: 94, 
-        productivity: 89, 
-        avgHours: 8.3,
-        lateArrivals: 6,
-        earlyDepartures: 4
-      },
-      { 
-        name: 'Wednesday', 
-        attendance: 96, 
-        productivity: 92, 
-        avgHours: 8.4,
-        lateArrivals: 4,
-        earlyDepartures: 3
-      },
-      { 
-        name: 'Thursday', 
-        attendance: 95, 
-        productivity: 90, 
-        avgHours: 8.2,
-        lateArrivals: 5,
-        earlyDepartures: 4
-      },
-      { 
-        name: 'Friday', 
-        attendance: 89, 
-        productivity: 85, 
-        avgHours: 7.8,
-        lateArrivals: 8,
-        earlyDepartures: 15
-      },
-      { 
-        name: 'Saturday', 
-        attendance: 45, 
-        productivity: 75, 
-        avgHours: 6.2,
-        lateArrivals: 3,
-        earlyDepartures: 8
-      },
-      { 
-        name: 'Sunday', 
-        attendance: 25, 
-        productivity: 70, 
-        avgHours: 4.1,
-        lateArrivals: 1,
-        earlyDepartures: 5
-      },
-    ];
-
-    // Monthly patterns with seasonal effects
-    const currentMonth = today.getMonth();
-    const monthlyPatterns = Array.from({ length: 6 }, (_, i) => {
-      const monthIndex = (currentMonth - 5 + i + 12) % 12;
-      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-                         'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      
-      // Seasonal patterns (holidays, weather, etc.)
-      let baseAttendance = 90;
-      if (monthIndex === 11 || monthIndex === 0) baseAttendance -= 8; // Dec/Jan holidays
-      if (monthIndex === 6 || monthIndex === 7) baseAttendance -= 5;  // Summer vacations
-      if (monthIndex === 2 || monthIndex === 8) baseAttendance += 3;  // March/Sep peak months
-      
-      const attendance = baseAttendance + Math.floor(Math.random() * 8) - 4;
-      const productivity = Math.min(95, attendance * 0.95 + Math.floor(Math.random() * 10));
-      
-      return {
-        month: monthNames[monthIndex],
-        attendance: Math.max(75, attendance),
-        productivity: Math.max(70, productivity),
-        avgWorkingDays: monthIndex === 1 ? 20 : 22, // February shorter
-        overtimeHours: Math.floor(Math.random() * 50) + 20,
-      };
-    });
-
-    // Enhanced user performance with departments and roles
-    const departments = ['Engineering', 'Marketing', 'Sales', 'HR', 'Finance', 'Operations'];
-    const userStats = [
-      { 
-        name: 'Sarah Chen', 
-        attendance: 98, 
-        productivity: 95, 
-        streak: 28, 
-        department: 'Engineering',
-        role: 'Senior Developer',
-        avgArrival: '8:45 AM',
-        overtimeHours: 12,
-        projects: 3
-      },
-      { 
-        name: 'Mike Rodriguez', 
-        attendance: 96, 
-        productivity: 93, 
-        streak: 24, 
-        department: 'Marketing',
-        role: 'Marketing Manager',
-        avgArrival: '8:30 AM',
-        overtimeHours: 8,
-        projects: 5
-      },
-      { 
-        name: 'Emily Johnson', 
-        attendance: 94, 
-        productivity: 91, 
-        streak: 19, 
-        department: 'Sales',
-        role: 'Account Executive',
-        avgArrival: '8:55 AM',
-        overtimeHours: 15,
-        projects: 7
-      },
-      { 
-        name: 'David Kim', 
-        attendance: 92, 
-        productivity: 89, 
-        streak: 16, 
-        department: 'Finance',
-        role: 'Financial Analyst',
-        avgArrival: '9:05 AM',
-        overtimeHours: 6,
-        projects: 2
-      },
-      { 
-        name: 'Lisa Wang', 
-        attendance: 90, 
-        productivity: 87, 
-        streak: 12, 
-        department: 'HR',
-        role: 'HR Specialist',
-        avgArrival: '9:10 AM',
-        overtimeHours: 4,
-        projects: 4
-      },
-    ];
-
-    // Enhanced anomaly detection with business context
-    const anomalies = [
-      { 
-        type: 'attendance_drop', 
-        user: 'Engineering Team', 
-        description: 'Department attendance dropped 18% this week - possible team issue or project deadline stress', 
-        severity: 'high',
-        date: format(subDays(today, 1), 'MMM dd'),
-        affectedCount: 8,
-        suggestedAction: 'Schedule team meeting with department head'
-      },
-      { 
-        type: 'unusual_hours', 
-        user: 'Lisa Wang', 
-        description: 'Working consistently beyond 10 PM for 5 consecutive days - burnout risk', 
-        severity: 'medium',
-        date: format(subDays(today, 2), 'MMM dd'),
-        affectedCount: 1,
-        suggestedAction: 'Wellness check and workload review'
-      },
-      { 
-        type: 'punctuality_pattern', 
-        user: 'Sales Team', 
-        description: 'Average arrival time increased from 8:45 AM to 9:25 AM over past 2 weeks', 
-        severity: 'low',
-        date: format(today, 'MMM dd'),
-        affectedCount: 12,
-        suggestedAction: 'Review meeting schedules and transport policies'
-      },
-      { 
-        type: 'productivity_variance', 
-        user: 'David Kim', 
-        description: 'Productivity score dropped 25% despite consistent attendance - possible training need', 
-        severity: 'medium',
-        date: format(subDays(today, 3), 'MMM dd'),
-        affectedCount: 1,
-        suggestedAction: 'Skills assessment and training plan'
-      },
-    ];
-
-    // Enhanced productivity metrics with business KPIs
-    const productivity = {
-      overall: 87,
-      trend: '+5%',
-      departments: departments.map((dept, index) => {
-        const baseScore = 85 + Math.floor(Math.random() * 15);
-        const trendValue = Math.floor(Math.random() * 20) - 5;
-        return {
-          name: dept,
-          score: baseScore,
-          trend: trendValue > 0 ? `+${trendValue}%` : `${trendValue}%`,
-          employeeCount: Math.floor(Math.random() * 15) + 5,
-          avgWorkingHours: 8.2 + Math.random() * 0.8,
-          projectsCompleted: Math.floor(Math.random() * 10) + 2,
-        };
-      }),
-      factors: [
-        { name: 'On-time Arrival', impact: 25, score: 89, trend: '+3%' },
-        { name: 'Consistent Schedule', impact: 20, score: 84, trend: '+1%' },
-        { name: 'Break Optimization', impact: 15, score: 91, trend: '+7%' },
-        { name: 'Overtime Balance', impact: 40, score: 86, trend: '+2%' },
-      ]
-    };
-
-    // Enhanced live stats with business metrics
-    const liveStats = {
-      currentlyPresent: 47,
-      totalEmployees: 52,
-      onTimeToday: 41,
-      lateToday: 6,
-      absentToday: 5,
-      averageArrival: '8:47 AM',
-      peakHour: '9:15 AM',
-      productivityScore: 89,
-      workingRemotely: 12,
-      onBreak: 8,
-      inMeetings: 15,
-      avgWorkingHoursToday: 7.8,
-      overtimeRequired: 3,
-      departmentStats: {
-        engineering: { present: 12, total: 15, productivity: 92 },
-        marketing: { present: 8, total: 10, productivity: 87 },
-        sales: { present: 15, total: 18, productivity: 85 },
-        hr: { present: 4, total: 4, productivity: 94 },
-        finance: { present: 5, total: 5, productivity: 88 },
-        operations: { present: 3, total: 4, productivity: 83 },
-      }
-    };
-
-    return {
-      dailyTrends,
-      weeklyStats,
-      monthlyPatterns,
-      userStats,
-      anomalies,
-      productivity,
-      liveStats
-    };
-  };
 
   // Auto-refresh every 30 seconds
   useEffect(() => {
@@ -418,31 +115,27 @@ const AnalyticsDashboard = () => {
         case 'pdf':
           // Generate PDF report
           const { exportToPDF } = await import('./ExportUtils');
-          await exportToPDF({...analytics, reportData, timeframe});
-          toast.success('PDF report generated successfully!');
+           await exportToPDF({...analytics, reportData, timeframe});
           break;
         case 'excel':
           // Use backend export endpoint
           response = await analyticsAPI.exportData('excel', timeframe);
-          downloadFile(response.data, `analytics-${timeframe}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-          toast.success('Excel report generated successfully!');
+           downloadFile(response.data, `analytics-${timeframe}.xlsx`, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
           break;
         case 'csv':
           response = await analyticsAPI.exportData('csv', timeframe);
-          downloadFile(response.data, `analytics-${timeframe}.csv`, 'text/csv');
-          toast.success('CSV report generated successfully!');
+           downloadFile(response.data, `analytics-${timeframe}.csv`, 'text/csv');
           break;
         case 'json':
           const jsonData = JSON.stringify(analytics, null, 2);
-          downloadFile(jsonData, `analytics-${timeframe}.json`, 'application/json');
-          toast.success('JSON data exported successfully!');
+           downloadFile(jsonData, `analytics-${timeframe}.json`, 'application/json');
           break;
-        default:
-          toast.error('Unsupported export format');
+         default:
+           // Unsupported format
       }
     } catch (error) {
-      console.error('Export error:', error);
-      toast.error('Export failed: ' + (error.response?.data?.detail || error.message));
+       console.error('Export error:', error);
+       // Export error - user will see file download failure
     }
   };
 

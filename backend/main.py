@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from contextlib import asynccontextmanager
 import uvicorn
 import os
 from datetime import datetime, timedelta
@@ -17,7 +18,16 @@ from schemas import UserCreate, UserResponse, LoginRequest, AttendanceResponse, 
 from auth import create_access_token, verify_token, get_password_hash, verify_password, get_current_user, get_current_admin_user
 from face_recognition_service import FaceRecognitionService
 
-app = FastAPI(title="Smart Attendance System", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    init_db()
+    os.makedirs("uploads", exist_ok=True)
+    os.makedirs("dataset", exist_ok=True)
+    yield
+    # Shutdown (add cleanup here if needed)
+
+app = FastAPI(title="Smart Attendance System", version="1.0.0", lifespan=lifespan)
 
 # CORS middleware
 app.add_middleware(
@@ -31,13 +41,6 @@ app.add_middleware(
 # Security
 security = HTTPBearer()
 face_service = FaceRecognitionService()
-
-@app.on_event("startup")
-async def startup_event():
-    init_db()
-    # Create uploads and dataset directories
-    os.makedirs("uploads", exist_ok=True)
-    os.makedirs("dataset", exist_ok=True)
 
 @app.get("/")
 async def root():

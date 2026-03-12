@@ -1,13 +1,13 @@
 # ===========================================
-# Smart Attendance System
-# .gitignore
+# Smart Attendance System — .gitignore
 # ===========================================
 
 # ============ Python ============
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyo
+*.pyd
 
 # Virtual environments
 venv/
@@ -15,31 +15,28 @@ env/
 .venv/
 ENV/
 
-# ============ React/Frontend ============
-# Dependencies
+# ============ React / Frontend ============
 node_modules/
 package-lock.json
 
-# Production build
-frontend/build/
-frontend/dist/
+# Production builds
+build/
+dist/
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# ============ Database Files ============
+# ============ Database ============
 *.db
 *.sqlite
 *.sqlite3
 
 # ============ Face Recognition Data ============
-# User face encodings and training images
+# User face images and encodings (biometric data — never commit)
 backend/dataset/
 backend/uploads/
-
-# Face encoding files
 *.pkl
 encoding*.json
 
@@ -50,16 +47,13 @@ encoding*.json
 .env.production
 
 # ============ IDE / Editor ============
-.vscode/
+# Note: .vscode/settings.json is kept to share interpreter settings with teammates
 .idea/
 *.swp
 *.swo
 *~
 
 # ============ OS Files ============
-# macOS
 .DS_Store
-
-# Windows
 Thumbs.db
 Desktop.ini

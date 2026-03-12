@@ -17,7 +17,6 @@ import {
   CircularProgress,
   LinearProgress,
   Fade,
-  useTheme,
   IconButton,
   Tooltip,
 } from '@mui/material';
@@ -42,10 +41,10 @@ import { useAuth } from '../App';
 import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 
 const EmployeeDashboard = () => {
-  const theme = useTheme();
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(''); // eslint-disable-line no-unused-vars
   const [weeklyData, setWeeklyData] = useState([]);
   const [stats, setStats] = useState({
     todayStatus: null,

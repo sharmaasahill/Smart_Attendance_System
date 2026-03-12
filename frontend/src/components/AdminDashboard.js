@@ -63,6 +63,7 @@ const AdminDashboard = () => {
   const [editAttendanceDialog, setEditAttendanceDialog] = useState({ open: false, record: null });
   const [activeTab, setActiveTab] = useState(0);
   const [actionMenu, setActionMenu] = useState({ anchorEl: null, record: null });
+  const [error, setError] = useState(''); // eslint-disable-line no-unused-vars
   const [filters, setFilters] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     search: '',

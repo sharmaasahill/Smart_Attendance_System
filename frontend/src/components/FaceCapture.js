@@ -36,7 +36,7 @@ const FaceCapture = () => {
   
   const [step, setStep] = useState(0);
   const [capturedImages, setCapturedImages] = useState([]);
-  const [isCapturing, setIsCapturing] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false); // eslint-disable-line no-unused-vars
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [intervalId, setIntervalId] = useState(null);
@@ -140,7 +140,7 @@ const FaceCapture = () => {
       // Upload to backend
       await faceAPI.registerFace(files);
       
-      setSuccess('Face registration completed successfully!');
+      console.log('Face registration completed successfully!');
       navigate('/profile');
     } catch (error) {
       setError(error.response?.data?.detail || 'Face registration failed');

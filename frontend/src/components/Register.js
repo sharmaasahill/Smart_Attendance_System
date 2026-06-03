@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Container,
   TextField,
@@ -30,6 +30,7 @@ import {
   Person,
   CheckCircle,
 } from '@mui/icons-material';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../App';
 import { authAPI } from '../services/api';
@@ -51,6 +52,26 @@ const Register = () => {
   const [fieldErrors, setFieldErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Image slider state
+  const images = [
+    'https://images.unsplash.com/photo-1552664730-d307ca884978?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1515378960530-7c0da6231fb1?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1531498860502-7c67cf02f657?w=800&auto=format&fit=crop&q=80',
+  ];
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Auto-change images every 4 seconds
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImageIndex((prevIndex) => 
+        prevIndex === images.length - 1 ? 0 : prevIndex + 1
+      );
+    }, 4000);
+
+    return () => clearInterval(timer);
+  }, [images.length]);
 
   const validateField = (name, value) => {
     const errors = { ...fieldErrors };
@@ -198,122 +219,166 @@ const Register = () => {
 
   const fieldStyles = {
     '& .MuiOutlinedInput-root': {
-      borderRadius: '12px',
-      background: '#f9fafb',
-      border: '1px solid #e5e7eb',
+      borderRadius: '10px',
+      background: '#fafaf9',
+      border: '1px solid #e7e5e4',
+      fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
+      fontSize: '0.8rem',
       '& fieldset': {
         border: 'none',
       },
+      '& input': {
+        py: 1,
+        fontSize: '0.8rem',
+      },
       '&:hover': {
-        background: '#f3f4f6',
+        background: '#f5f5f4',
+        border: '1px solid #d6d3d1',
       },
       '&.Mui-focused': {
         background: '#ffffff',
-        boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-        border: '1px solid #3b82f6',
+        boxShadow: '0 0 0 3px rgba(33, 46, 70, 0.1)',
+        border: '1px solid #212E46',
       },
     },
     '& .MuiInputLabel-root': {
-      color: '#6b7280',
+      color: '#78716c',
+      fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
+      fontSize: '0.8rem',
       '&.Mui-focused': {
-        color: '#3b82f6',
+        color: '#212E46',
       },
     },
+    '& .MuiInputAdornment-root': {
+      '& svg': {
+        fontSize: '1rem',
+      }
+    }
   };
 
   return (
     <Box
       sx={{
         minHeight: '100vh',
-        background: '#fafafa',
+        background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        p: 3,
+        py: 4,
+        px: 2,
       }}
     >
-      <Container maxWidth="sm">
+      <Container maxWidth="md">
         <Fade in timeout={800}>
-          <Card
-            elevation={0}
+          <Grid 
+            container 
             sx={{
-              border: '1px solid #e5e7eb',
-              borderRadius: '16px',
-              background: '#ffffff',
-              overflow: 'hidden'
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
+              maxWidth: '900px',
+              mx: 'auto',
             }}
           >
-            {/* Header */}
-            <Box sx={{ p: 6, textAlign: 'center', borderBottom: '1px solid #f3f4f6' }}>
-              <Avatar 
-                sx={{ 
-                  width: 64, 
-                  height: 64,
-                  mx: 'auto',
-                  mb: 3,
-                  background: '#f3f4f6',
-                  color: '#6b7280'
+            {/* Left side: Registration Form */}
+            <Grid 
+              item 
+              xs={12} 
+              md={6}
+              sx={{
+                background: '#ffffff',
+                order: { xs: 1, md: 1 },
+                height: '550px',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <Card
+                elevation={0}
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  border: 'none',
+                  borderRadius: 0,
                 }}
               >
-                <PersonAdd sx={{ fontSize: 32 }} />
-              </Avatar>
-              
+            {/* Header */}
+            <Box sx={{ px: 3.5, pt: 5, pb: 2, textAlign: 'center' }}>
               <Typography 
-                variant="h4" 
-                fontWeight="600" 
-                gutterBottom
-                sx={{ color: '#1f2937', letterSpacing: '-0.025em' }}
+                variant="h5" 
+                fontWeight="700" 
+                sx={{ 
+                  color: '#212E46', 
+                  letterSpacing: '-0.02em',
+                  fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
+                  fontSize: '1.15rem',
+                  mb: 0.3,
+                  lineHeight: 1.2,
+                }}
               >
                 Create your account
               </Typography>
               
               <Typography 
-                variant="body1" 
-                sx={{ color: '#6b7280', lineHeight: 1.5 }}
+                variant="body2" 
+                sx={{ 
+                  color: '#78716c', 
+                  lineHeight: 1.3,
+                  fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
+                  fontSize: '0.75rem'
+                }}
               >
                 Join the smart attendance system
               </Typography>
             </Box>
 
             {/* Registration Form */}
-            <CardContent sx={{ p: 6 }}>
+            <CardContent sx={{ px: 3.5, pb: 2.5, pt: 0, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               {error && (
                 <Fade in timeout={500}>
                   <Alert 
                     severity="error" 
                     sx={{ 
-                      mb: 4,
-                      borderRadius: '12px',
+                      mb: 1.5,
+                      borderRadius: '10px',
                       border: '1px solid #fecaca',
                       background: '#fef2f2',
-                      '& .MuiAlert-icon': { color: '#dc2626' }
+                      py: 0.5,
+                      '& .MuiAlert-icon': { color: '#dc2626', fontSize: '1rem' },
+                      '& .MuiAlert-message': { py: 0 }
                     }}
                   >
-                    <Typography variant="body2" fontWeight="500">
+                    <Typography variant="body2" fontWeight="500" sx={{ fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif', fontSize: '0.7rem' }}>
                       {error}
                     </Typography>
                   </Alert>
                 </Fade>
               )}
 
-              <Box component="form" onSubmit={handleSubmit}>
-                <Stack spacing={4}>
+              <Box component="form" onSubmit={handleSubmit} autoComplete="off">
+                <Stack spacing={1.2}>
                   {/* Full Name */}
                   <TextField
                     fullWidth
                     name="full_name"
-                    label="Full name"
+                    placeholder="Full name *"
                     value={formData.full_name}
                     onChange={handleChange}
                     required
                     disabled={loading}
                     autoFocus
+                    autoComplete="new-name"
+                    inputProps={{
+                      autoComplete: 'new-name',
+                    }}
                     error={!!fieldErrors.full_name}
                     helperText={fieldErrors.full_name || ''}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Person sx={{ color: '#9ca3af', fontSize: 20 }} />
+                          <Person sx={{ color: '#9ca3af', fontSize: 18 }} />
                         </InputAdornment>
                       ),
                     }}
@@ -325,17 +390,21 @@ const Register = () => {
                     fullWidth
                     name="email"
                     type="email"
-                    label="Email address"
+                    placeholder="Email address *"
                     value={formData.email}
                     onChange={handleChange}
                     required
                     disabled={loading}
+                    autoComplete="new-email"
+                    inputProps={{
+                      autoComplete: 'new-email',
+                    }}
                     error={!!fieldErrors.email}
                     helperText={fieldErrors.email || ''}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
-                          <Email sx={{ color: '#9ca3af', fontSize: 20 }} />
+                          <Email sx={{ color: '#9ca3af', fontSize: 18 }} />
                         </InputAdornment>
                       ),
                     }}
@@ -343,44 +412,47 @@ const Register = () => {
                   />
 
                   {/* Phone and Department */}
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        name="phone_number"
-                        label="Phone number"
-                        value={formData.phone_number}
-                        onChange={handleChange}
-                        disabled={loading}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Phone sx={{ color: '#9ca3af', fontSize: 20 }} />
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={fieldStyles}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        fullWidth
-                        name="department"
-                        label="Department"
-                        value={formData.department}
-                        onChange={handleChange}
-                        disabled={loading}
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <Business sx={{ color: '#9ca3af', fontSize: 20 }} />
-                            </InputAdornment>
-                          ),
-                        }}
-                        sx={fieldStyles}
-                      />
-                    </Grid>
-                  </Grid>
+                  <TextField
+                    fullWidth
+                    name="phone_number"
+                    placeholder="Phone number"
+                    value={formData.phone_number}
+                    onChange={handleChange}
+                    disabled={loading}
+                    autoComplete="new-phone"
+                    inputProps={{
+                      autoComplete: 'new-phone',
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Phone sx={{ color: '#9ca3af', fontSize: 18 }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={fieldStyles}
+                  />
+                  
+                  <TextField
+                    fullWidth
+                    name="department"
+                    placeholder="Department"
+                    value={formData.department}
+                    onChange={handleChange}
+                    disabled={loading}
+                    autoComplete="new-department"
+                    inputProps={{
+                      autoComplete: 'new-department',
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <Business sx={{ color: '#9ca3af', fontSize: 18 }} />
+                        </InputAdornment>
+                      ),
+                    }}
+                    sx={fieldStyles}
+                  />
 
                   {/* Password */}
                   <Box>
@@ -388,17 +460,21 @@ const Register = () => {
                       fullWidth
                       name="password"
                       type={showPassword ? 'text' : 'password'}
-                      label="Password"
+                      placeholder="Password *"
                       value={formData.password}
                       onChange={handleChange}
                       required
                       disabled={loading}
+                      autoComplete="new-password"
+                      inputProps={{
+                        autoComplete: 'new-password',
+                      }}
                       error={!!fieldErrors.password}
                       helperText={fieldErrors.password || ''}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <Lock sx={{ color: '#9ca3af', fontSize: 20 }} />
+                            <Lock sx={{ color: '#9ca3af', fontSize: 18 }} />
                           </InputAdornment>
                         ),
                         endAdornment: (
@@ -411,7 +487,7 @@ const Register = () => {
                                 '&:hover': { color: '#6b7280' }
                               }}
                             >
-                              {showPassword ? <VisibilityOff /> : <Visibility />}
+                              {showPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
                             </IconButton>
                           </InputAdornment>
                         ),
@@ -421,14 +497,14 @@ const Register = () => {
                     
                     {/* Password Strength Indicator */}
                     {formData.password && (
-                      <Box sx={{ mt: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                      <Box sx={{ mt: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                           <Box sx={{ flex: 1 }}>
                             <LinearProgress 
                               variant="determinate" 
                               value={passwordStrength.strength} 
                               sx={{
-                                height: 4,
+                                height: 3,
                                 borderRadius: 2,
                                 backgroundColor: '#e5e7eb',
                                 '& .MuiLinearProgress-bar': {
@@ -446,8 +522,8 @@ const Register = () => {
                             label={passwordStrength.text}
                             size="small"
                             sx={{
-                              fontSize: '0.75rem',
-                              height: 20,
+                              fontSize: '0.65rem',
+                              height: 16,
                               backgroundColor: 
                                 passwordStrength.color === 'error' ? '#fef2f2' :
                                 passwordStrength.color === 'warning' ? '#fffbeb' :
@@ -472,17 +548,21 @@ const Register = () => {
                       fullWidth
                       name="confirmPassword"
                       type={showConfirmPassword ? 'text' : 'password'}
-                      label="Confirm password"
+                      placeholder="Confirm password *"
                       value={formData.confirmPassword}
                       onChange={handleChange}
                       required
                       disabled={loading}
+                      autoComplete="new-password"
+                      inputProps={{
+                        autoComplete: 'new-password',
+                      }}
                       error={!!fieldErrors.confirmPassword}
                       helperText={fieldErrors.confirmPassword || ''}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <Lock sx={{ color: '#9ca3af', fontSize: 20 }} />
+                            <Lock sx={{ color: '#9ca3af', fontSize: 18 }} />
                           </InputAdornment>
                         ),
                         endAdornment: (
@@ -495,7 +575,7 @@ const Register = () => {
                                 '&:hover': { color: '#6b7280' }
                               }}
                             >
-                              {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                              {showConfirmPassword ? <VisibilityOff sx={{ fontSize: 18 }} /> : <Visibility sx={{ fontSize: 18 }} />}
                             </IconButton>
                           </InputAdornment>
                         ),
@@ -505,15 +585,15 @@ const Register = () => {
                     
                     {/* Password Match Indicator */}
                     {formData.confirmPassword && formData.password && (
-                      <Box sx={{ mt: 2 }}>
+                      <Box sx={{ mt: 1 }}>
                         {formData.password === formData.confirmPassword ? (
                           <Chip 
-                            icon={<CheckCircle sx={{ fontSize: 16 }} />}
+                            icon={<CheckCircle sx={{ fontSize: 12 }} />}
                             label="Passwords match" 
                             size="small"
                             sx={{
-                              fontSize: '0.75rem',
-                              height: 24,
+                              fontSize: '0.65rem',
+                              height: 18,
                               backgroundColor: '#f0fdf4',
                               color: '#059669',
                               border: 'none',
@@ -525,8 +605,8 @@ const Register = () => {
                             label="Passwords don't match" 
                             size="small"
                             sx={{
-                              fontSize: '0.75rem',
-                              height: 24,
+                              fontSize: '0.65rem',
+                              height: 18,
                               backgroundColor: '#fef2f2',
                               color: '#dc2626',
                               border: 'none'
@@ -542,27 +622,29 @@ const Register = () => {
                     type="submit"
                     fullWidth
                     variant="contained"
-                    size="large"
+                    size="medium"
                     disabled={loading}
-                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <PersonAdd />}
+                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PersonAdd sx={{ fontSize: '1rem' }} />}
                     sx={{
-                      py: 2.5,
-                      fontSize: '1rem',
+                      py: 1.3,
+                      fontSize: '0.8rem',
                       fontWeight: '600',
-                      borderRadius: '12px',
-                      background: '#1f2937',
+                      borderRadius: '10px',
+                      background: '#212E46',
                       color: '#ffffff',
                       textTransform: 'none',
-                      boxShadow: 'none',
+                      boxShadow: '0 6px 20px rgba(33, 46, 70, 0.12)',
+                      fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
                       '&:hover': {
-                        background: '#111827',
-                        boxShadow: 'none',
+                        background: '#1a2333',
+                        boxShadow: '0 8px 24px rgba(33, 46, 70, 0.18)',
+                        transform: 'translateY(-1px)',
                       },
                       '&:disabled': {
                         background: '#d1d5db',
                         color: '#9ca3af',
                       },
-                      transition: 'all 0.2s ease',
+                      transition: 'all 0.3s ease',
                     }}
                   >
                     {loading ? 'Creating account...' : 'Create account'}
@@ -570,17 +652,15 @@ const Register = () => {
                 </Stack>
               </Box>
 
-              <Divider sx={{ my: 4 }} />
-
-              <Box sx={{ textAlign: 'center' }}>
-                <Typography variant="body2" sx={{ color: '#6b7280' }}>
+              <Box sx={{ textAlign: 'center', mt: 1.8 }}>
+                <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif', fontSize: '0.75rem' }}>
                   Already have an account?{' '}
                   <Link 
                     to="/login" 
                     style={{ 
-                      color: '#3b82f6', 
+                      color: '#f97316', 
                       textDecoration: 'none', 
-                      fontWeight: '500',
+                      fontWeight: '600',
                     }}
                   >
                     Sign in
@@ -589,10 +669,95 @@ const Register = () => {
               </Box>
             </CardContent>
           </Card>
-        </Fade>
-      </Container>
-    </Box>
-  );
+        </Grid>
+
+        {/* Right side: Image Slider */}
+        <Grid 
+          item 
+          xs={12} 
+          md={6}
+          sx={{
+            position: 'relative',
+            overflow: 'hidden',
+            display: { xs: 'none', md: 'block' },
+            background: '#212E46',
+            order: { xs: 2, md: 2 },
+            height: '550px',
+          }}
+        >
+          <Box
+            sx={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              overflow: 'hidden',
+            }}
+          >
+            <AnimatePresence initial={false}>
+              <motion.div
+                key={currentImageIndex}
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -50 }}
+                transition={{ duration: 0.8, ease: 'easeInOut' }}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                }}
+              >
+                <Box
+                  component="img"
+                  src={images[currentImageIndex]}
+                  alt={`Slide ${currentImageIndex + 1}`}
+                  sx={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Slider indicators */}
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 20,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                display: 'flex',
+                gap: 1,
+                zIndex: 10,
+              }}
+            >
+              {images.map((_, index) => (
+                <Box
+                  key={index}
+                  onClick={() => setCurrentImageIndex(index)}
+                  sx={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: currentImageIndex === index ? '#ffffff' : 'rgba(255,255,255,0.5)',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      backgroundColor: '#ffffff',
+                    },
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+        </Grid>
+      </Grid>
+    </Fade>
+  </Container>
+</Box>
+);
 };
 
 export default Register; 

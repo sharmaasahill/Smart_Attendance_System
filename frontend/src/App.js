@@ -1,5 +1,5 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
 
 // Components
@@ -24,6 +24,18 @@ export const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
+};
+
+// Layout component - adds top padding for fixed navbar on non-home pages
+const AppLayout = ({ children }) => {
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+  
+  return (
+    <Box sx={{ pt: isHome ? 0 : '72px' }}>
+      {children}
+    </Box>
+  );
 };
 
 function App() {
@@ -82,7 +94,7 @@ function App() {
 
   return (
     <AuthContext.Provider value={authValue}>
-      <Box>
+      <AppLayout>
         <Navbar />
         <Routes>
           {/* Public Routes */}
@@ -131,7 +143,7 @@ function App() {
           {/* Default redirect */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
-      </Box>
+      </AppLayout>
     </AuthContext.Provider>
   );
 }

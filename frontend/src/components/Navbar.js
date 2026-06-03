@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -9,6 +9,7 @@ import {
   Menu,
   MenuItem,
   Avatar,
+  Stack,
   useTheme,
   useMediaQuery,
   Divider,
@@ -33,26 +34,21 @@ const Navbar = () => {
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
   const [mobileMenuEl, setMobileMenuEl] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
 
-  const handleMenuOpen = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleMobileMenuOpen = (event) => {
-    setMobileMenuEl(event.currentTarget);
-  };
-
-  const handleMobileMenuClose = () => {
-    setMobileMenuEl(null);
-  };
+  const handleMenuOpen = (event) => setAnchorEl(event.currentTarget);
+  const handleMenuClose = () => setAnchorEl(null);
+  const handleMobileMenuOpen = (event) => setMobileMenuEl(event.currentTarget);
+  const handleMobileMenuClose = () => setMobileMenuEl(null);
 
   const handleLogout = () => {
     logout();
-    // Logged out successfully
     navigate('/login');
     handleMenuClose();
   };
@@ -63,49 +59,86 @@ const Navbar = () => {
     handleMobileMenuClose();
   };
 
+  const scrollToSection = (sectionId) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const navbarHeight = 80; // Approximate navbar height
+      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - navbarHeight;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+    handleMobileMenuClose();
+  };
+
   const isActivePage = (path) => location.pathname === path;
 
   const navigationItems = [
-    { path: '/', label: 'Mark Attendance', icon: <CameraAlt /> },
+    { path: '/mark-attendance', label: 'Mark Attendance', icon: <CameraAlt /> },
     { path: '/dashboard', label: 'Dashboard', icon: <Dashboard /> },
     ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin', icon: <AdminPanelSettings /> }] : []),
   ];
 
+  const publicNavigationItems = [
+    { label: 'Features', sectionId: 'features' },
+    { label: 'How It Works', sectionId: 'how-it-works' },
+    { label: 'Industries', sectionId: 'industries' },
+  ];
+
   return (
-    <AppBar 
-      position="sticky" 
+    <AppBar
+      position="fixed"
       elevation={0}
       sx={{
-        background: '#ffffff',
-        borderBottom: '1px solid #e5e7eb',
-        color: '#1f2937',
+        background: scrolled ? 'rgba(255,255,255,0.85)' : 'transparent',
+        backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
+        borderBottom: scrolled ? '1px solid rgba(0,0,0,0.06)' : '1px solid transparent',
+        color: scrolled ? '#1a1a1a' : '#ffffff',
+        transition: 'all 0.3s ease',
+        zIndex: 1100,
       }}
     >
       <Toolbar sx={{ px: { xs: 3, md: 4 }, py: 1.5 }}>
-        {/* Logo Section */}
-        <Box 
-          display="flex" 
-          alignItems="center" 
-          sx={{ 
-            flexGrow: isMobile ? 1 : 0,
-            cursor: 'pointer',
-          }}
+        {/* Logo */}
+        <Box
+          display="flex"
+          alignItems="center"
+          sx={{ flexGrow: isMobile ? 1 : 0, cursor: 'pointer' }}
           onClick={() => navigateToPage('/')}
         >
-          <Typography 
-            variant="h6" 
-            fontWeight="600" 
-            sx={{
-              color: '#1f2937',
-              letterSpacing: '-0.025em'
-            }}
-          >
+          <Typography variant="h6" fontWeight="700" sx={{ color: scrolled ? '#0f172a' : '#ffffff', letterSpacing: '-0.02em', fontSize: '1.1rem', transition: 'color 0.3s ease' }}>
             SAS
           </Typography>
         </Box>
 
         {/* Desktop Navigation */}
-        {!isMobile && (
+        {!isMobile && !user && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mx: 6, flexGrow: 1 }}>
+            {publicNavigationItems.map((item) => (
+              <Button
+                key={item.label}
+                onClick={() => scrollToSection(item.sectionId)}
+                sx={{
+                  px: 3,
+                  py: 1.5,
+                  borderRadius: '10px',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  color: scrolled ? '#64748b' : 'rgba(255,255,255,0.8)',
+                  '&:hover': { background: scrolled ? '#f8fafc' : 'rgba(255,255,255,0.1)', color: scrolled ? '#0f172a' : '#ffffff' },
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </Box>
+        )}
+
+        {!isMobile && user && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mx: 6, flexGrow: 1 }}>
             {navigationItems.map((item) => (
               <Button
@@ -115,15 +148,12 @@ const Navbar = () => {
                 sx={{
                   px: 3,
                   py: 1.5,
-                  borderRadius: '8px',
-                  fontWeight: '500',
+                  borderRadius: '10px',
+                  fontWeight: 500,
                   textTransform: 'none',
-                  color: isActivePage(item.path) ? '#1f2937' : '#6b7280',
-                  background: isActivePage(item.path) ? '#f3f4f6' : 'transparent',
-                  '&:hover': {
-                    background: '#f9fafb',
-                    color: '#1f2937',
-                  },
+                  color: isActivePage(item.path) ? '#0f172a' : '#64748b',
+                  background: isActivePage(item.path) ? '#f1f5f9' : 'transparent',
+                  '&:hover': { background: '#f8fafc', color: '#0f172a' },
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -134,35 +164,27 @@ const Navbar = () => {
         )}
 
         {/* User Section */}
-        {user && (
+        {user ? (
           <Box display="flex" alignItems="center" gap={2}>
-            {/* User Info (Desktop) */}
             {!isMobile && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="body2" fontWeight="500" sx={{ color: '#1f2937' }}>
+                  <Typography variant="body2" fontWeight="600" sx={{ color: scrolled ? '#0f172a' : '#ffffff', transition: 'color 0.3s ease' }}>
                     {user.full_name.split(' ')[0]}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                  <Typography variant="caption" sx={{ color: scrolled ? '#94a3b8' : 'rgba(255,255,255,0.7)', transition: 'color 0.3s ease' }}>
                     {user.role === 'admin' ? 'Administrator' : 'Employee'}
                   </Typography>
                 </Box>
-                
                 <IconButton
                   onClick={handleMenuOpen}
-                  sx={{
-                    p: 0.5,
-                    background: '#f3f4f6',
-                    '&:hover': { background: '#e5e7eb' }
-                  }}
+                  sx={{ p: 0.5, background: scrolled ? '#f1f5f9' : 'rgba(255,255,255,0.15)', '&:hover': { background: scrolled ? '#e2e8f0' : 'rgba(255,255,255,0.25)' }, transition: 'background 0.3s ease' }}
                 >
-                  <Avatar 
-                    sx={{ 
-                      width: 36, 
-                      height: 36,
-                      background: '#1f2937',
-                      fontSize: '0.9rem',
-                      fontWeight: 'bold'
+                  <Avatar
+                    sx={{
+                      width: 36, height: 36,
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      fontSize: '0.9rem', fontWeight: 'bold',
                     }}
                   >
                     {user.full_name.charAt(0)}
@@ -170,20 +192,50 @@ const Navbar = () => {
                 </IconButton>
               </Box>
             )}
-
-            {/* Mobile Menu Button */}
             {isMobile && (
               <IconButton
                 onClick={handleMobileMenuOpen}
-                sx={{
-                  background: '#f3f4f6',
-                  '&:hover': { background: '#e5e7eb' }
-                }}
+                sx={{ background: scrolled ? '#f1f5f9' : 'rgba(255,255,255,0.15)', color: scrolled ? '#475569' : '#ffffff', '&:hover': { background: scrolled ? '#e2e8f0' : 'rgba(255,255,255,0.25)' }, transition: 'all 0.3s ease' }}
               >
                 <MoreVert />
               </IconButton>
             )}
           </Box>
+        ) : (
+          <Stack direction="row" spacing={1}>
+            {isMobile && (
+              <IconButton
+                onClick={handleMobileMenuOpen}
+                sx={{ color: scrolled ? '#475569' : '#ffffff', '&:hover': { background: scrolled ? '#f1f5f9' : 'rgba(255,255,255,0.1)' }, transition: 'all 0.3s ease' }}
+              >
+                <MoreVert />
+              </IconButton>
+            )}
+            {!isMobile && (
+              <>
+                <Button
+                  onClick={() => navigateToPage('/login')}
+                  sx={{ color: scrolled ? '#64748b' : 'rgba(255,255,255,0.8)', textTransform: 'none', fontWeight: 500, '&:hover': { color: scrolled ? '#0f172a' : '#ffffff' }, transition: 'color 0.3s ease' }}
+                >
+                  Sign in
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => navigateToPage('/register')}
+                  sx={{
+                    borderRadius: '10px', textTransform: 'none', fontWeight: 600, px: 3,
+                    background: scrolled ? '#0f172a' : '#ffffff', 
+                    color: scrolled ? '#ffffff' : '#0f172a', 
+                    boxShadow: 'none',
+                    '&:hover': { background: scrolled ? '#1e293b' : '#f8fafc', boxShadow: 'none' },
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
+          </Stack>
         )}
 
         {/* Desktop User Menu */}
@@ -192,61 +244,39 @@ const Navbar = () => {
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
           PaperProps={{
-            elevation: 8,
+            elevation: 0,
             sx: {
-              mt: 1,
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              minWidth: 240,
+              mt: 1, borderRadius: '14px', border: '1px solid #f1f5f9',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.08)', minWidth: 240,
               '& .MuiMenuItem-root': {
-                px: 3,
-                py: 1.5,
-                borderRadius: '8px',
-                mx: 1,
-                my: 0.5,
-                '&:hover': {
-                  background: '#f3f4f6',
-                }
-              }
+                px: 3, py: 1.5, borderRadius: '8px', mx: 1, my: 0.5,
+                '&:hover': { background: '#f8fafc' },
+              },
             },
           }}
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          {/* User Info Header */}
-          <Box sx={{ p: 3, borderBottom: '1px solid #f3f4f6' }}>
+          <Box sx={{ p: 3, borderBottom: '1px solid #f1f5f9' }}>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar
-                sx={{
-                  width: 40,
-                  height: 40,
-                  background: '#1f2937',
-                  fontSize: '1rem',
-                  fontWeight: 'bold'
-                }}
-              >
+              <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', fontSize: '1rem', fontWeight: 'bold' }}>
                 {user?.full_name.charAt(0)}
               </Avatar>
               <Box>
-                <Typography variant="subtitle2" fontWeight="600" sx={{ color: '#1f2937' }}>
+                <Typography variant="subtitle2" fontWeight="600" sx={{ color: '#0f172a' }}>
                   {user?.full_name}
                 </Typography>
-                <Typography variant="caption" sx={{ color: '#6b7280' }}>
+                <Typography variant="caption" sx={{ color: '#94a3b8' }}>
                   {user?.email}
                 </Typography>
               </Box>
             </Box>
           </Box>
-
           <MenuItem onClick={() => navigateToPage('/settings')}>
-            <Settings sx={{ mr: 2, fontSize: 20, color: '#6b7280' }} />
+            <Settings sx={{ mr: 2, fontSize: 20, color: '#94a3b8' }} />
             <Typography fontWeight="500">Settings</Typography>
           </MenuItem>
-
-          <MenuItem 
-            onClick={handleLogout}
-            sx={{ color: '#dc2626' }}
-          >
+          <MenuItem onClick={handleLogout} sx={{ color: '#ef4444' }}>
             <Logout sx={{ mr: 2, fontSize: 20 }} />
             <Typography fontWeight="500">Sign out</Typography>
           </MenuItem>
@@ -258,84 +288,68 @@ const Navbar = () => {
           open={Boolean(mobileMenuEl)}
           onClose={handleMobileMenuClose}
           PaperProps={{
-            elevation: 8,
+            elevation: 0,
             sx: {
-              mt: 1,
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              minWidth: 260,
-              maxWidth: '90vw',
+              mt: 1, borderRadius: '14px', border: '1px solid #f1f5f9',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.08)', minWidth: 260, maxWidth: '90vw',
               '& .MuiMenuItem-root': {
-                px: 3,
-                py: 1.5,
-                borderRadius: '8px',
-                mx: 1,
-                my: 0.5,
-                '&:hover': {
-                  background: '#f3f4f6',
-                }
-              }
+                px: 3, py: 1.5, borderRadius: '8px', mx: 1, my: 0.5,
+                '&:hover': { background: '#f8fafc' },
+              },
             },
           }}
           transformOrigin={{ horizontal: 'right', vertical: 'top' }}
           anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-          {/* Mobile User Info */}
-          <Box sx={{ p: 3, borderBottom: '1px solid #f3f4f6' }}>
-            <Box display="flex" alignItems="center" gap={2}>
-              <Avatar
-                sx={{
-                  width: 40,
-                  height: 40,
-                  background: '#1f2937',
-                  fontSize: '1rem',
-                  fontWeight: 'bold'
-                }}
-              >
-                {user?.full_name.charAt(0)}
-              </Avatar>
-              <Box>
-                <Typography variant="subtitle2" fontWeight="600" sx={{ color: '#1f2937' }}>
-                  {user?.full_name}
-                </Typography>
-                <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                  {user?.role === 'admin' ? 'Administrator' : 'Employee'}
-                </Typography>
+          {user ? (
+            <>
+              <Box sx={{ p: 3, borderBottom: '1px solid #f1f5f9' }}>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', fontSize: '1rem', fontWeight: 'bold' }}>
+                    {user?.full_name.charAt(0)}
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle2" fontWeight="600">{user?.full_name}</Typography>
+                    <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                      {user?.role === 'admin' ? 'Administrator' : 'Employee'}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
-            </Box>
-          </Box>
-
-          {/* Mobile Navigation Items */}
-          {navigationItems.map((item) => (
-            <MenuItem 
-              key={item.path}
-              onClick={() => navigateToPage(item.path)}
-              sx={{
-                background: isActivePage(item.path) ? '#f3f4f6' : 'transparent',
-                fontWeight: isActivePage(item.path) ? '600' : '500',
-              }}
-            >
-              {React.cloneElement(item.icon, { 
-                sx: { 
-                  mr: 2, 
-                  fontSize: 20, 
-                  color: isActivePage(item.path) ? '#1f2937' : '#6b7280' 
-                } 
-              })}
-              <Typography>{item.label}</Typography>
-            </MenuItem>
-          ))}
-
-          <Divider sx={{ mx: 1, my: 1 }} />
-
-          <MenuItem onClick={handleLogout} sx={{ color: '#dc2626' }}>
-            <ExitToApp sx={{ mr: 2, fontSize: 20 }} />
-            <Typography fontWeight="500">Sign out</Typography>
-          </MenuItem>
+              {navigationItems.map((item) => (
+                <MenuItem key={item.path} onClick={() => navigateToPage(item.path)}
+                  sx={{ background: isActivePage(item.path) ? '#f8fafc' : 'transparent' }}
+                >
+                  {React.cloneElement(item.icon, { sx: { mr: 2, fontSize: 20, color: '#94a3b8' } })}
+                  <Typography fontWeight={isActivePage(item.path) ? 600 : 500}>{item.label}</Typography>
+                </MenuItem>
+              ))}
+              <Divider sx={{ mx: 1, my: 1 }} />
+              <MenuItem onClick={handleLogout} sx={{ color: '#ef4444' }}>
+                <ExitToApp sx={{ mr: 2, fontSize: 20 }} />
+                <Typography fontWeight="500">Sign out</Typography>
+              </MenuItem>
+            </>
+          ) : (
+            <>
+              {publicNavigationItems.map((item) => (
+                <MenuItem key={item.label} onClick={() => scrollToSection(item.sectionId)}>
+                  <Typography fontWeight="500">{item.label}</Typography>
+                </MenuItem>
+              ))}
+              <Divider sx={{ mx: 1, my: 1 }} />
+              <MenuItem onClick={() => navigateToPage('/login')}>
+                <Typography fontWeight="500">Sign in</Typography>
+              </MenuItem>
+              <MenuItem onClick={() => navigateToPage('/register')}>
+                <Typography fontWeight="600" sx={{ color: '#0f172a' }}>Get Started</Typography>
+              </MenuItem>
+            </>
+          )}
         </Menu>
       </Toolbar>
     </AppBar>
   );
 };
 
-export default Navbar; 
+export default Navbar;

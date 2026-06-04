@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Card, CardContent } from '@mui/material';
+import { Box, Typography, Card, CardContent, useTheme, useMediaQuery } from '@mui/material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Face } from '@mui/icons-material';
 
@@ -7,6 +7,9 @@ const MotionBox = motion(Box);
 const MotionCard = motion(Card);
 
 const RadialOrbitalTimeline = ({ industries }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
   const [rotationAngle, setRotationAngle] = useState(0);
   const [autoRotate, setAutoRotate] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
@@ -40,9 +43,10 @@ const RadialOrbitalTimeline = ({ industries }) => {
     };
   }, [autoRotate]);
 
-  const calculateNodePosition = (index, total) => {
+  const calculateNodePosition = (index, total, isMobile = false) => {
     const angle = ((index / total) * 360 + rotationAngle) % 360;
-    const radius = 240;
+    // Responsive radius - smaller on mobile
+    const radius = isMobile ? 140 : 240;
     const radian = (angle * Math.PI) / 180;
     const x = radius * Math.cos(radian);
     const y = radius * Math.sin(radian);
@@ -91,7 +95,7 @@ const RadialOrbitalTimeline = ({ industries }) => {
       sx={{
         position: 'relative',
         width: '100%',
-        height: { xs: '700px', md: '800px' },
+        height: { xs: '600px', sm: '650px', md: '800px' },
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -101,7 +105,7 @@ const RadialOrbitalTimeline = ({ industries }) => {
         mb: 4,
       }}
     >
-      {/* Central Core - Facial Recognition Icon - Optimized */}
+      {/* Central Core - Facial Recognition Icon - Responsive */}
       <MotionBox
         animate={{
           scale: [1, 1.05, 1],
@@ -111,8 +115,8 @@ const RadialOrbitalTimeline = ({ industries }) => {
         }}
         sx={{
           position: 'absolute',
-          width: 80,
-          height: 80,
+          width: { xs: 60, md: 80 },
+          height: { xs: 60, md: 80 },
           borderRadius: '50%',
           background: 'linear-gradient(135deg, #f97316 0%, #fb923c 50%, #fdba74 100%)',
           display: 'flex',
@@ -123,7 +127,7 @@ const RadialOrbitalTimeline = ({ industries }) => {
           willChange: 'transform',
         }}
       >
-        <Face sx={{ fontSize: 40, color: '#fff' }} />
+        <Face sx={{ fontSize: { xs: 30, md: 40 }, color: '#fff' }} />
         
         {/* Single pulsing ring - reduced for performance */}
         <MotionBox
@@ -147,20 +151,20 @@ const RadialOrbitalTimeline = ({ industries }) => {
         />
       </MotionBox>
 
-      {/* Orbital Ring */}
+      {/* Orbital Ring - Responsive */}
       <Box
         sx={{
           position: 'absolute',
-          width: 480,
-          height: 480,
+          width: { xs: 280, sm: 320, md: 480 },
+          height: { xs: 280, sm: 320, md: 480 },
           borderRadius: '50%',
           border: '1px solid rgba(0,0,0,0.08)',
         }}
       />
 
-      {/* Orbital Nodes - Industries */}
+      {/* Orbital Nodes - Industries - Responsive */}
       {industries.map((industry, index) => {
-        const position = calculateNodePosition(index, industries.length);
+        const position = calculateNodePosition(index, industries.length, isMobile);
         const isExpanded = expandedId === industry.id;
         const isPulsing = pulsingIds[industry.id];
         const Icon = industry.icon;
@@ -176,7 +180,7 @@ const RadialOrbitalTimeline = ({ industries }) => {
               position: 'absolute',
               cursor: 'pointer',
               transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-              transform: `translate(${position.x}px, ${position.y}px) scale(${isExpanded ? 1.3 : position.scale})`,
+              transform: `translate(${position.x}px, ${position.y}px) scale(${isExpanded ? (isMobile ? 1.2 : 1.3) : position.scale})`,
               zIndex: isExpanded ? 200 : position.zIndex,
               opacity: isExpanded ? 1 : position.opacity,
             }}
@@ -198,8 +202,8 @@ const RadialOrbitalTimeline = ({ industries }) => {
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  width: 100,
-                  height: 100,
+                  width: { xs: 70, md: 100 },
+                  height: { xs: 70, md: 100 },
                   borderRadius: '50%',
                   background: `radial-gradient(circle, ${industry.color}60 0%, transparent 70%)`,
                   pointerEvents: 'none',
@@ -207,15 +211,15 @@ const RadialOrbitalTimeline = ({ industries }) => {
               />
             )}
 
-            {/* Node Circle */}
+            {/* Node Circle - Responsive */}
             <MotionBox
               whileHover={{ scale: 1.1 }}
               sx={{
-                width: 64,
-                height: 64,
+                width: { xs: 48, sm: 56, md: 64 },
+                height: { xs: 48, sm: 56, md: 64 },
                 borderRadius: '50%',
                 background: isExpanded ? industry.color : '#ffffff',
-                border: `3px solid ${isExpanded ? industry.color : industry.color + '60'}`,
+                border: `${isMobile ? 2 : 3}px solid ${isExpanded ? industry.color : industry.color + '60'}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -226,29 +230,30 @@ const RadialOrbitalTimeline = ({ industries }) => {
                 transition: 'all 0.3s ease',
               }}
             >
-              <Icon sx={{ fontSize: 32 }} />
+              <Icon sx={{ fontSize: { xs: 24, sm: 28, md: 32 } }} />
             </MotionBox>
 
-            {/* Node Label */}
+            {/* Node Label - Responsive */}
             <Typography
               sx={{
                 position: 'absolute',
-                top: 75,
+                top: { xs: 55, sm: 65, md: 75 },
                 left: '50%',
                 transform: 'translateX(-50%)',
                 whiteSpace: 'nowrap',
-                fontSize: isExpanded ? '0.85rem' : '0.75rem',
+                fontSize: { xs: '0.65rem', sm: '0.7rem', md: isExpanded ? '0.85rem' : '0.75rem' },
                 fontWeight: isExpanded ? 700 : 600,
                 color: isExpanded ? '#0f172a' : '#57534e',
                 textShadow: 'none',
                 letterSpacing: '0.05em',
                 transition: 'all 0.3s ease',
+                display: { xs: isExpanded ? 'block' : 'none', sm: 'block' }, // Hide labels on mobile unless expanded
               }}
             >
               {industry.title}
             </Typography>
 
-            {/* Expanded Card - Smaller and optimized */}
+            {/* Expanded Card - Responsive */}
             <AnimatePresence>
               {isExpanded && (
                 <MotionCard
@@ -258,10 +263,10 @@ const RadialOrbitalTimeline = ({ industries }) => {
                   transition={{ duration: 0.2 }}
                   sx={{
                     position: 'absolute',
-                    top: 80,
+                    top: { xs: 60, sm: 70, md: 80 },
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    width: 240,
+                    width: { xs: 200, sm: 220, md: 240 },
                     background: '#ffffff',
                     border: `2px solid ${industry.color}40`,
                     borderRadius: '16px',
@@ -270,11 +275,11 @@ const RadialOrbitalTimeline = ({ industries }) => {
                     willChange: 'transform, opacity',
                   }}
                 >
-                  <CardContent sx={{ p: 2.5 }}>
+                  <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
                     {/* Title */}
                     <Typography
                       sx={{
-                        fontSize: '0.95rem',
+                        fontSize: { xs: '0.85rem', md: '0.95rem' },
                         fontWeight: 700,
                         color: '#0f172a',
                         mb: 1,
@@ -287,7 +292,7 @@ const RadialOrbitalTimeline = ({ industries }) => {
                     {/* Description */}
                     <Typography
                       sx={{
-                        fontSize: '0.75rem',
+                        fontSize: { xs: '0.7rem', md: '0.75rem' },
                         color: '#57534e',
                         lineHeight: 1.5,
                       }}

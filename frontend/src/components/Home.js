@@ -203,33 +203,6 @@ const StaggerChild = ({ children }) => (
   }}>{children}</MotionBox>
 );
 
-// Counter
-const AnimatedNumber = ({ value, suffix = '', prefix = '' }) => {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
-  const [display, setDisplay] = useState('0');
-  useEffect(() => {
-    if (!isInView) return;
-    const num = parseFloat(value);
-    if (isNaN(num)) { setDisplay(value); return; }
-    const duration = 1500;
-    const startTime = Date.now();
-    const tick = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay((num * eased).toFixed(value.includes('.') ? 2 : 0));
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [isInView, value]);
-  return (
-    <Typography ref={ref} sx={{ fontSize: { xs: '2.5rem', md: '3.5rem' }, fontWeight: 800, letterSpacing: '-0.04em', color: '#fff', lineHeight: 1 }}>
-      {prefix}{display}{suffix}
-    </Typography>
-  );
-};
-
 // ═══════════════════════════════════════════════════════════════
 // MAIN HOME
 // ═══════════════════════════════════════════════════════════════
@@ -237,11 +210,6 @@ const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
-
-  // Marquee
-  const marqueeRef = useRef(null);
-  const { scrollYProgress: marqueeScroll } = useScroll({ target: marqueeRef, offset: ['start end', 'end start'] });
 
   return (
     <Box sx={{ background: '#f5f3f0', overflow: 'hidden' }}>
@@ -1225,8 +1193,34 @@ const Home = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>
             <Typography sx={{ color: '#a8a29e', fontSize: '0.85rem' }}>Smart Attendance System © {new Date().getFullYear()}</Typography>
             <Stack direction="row" spacing={3}>
-              {['Privacy', 'Terms', 'Security', 'Docs'].map((l) => (
-                <Typography key={l} sx={{ color: '#a8a29e', fontSize: '0.85rem', cursor: 'pointer', '&:hover': { color: '#57534e' }, transition: 'color 0.2s' }}>{l}</Typography>
+              {[
+                { label: 'Privacy', path: '/privacy' },
+                { label: 'Terms', path: '/terms' },
+                { label: 'Security', path: '/security' },
+                { label: 'Docs', path: '/docs' }
+              ].map((link) => (
+                <Typography 
+                  key={link.label} 
+                  onClick={() => {
+                    // For now, show coming soon alert since these pages don't exist yet
+                    alert(`${link.label} page is coming soon!`);
+                    // When pages are ready, uncomment this:
+                    // navigate(link.path);
+                  }}
+                  sx={{ 
+                    color: '#a8a29e', 
+                    fontSize: '0.85rem', 
+                    cursor: 'pointer', 
+                    '&:hover': { 
+                      color: '#57534e',
+                      textDecoration: 'underline'
+                    }, 
+                    transition: 'color 0.2s',
+                    userSelect: 'none'
+                  }}
+                >
+                  {link.label}
+                </Typography>
               ))}
             </Stack>
           </Box>

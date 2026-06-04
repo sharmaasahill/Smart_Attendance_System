@@ -75,6 +75,11 @@ const Navbar = () => {
   };
 
   const isActivePage = (path) => location.pathname === path;
+  
+  // Check if we're on a page that needs a solid navbar
+  // Only the home page (/) should have transparent navbar
+  const needsSolidNavbar = location.pathname !== '/';
+  const shouldShowSolid = scrolled || needsSolidNavbar;
 
   const navigationItems = [
     { path: '/mark-attendance', label: 'Mark Attendance', icon: <CameraAlt /> },
@@ -93,10 +98,10 @@ const Navbar = () => {
       position="fixed"
       elevation={0}
       sx={{
-        background: scrolled ? 'rgba(255,255,255,0.85)' : 'transparent',
-        backdropFilter: scrolled ? 'blur(20px) saturate(180%)' : 'none',
-        borderBottom: scrolled ? '1px solid rgba(0,0,0,0.06)' : '1px solid transparent',
-        color: scrolled ? '#1a1a1a' : '#ffffff',
+        background: shouldShowSolid ? 'rgba(255,255,255,0.85)' : 'transparent',
+        backdropFilter: shouldShowSolid ? 'blur(20px) saturate(180%)' : 'none',
+        borderBottom: shouldShowSolid ? '1px solid rgba(0,0,0,0.06)' : '1px solid transparent',
+        color: shouldShowSolid ? '#1a1a1a' : '#ffffff',
         transition: 'all 0.3s ease',
         zIndex: 1100,
       }}
@@ -109,7 +114,7 @@ const Navbar = () => {
           sx={{ flexGrow: isMobile ? 1 : 0, cursor: 'pointer' }}
           onClick={() => navigateToPage('/')}
         >
-          <Typography variant="h6" fontWeight="700" sx={{ color: scrolled ? '#0f172a' : '#ffffff', letterSpacing: '-0.02em', fontSize: '1.1rem', transition: 'color 0.3s ease' }}>
+          <Typography variant="h6" fontWeight="700" sx={{ color: shouldShowSolid ? '#212E46' : '#ffffff', letterSpacing: '-0.02em', fontSize: '1.1rem', transition: 'color 0.3s ease', fontFamily: '"Inter", sans-serif' }}>
             SAS
           </Typography>
         </Box>
@@ -127,8 +132,8 @@ const Navbar = () => {
                   borderRadius: '10px',
                   fontWeight: 500,
                   textTransform: 'none',
-                  color: scrolled ? '#64748b' : 'rgba(255,255,255,0.8)',
-                  '&:hover': { background: scrolled ? '#f8fafc' : 'rgba(255,255,255,0.1)', color: scrolled ? '#0f172a' : '#ffffff' },
+                  color: shouldShowSolid ? '#64748b' : 'rgba(255,255,255,0.8)',
+                  '&:hover': { background: shouldShowSolid ? '#f8fafc' : 'rgba(255,255,255,0.1)', color: shouldShowSolid ? '#0f172a' : '#ffffff' },
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -169,21 +174,21 @@ const Navbar = () => {
             {!isMobile && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="body2" fontWeight="600" sx={{ color: scrolled ? '#0f172a' : '#ffffff', transition: 'color 0.3s ease' }}>
+                  <Typography variant="body2" fontWeight="600" sx={{ color: shouldShowSolid ? '#0f172a' : '#ffffff', transition: 'color 0.3s ease' }}>
                     {user.full_name.split(' ')[0]}
                   </Typography>
-                  <Typography variant="caption" sx={{ color: scrolled ? '#94a3b8' : 'rgba(255,255,255,0.7)', transition: 'color 0.3s ease' }}>
+                  <Typography variant="caption" sx={{ color: shouldShowSolid ? '#94a3b8' : 'rgba(255,255,255,0.7)', transition: 'color 0.3s ease' }}>
                     {user.role === 'admin' ? 'Administrator' : 'Employee'}
                   </Typography>
                 </Box>
                 <IconButton
                   onClick={handleMenuOpen}
-                  sx={{ p: 0.5, background: scrolled ? '#f1f5f9' : 'rgba(255,255,255,0.15)', '&:hover': { background: scrolled ? '#e2e8f0' : 'rgba(255,255,255,0.25)' }, transition: 'background 0.3s ease' }}
+                  sx={{ p: 0.5, background: shouldShowSolid ? '#f1f5f9' : 'rgba(255,255,255,0.15)', '&:hover': { background: shouldShowSolid ? '#e2e8f0' : 'rgba(255,255,255,0.25)' }, transition: 'background 0.3s ease' }}
                 >
                   <Avatar
                     sx={{
                       width: 36, height: 36,
-                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      background: 'linear-gradient(135deg, #212E46, #2c3e5a)',
                       fontSize: '0.9rem', fontWeight: 'bold',
                     }}
                   >
@@ -195,7 +200,7 @@ const Navbar = () => {
             {isMobile && (
               <IconButton
                 onClick={handleMobileMenuOpen}
-                sx={{ background: scrolled ? '#f1f5f9' : 'rgba(255,255,255,0.15)', color: scrolled ? '#475569' : '#ffffff', '&:hover': { background: scrolled ? '#e2e8f0' : 'rgba(255,255,255,0.25)' }, transition: 'all 0.3s ease' }}
+                sx={{ background: shouldShowSolid ? '#f1f5f9' : 'rgba(255,255,255,0.15)', color: shouldShowSolid ? '#475569' : '#ffffff', '&:hover': { background: shouldShowSolid ? '#e2e8f0' : 'rgba(255,255,255,0.25)' }, transition: 'all 0.3s ease' }}
               >
                 <MoreVert />
               </IconButton>
@@ -206,7 +211,7 @@ const Navbar = () => {
             {isMobile && (
               <IconButton
                 onClick={handleMobileMenuOpen}
-                sx={{ color: scrolled ? '#475569' : '#ffffff', '&:hover': { background: scrolled ? '#f1f5f9' : 'rgba(255,255,255,0.1)' }, transition: 'all 0.3s ease' }}
+                sx={{ color: shouldShowSolid ? '#475569' : '#ffffff', '&:hover': { background: shouldShowSolid ? '#f1f5f9' : 'rgba(255,255,255,0.1)' }, transition: 'all 0.3s ease' }}
               >
                 <MoreVert />
               </IconButton>
@@ -215,7 +220,7 @@ const Navbar = () => {
               <>
                 <Button
                   onClick={() => navigateToPage('/login')}
-                  sx={{ color: scrolled ? '#64748b' : 'rgba(255,255,255,0.8)', textTransform: 'none', fontWeight: 500, '&:hover': { color: scrolled ? '#0f172a' : '#ffffff' }, transition: 'color 0.3s ease' }}
+                  sx={{ color: shouldShowSolid ? '#64748b' : 'rgba(255,255,255,0.8)', textTransform: 'none', fontWeight: 500, '&:hover': { color: shouldShowSolid ? '#0f172a' : '#ffffff' }, transition: 'color 0.3s ease' }}
                 >
                   Sign in
                 </Button>
@@ -224,10 +229,11 @@ const Navbar = () => {
                   onClick={() => navigateToPage('/register')}
                   sx={{
                     borderRadius: '10px', textTransform: 'none', fontWeight: 600, px: 3,
-                    background: scrolled ? '#0f172a' : '#ffffff', 
-                    color: scrolled ? '#ffffff' : '#0f172a', 
+                    background: shouldShowSolid ? '#212E46' : '#ffffff', 
+                    color: shouldShowSolid ? '#ffffff' : '#212E46', 
                     boxShadow: 'none',
-                    '&:hover': { background: scrolled ? '#1e293b' : '#f8fafc', boxShadow: 'none' },
+                    fontFamily: '"Inter", sans-serif',
+                    '&:hover': { background: shouldShowSolid ? '#2c3e5a' : '#f8fafc', boxShadow: 'none' },
                     transition: 'all 0.3s ease',
                   }}
                 >
@@ -259,7 +265,7 @@ const Navbar = () => {
         >
           <Box sx={{ p: 3, borderBottom: '1px solid #f1f5f9' }}>
             <Box display="flex" alignItems="center" gap={2}>
-              <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', fontSize: '1rem', fontWeight: 'bold' }}>
+              <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #212E46, #2c3e5a)', fontSize: '1rem', fontWeight: 'bold' }}>
                 {user?.full_name.charAt(0)}
               </Avatar>
               <Box>
@@ -305,7 +311,7 @@ const Navbar = () => {
             <>
               <Box sx={{ p: 3, borderBottom: '1px solid #f1f5f9' }}>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', fontSize: '1rem', fontWeight: 'bold' }}>
+                  <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #212E46, #2c3e5a)', fontSize: '1rem', fontWeight: 'bold' }}>
                     {user?.full_name.charAt(0)}
                   </Avatar>
                   <Box>

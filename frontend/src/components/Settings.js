@@ -67,7 +67,7 @@ const Settings = () => {
   ];
 
   return (
-    <Box sx={{ background: '#fafafa', minHeight: '100vh', py: 4 }}>
+    <Box sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="lg">
         {/* Header */}
         <Fade in timeout={800}>
@@ -77,7 +77,7 @@ const Settings = () => {
                 sx={{
                   width: 64,
                   height: 64,
-                  background: '#3b82f6',
+                  background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
                   color: '#ffffff',
                   fontSize: '1.75rem',
                   fontWeight: 'bold',
@@ -86,10 +86,10 @@ const Settings = () => {
                 <SettingsIcon sx={{ fontSize: 32 }} />
               </Avatar>
               <Box>
-                <Typography variant="h3" fontWeight="600" sx={{ color: '#1f2937', letterSpacing: '-0.025em', mb: 1 }}>
+                <Typography variant="h5" fontWeight="700" sx={{ color: '#212E46', letterSpacing: '-0.025em', mb: 1, fontFamily: '"Inter", sans-serif' }}>
                   Settings
                 </Typography>
-                <Typography variant="body1" sx={{ color: '#6b7280', fontSize: '1.1rem' }}>
+                <Typography variant="body1" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                   Manage your account preferences and system settings
                 </Typography>
               </Box>
@@ -99,10 +99,11 @@ const Settings = () => {
             <Card
               elevation={0}
               sx={{
-                border: '1px solid #e5e7eb',
-                borderRadius: '12px',
+                border: '1px solid rgba(0,0,0,0.08)',
+                borderRadius: '20px',
                 background: '#ffffff',
                 mb: 4,
+                boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
               }}
             >
               <CardContent sx={{ p: 4 }}>
@@ -112,7 +113,7 @@ const Settings = () => {
                       sx={{
                         width: 56,
                         height: 56,
-                        background: '#1f2937',
+                        background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
                         fontSize: '1.5rem',
                         fontWeight: 'bold',
                       }}
@@ -120,20 +121,21 @@ const Settings = () => {
                       {user?.full_name?.charAt(0)}
                     </Avatar>
                     <Box>
-                      <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937' }}>
+                      <Typography variant="h6" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
                         {user?.full_name}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280', mb: 1 }}>
+                      <Typography variant="body2" sx={{ color: '#78716c', mb: 1, fontFamily: '"Inter", sans-serif' }}>
                         {user?.email}
                       </Typography>
                       <Chip
                         label={user?.role === 'admin' ? 'Administrator' : 'Employee'}
                         size="small"
                         sx={{
-                          background: user?.role === 'admin' ? '#fee2e2' : '#dbeafe',
-                          color: user?.role === 'admin' ? '#dc2626' : '#3b82f6',
-                          fontWeight: '500',
+                          background: user?.role === 'admin' ? '#ffedd5' : '#dbeafe',
+                          color: user?.role === 'admin' ? '#f97316' : '#212E46',
+                          fontWeight: '700',
                           fontSize: '0.75rem',
+                          fontFamily: '"Inter", sans-serif',
                         }}
                       />
                     </Box>
@@ -143,14 +145,15 @@ const Settings = () => {
                     startIcon={<Edit />}
                     onClick={() => window.location.href = '/profile'}
                     sx={{
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      color: '#6b7280',
+                      borderRadius: '12px',
+                      border: '2px solid #e7e5e4',
+                      color: '#78716c',
                       textTransform: 'none',
-                      fontWeight: '500',
+                      fontWeight: '700',
+                      fontFamily: '"Inter", sans-serif',
                       '&:hover': {
-                        border: '1px solid #d1d5db',
-                        background: '#f9fafb',
+                        border: '2px solid #d6d3d1',
+                        background: '#fafaf9',
                       },
                     }}
                   >
@@ -169,10 +172,11 @@ const Settings = () => {
               severity="success" 
               sx={{ 
                 mb: 4,
-                borderRadius: '12px',
-                border: '1px solid #dcfce7',
-                background: '#f0fdf4',
-                '& .MuiAlert-icon': { color: '#16a34a' }
+                borderRadius: '16px',
+                border: '1px solid #86efac',
+                background: '#dcfce7',
+                '& .MuiAlert-icon': { color: '#16a34a' },
+                fontFamily: '"Inter", sans-serif',
               }}
               action={
                 <IconButton
@@ -195,10 +199,11 @@ const Settings = () => {
               severity="error" 
               sx={{ 
                 mb: 4,
-                borderRadius: '12px',
-                border: '1px solid #fecaca',
-                background: '#fef2f2',
-                '& .MuiAlert-icon': { color: '#dc2626' }
+                borderRadius: '16px',
+                border: '1px solid #fca5a5',
+                background: '#fecaca',
+                '& .MuiAlert-icon': { color: '#dc2626' },
+                fontFamily: '"Inter", sans-serif',
               }}
               action={
                 <IconButton
@@ -223,9 +228,10 @@ const Settings = () => {
                 <Card
                   elevation={0}
                   sx={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '16px',
+                    border: '1px solid rgba(0,0,0,0.08)',
+                    borderRadius: '20px',
                     background: '#ffffff',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
                   }}
                 >
                   <CardContent sx={{ p: 4 }}>
@@ -233,23 +239,23 @@ const Settings = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
                       <Box
                         sx={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: '10px',
-                          background: '#f3f4f6',
+                          width: 48,
+                          height: 48,
+                          borderRadius: '12px',
+                          background: '#dbeafe',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#6b7280',
+                          color: '#212E46',
                         }}
                       >
                         {category.icon}
                       </Box>
                       <Box>
-                        <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937' }}>
+                        <Typography variant="h6" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
                           {category.title}
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                        <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                           {category.description}
                         </Typography>
                       </Box>
@@ -261,10 +267,10 @@ const Settings = () => {
                         <Box key={setting.key}>
                           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <Box sx={{ flex: 1 }}>
-                              <Typography variant="body1" fontWeight="500" sx={{ color: '#1f2937', mb: 0.5 }}>
+                              <Typography variant="body1" fontWeight="700" sx={{ color: '#212E46', mb: 0.5, fontFamily: '"Inter", sans-serif' }}>
                                 {setting.label}
                               </Typography>
-                              <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                              <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                                 {setting.description}
                               </Typography>
                             </Box>
@@ -275,9 +281,10 @@ const Settings = () => {
                                 <Chip
                                   label={setting.value ? 'Enabled' : 'Disabled'}
                                   sx={{
-                                    background: setting.value ? '#dcfce7' : '#fee2e2',
+                                    background: setting.value ? '#dcfce7' : '#fecaca',
                                     color: setting.value ? '#16a34a' : '#dc2626',
-                                    fontWeight: '500',
+                                    fontWeight: '700',
+                                    fontFamily: '"Inter", sans-serif',
                                   }}
                                 />
                               )}
@@ -305,16 +312,17 @@ const Settings = () => {
               startIcon={<Person />}
               onClick={() => window.location.href = '/profile'}
               sx={{
-                py: 2,
-                px: 4,
+                py: 2.5,
+                px: 5,
                 fontSize: '1rem',
-                fontWeight: '600',
-                borderRadius: '12px',
-                background: '#3b82f6',
+                fontWeight: '700',
+                borderRadius: '14px',
+                background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
                 textTransform: 'none',
+                fontFamily: '"Inter", sans-serif',
                 boxShadow: 'none',
                 '&:hover': {
-                  background: '#2563eb',
+                  background: 'linear-gradient(135deg, #1a2333 0%, #212E46 100%)',
                   boxShadow: 'none',
                 },
               }}

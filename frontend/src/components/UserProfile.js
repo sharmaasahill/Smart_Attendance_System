@@ -175,16 +175,17 @@ const UserProfile = () => {
   }
 
   return (
-    <Box sx={{ background: '#fafafa', minHeight: '100vh', py: 4 }}>
+    <Box sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="lg">
         <Fade in timeout={800}>
           <Card
             elevation={0}
             sx={{
-              border: '1px solid #e5e7eb',
-              borderRadius: '16px',
+              border: '1px solid rgba(0,0,0,0.08)',
+              borderRadius: '20px',
               background: '#ffffff',
               overflow: 'hidden',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
             }}
           >
             {/* Header */}
@@ -195,7 +196,7 @@ const UserProfile = () => {
                     sx={{ 
                       width: 64, 
                       height: 64, 
-                      background: '#3b82f6',
+                      background: 'linear-gradient(135deg, #212E46, #2c3e5a)',
                       fontSize: '1.75rem',
                       fontWeight: 'bold',
                     }}
@@ -203,16 +204,17 @@ const UserProfile = () => {
                     {user?.full_name?.charAt(0) || 'U'}
                   </Avatar>
                   <Box>
-                    <Typography variant="h4" fontWeight="600" sx={{ color: '#1f2937', letterSpacing: '-0.025em', mb: 1 }}>
+                    <Typography variant="h5" fontWeight="700" sx={{ color: '#212E46', letterSpacing: '-0.025em', mb: 1, fontFamily: '"Inter", sans-serif' }}>
                       My Profile
                     </Typography>
                     <Chip 
                       label={user?.role === 'admin' ? 'Admin' : 'User'}
                       sx={{
-                        background: user?.role === 'admin' ? '#fee2e2' : '#dbeafe',
-                        color: user?.role === 'admin' ? '#dc2626' : '#3b82f6',
-                        fontWeight: '500',
-                        fontSize: '0.875rem',
+                        background: user?.role === 'admin' ? '#ffedd5' : '#dbeafe',
+                        color: user?.role === 'admin' ? '#f97316' : '#212E46',
+                        fontWeight: '600',
+                        fontSize: '0.75rem',
+                        fontFamily: '"Inter", sans-serif',
                       }}
                     />
                   </Box>
@@ -246,17 +248,18 @@ const UserProfile = () => {
                         startIcon={updateLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : <SaveIcon />}
                         onClick={handleProfileUpdate}
                         sx={{
-                          borderRadius: '8px',
-                          background: '#3b82f6',
+                          borderRadius: '12px',
+                          background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
                           textTransform: 'none',
-                          fontWeight: '500',
-                          boxShadow: 'none',
+                          fontWeight: '600',
+                          fontFamily: '"Inter", sans-serif',
+                          boxShadow: '0 4px 12px rgba(33,46,70,0.2)',
                           '&:hover': {
-                            background: '#2563eb',
-                            boxShadow: 'none',
+                            background: 'linear-gradient(135deg, #1a2333 0%, #212E46 100%)',
+                            boxShadow: '0 6px 16px rgba(33,46,70,0.25)',
                           },
                           '&:disabled': {
-                            background: '#3b82f6',
+                            background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
                             opacity: 0.6,
                           },
                         }}
@@ -268,14 +271,15 @@ const UserProfile = () => {
                         startIcon={<CancelIcon />}
                         onClick={handleCancelEdit}
                         sx={{
-                          borderRadius: '8px',
-                          border: '1px solid #e5e7eb',
-                          color: '#6b7280',
+                          borderRadius: '12px',
+                          border: '2px solid #e7e5e4',
+                          color: '#78716c',
                           textTransform: 'none',
-                          fontWeight: '500',
+                          fontWeight: '600',
+                          fontFamily: '"Inter", sans-serif',
                           '&:hover': {
-                            border: '1px solid #d1d5db',
-                            background: '#f9fafb',
+                            border: '2px solid #d6d3d1',
+                            background: '#fafaf9',
                           },
                         }}
                       >
@@ -288,14 +292,15 @@ const UserProfile = () => {
                     startIcon={<LockIcon />}
                     onClick={() => setPasswordDialogOpen(true)}
                     sx={{
-                      borderRadius: '8px',
-                      border: '1px solid #e5e7eb',
-                      color: '#6b7280',
+                      borderRadius: '12px',
+                      border: '2px solid #e7e5e4',
+                      color: '#78716c',
                       textTransform: 'none',
-                      fontWeight: '500',
+                      fontWeight: '600',
+                      fontFamily: '"Inter", sans-serif',
                       '&:hover': {
-                        border: '1px solid #d1d5db',
-                        background: '#f9fafb',
+                        border: '2px solid #d6d3d1',
+                        background: '#fafaf9',
                       },
                     }}
                   >
@@ -358,7 +363,7 @@ const UserProfile = () => {
               <Grid container spacing={4}>
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 4 }}>
-                    <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937', mb: 3 }}>
+                    <Typography variant="h6" fontWeight="700" sx={{ color: '#212E46', mb: 3, fontFamily: '"Inter", sans-serif' }}>
                       Personal Information
                     </Typography>
                     
@@ -489,7 +494,7 @@ const UserProfile = () => {
 
                 <Grid item xs={12} md={6}>
                   <Box sx={{ mb: 4 }}>
-                    <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937', mb: 3 }}>
+                    <Typography variant="h6" fontWeight="700" sx={{ color: '#212E46', mb: 3, fontFamily: '"Inter", sans-serif' }}>
                       Account Information
                     </Typography>
                     
@@ -562,12 +567,13 @@ const UserProfile = () => {
           fullWidth
           PaperProps={{
             sx: {
-              borderRadius: '16px',
-              border: '1px solid #e5e7eb',
+              borderRadius: '20px',
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
             },
           }}
         >
-          <DialogTitle sx={{ color: '#1f2937', fontWeight: '600', pb: 2 }}>
+          <DialogTitle sx={{ color: '#212E46', fontWeight: '700', pb: 2, fontFamily: '"Inter", sans-serif' }}>
             Change Password
           </DialogTitle>
           <DialogContent sx={{ px: 3 }}>
@@ -676,17 +682,18 @@ const UserProfile = () => {
               disabled={passwordLoading}
               startIcon={passwordLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : null}
               sx={{
-                borderRadius: '8px',
-                background: '#3b82f6',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
                 textTransform: 'none',
-                fontWeight: '500',
-                boxShadow: 'none',
+                fontWeight: '600',
+                fontFamily: '"Inter", sans-serif',
+                boxShadow: '0 4px 12px rgba(33,46,70,0.2)',
                 '&:hover': {
-                  background: '#2563eb',
-                  boxShadow: 'none',
+                  background: 'linear-gradient(135deg, #1a2333 0%, #212E46 100%)',
+                  boxShadow: '0 6px 16px rgba(33,46,70,0.25)',
                 },
                 '&:disabled': {
-                  background: '#3b82f6',
+                  background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
                   opacity: 0.6,
                 },
               }}

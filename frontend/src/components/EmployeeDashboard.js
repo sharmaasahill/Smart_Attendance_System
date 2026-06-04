@@ -6,11 +6,6 @@ import {
   Grid,
   Card,
   CardContent,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Button,
   Chip,
   Avatar,
@@ -19,89 +14,95 @@ import {
   Fade,
   IconButton,
   Tooltip,
+  Paper,
+  Divider,
+  Stack,
 } from '@mui/material';
 import {
-  CheckCircle,
-  Cancel,
-  Schedule,
   CalendarToday,
   TrendingUp,
-  Person,
   CameraAlt,
-  History,
-  Today,
-  Refresh,
   Download,
-  DateRange,
-  Edit,
-  Lock,
+  ArrowForward,
+  Bolt,
+  EmojiEvents,
+  Timeline,
+  NotificationsActive,
 } from '@mui/icons-material';
 import { userAPI } from '../services/api';
 import { useAuth } from '../App';
-import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 
 const EmployeeDashboard = () => {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(''); // eslint-disable-line no-unused-vars
   const [weeklyData, setWeeklyData] = useState([]);
+  const [monthlyCalendar, setMonthlyCalendar] = useState([]);
   const [stats, setStats] = useState({
     todayStatus: null,
     thisWeekPresent: 0,
     thisMonthPresent: 0,
     attendanceRate: 0,
+    streak: 0,
   });
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch user's attendance records using the correct API
       const response = await userAPI.getAttendance();
       const attendanceRecords = response.data.attendance_records || [];
       setAttendance(attendanceRecords);
       
-      // Calculate stats
       const today = new Date();
       const todayStr = format(today, 'yyyy-MM-dd');
       const weekStart = startOfWeek(today);
       const weekEnd = endOfWeek(today);
+      const monthStart = startOfMonth(today);
+      const monthEnd = endOfMonth(today);
       
-      // Find today's record
-      const todayRecord = attendanceRecords.find(record => 
-        record.date === todayStr
-      );
-      
-      // Filter records for this week
+      const todayRecord = attendanceRecords.find(record => record.date === todayStr);
       const thisWeekRecords = attendanceRecords.filter(record => {
         const recordDate = new Date(record.date);
         return isWithinInterval(recordDate, { start: weekStart, end: weekEnd });
       });
-      
-      // Filter records for this month
       const thisMonthRecords = attendanceRecords.filter(record => {
         const recordDate = new Date(record.date);
-        return recordDate.getMonth() === today.getMonth() && 
-               recordDate.getFullYear() === today.getFullYear();
+        return recordDate.getMonth() === today.getMonth() && recordDate.getFullYear() === today.getFullYear();
       });
+      
+      // Calculate streak
+      let streak = 0;
+      const sortedRecords = [...attendanceRecords].sort((a, b) => new Date(b.date) - new Date(a.date));
+      for (const record of sortedRecords) {
+        if (record.status === 'present') streak++;
+        else break;
+      }
+      
+      // Create monthly calendar
+      const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
+      const calendarData = daysInMonth.map(day => {
+        const dayStr = format(day, 'yyyy-MM-dd');
+        const record = attendanceRecords.find(r => r.date === dayStr);
+        return { date: day, status: record?.status || null };
+      });
+      
+      setMonthlyCalendar(calendarData);
+      setWeeklyData(thisWeekRecords);
       
       const presentThisWeek = thisWeekRecords.filter(r => r.status === 'present').length;
       const presentThisMonth = thisMonthRecords.filter(r => r.status === 'present').length;
-      const attendanceRate = thisMonthRecords.length > 0 
-        ? (presentThisMonth / thisMonthRecords.length) * 100 
-        : 0;
+      const attendanceRate = thisMonthRecords.length > 0 ? (presentThisMonth / thisMonthRecords.length) * 100 : 0;
       
       setStats({
         todayStatus: todayRecord?.status || null,
         thisWeekPresent: presentThisWeek,
         thisMonthPresent: presentThisMonth,
         attendanceRate: Math.round(attendanceRate),
+        streak,
       });
-      
-      setWeeklyData(thisWeekRecords);
     } catch (error) {
       console.error('Failed to fetch attendance data:', error);
-      setError('Failed to fetch attendance data');
     } finally {
       setLoading(false);
     }
@@ -111,648 +112,255 @@ const EmployeeDashboard = () => {
     fetchData();
   }, [user.unique_id]);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'present': return { bg: '#dcfce7', color: '#16a34a' };
-      case 'absent': return { bg: '#fecaca', color: '#dc2626' };
-      case 'late': return { bg: '#fef3c7', color: '#d97706' };
-      default: return { bg: '#f3f4f6', color: '#6b7280' };
-    }
-  };
-
   if (loading) {
     return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
-        minHeight="60vh"
-        sx={{ background: '#fafafa' }}
-      >
-        <CircularProgress size={40} sx={{ color: '#6b7280' }} />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)' }}>
+        <CircularProgress size={40} sx={{ color: '#f97316' }} />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ background: '#fafafa', minHeight: '100vh', py: 4 }}>
+    <Box sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
-        {/* Header */}
-        <Fade in timeout={800}>
-          <Box sx={{ mb: 6 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                <Avatar
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    background: stats.todayStatus === 'present' ? '#16a34a' : 
-                               stats.todayStatus === 'absent' ? '#dc2626' : '#6b7280',
-                    color: '#ffffff',
-                    fontSize: '1.75rem',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  {user?.full_name.charAt(0)}
-                </Avatar>
-                <Box>
-                  <Typography variant="h4" fontWeight="600" sx={{ color: '#1f2937', letterSpacing: '-0.025em' }}>
-                    Welcome back, {user?.full_name.split(' ')[0]}!
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: '#6b7280', mb: 2 }}>
-                    Employee Dashboard - {format(new Date(), 'MMMM yyyy')}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Chip
-                      icon={stats.todayStatus === 'present' ? <CheckCircle /> : 
-                            stats.todayStatus === 'absent' ? <Cancel /> : 
-                            <Cancel />}
-                      label={`Today: ${stats.todayStatus === 'present' ? 'Present' : 
-                                     stats.todayStatus === 'absent' ? 'Absent' : 
-                                     'Not Marked'}`}
-                      sx={{
-                        background: stats.todayStatus === 'present' ? '#dcfce7' : 
-                                   stats.todayStatus === 'absent' ? '#fecaca' : '#fef3c7',
-                        color: stats.todayStatus === 'present' ? '#16a34a' : 
-                               stats.todayStatus === 'absent' ? '#dc2626' : '#d97706',
-                        fontWeight: '600',
-                        fontSize: '0.875rem',
-                      }}
-                    />
-                    <Chip
-                      label={user?.role || 'Employee'}
-                      size="small"
-                      sx={{
-                        background: '#dbeafe',
-                        color: '#3b82f6',
-                        fontWeight: '500',
-                        fontSize: '0.75rem',
-                      }}
-                    />
-                  </Box>
-                </Box>
-              </Box>
-              
-              {/* Profile Actions */}
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<Edit />}
-                  onClick={() => window.location.href = '/profile'}
-                  sx={{
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    color: '#6b7280',
-                    textTransform: 'none',
-                    fontWeight: '500',
-                    '&:hover': {
-                      border: '1px solid #d1d5db',
-                      background: '#f9fafb',
-                    },
-                  }}
-                >
-                  Edit Profile
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<Lock />}
-                  sx={{
-                    borderRadius: '8px',
-                    border: '1px solid #e5e7eb',
-                    color: '#6b7280',
-                    textTransform: 'none',
-                    fontWeight: '500',
-                    '&:hover': {
-                      border: '1px solid #d1d5db',
-                      background: '#f9fafb',
-                    },
-                  }}
-                >
-                  Change Password
-                </Button>
-              </Box>
-            </Box>
-
-            {/* Quick Actions */}
-            <Grid container spacing={3}>
-              <Grid item xs={12} sm={4}>
-                <Button
-                  fullWidth
-                  variant="contained"
-                  startIcon={<CameraAlt />}
-                  onClick={() => window.location.href = '/mark-attendance'}
-                  sx={{
-                    py: 2.5,
-                    borderRadius: '12px',
-                    background: '#3b82f6',
-                    textTransform: 'none',
-                    fontWeight: '600',
-                    fontSize: '1rem',
-                    boxShadow: 'none',
-                    '&:hover': {
-                      background: '#2563eb',
-                      boxShadow: 'none',
-                    },
-                  }}
-                >
-                  Mark Attendance
-                </Button>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<History />}
-                  onClick={() => window.location.href = '/attendance-history'}
-                  sx={{
-                    py: 2.5,
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    color: '#6b7280',
-                    textTransform: 'none',
-                    fontWeight: '600',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      border: '1px solid #d1d5db',
-                      background: '#f9fafb',
-                    },
-                  }}
-                >
-                  View History
-                </Button>
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <Button
-                  fullWidth
-                  variant="outlined"
-                  startIcon={<Download />}
-                  sx={{
-                    py: 2.5,
-                    borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
-                    color: '#6b7280',
-                    textTransform: 'none',
-                    fontWeight: '600',
-                    fontSize: '1rem',
-                    '&:hover': {
-                      border: '1px solid #d1d5db',
-                      background: '#f9fafb',
-                    },
-                  }}
-                >
-                  Download Report
-                </Button>
-              </Grid>
-            </Grid>
-          </Box>
-        </Fade>
-
-        {/* Employee Profile Overview */}
-        <Fade in timeout={1000}>
-          <Card
-            elevation={0}
-            sx={{
-              border: '1px solid #e5e7eb',
-              borderRadius: '16px',
-              background: '#ffffff',
-              mb: 6,
-            }}
-          >
-            <Box sx={{ p: 4 }}>
-              <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937', mb: 3 }}>
-                My Profile
-              </Typography>
-              
-              <Grid container spacing={4}>
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ mb: 4 }}>
-                    <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#1f2937', mb: 2 }}>
-                      Personal Information
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Person sx={{ color: '#6b7280', fontSize: 20 }} />
-                        <Typography variant="body2" sx={{ color: '#1f2937' }}>
-                          {user?.full_name}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Typography variant="body2" sx={{ color: '#6b7280' }}>@</Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ color: '#1f2937' }}>
-                          {user?.email}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Typography variant="body2" sx={{ color: '#6b7280' }}>Phone:</Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ color: '#1f2937' }}>
-                          {user?.phone || 'Not provided'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Typography variant="body2" sx={{ color: '#6b7280' }}>Dept:</Typography>
-                        </Box>
-                        <Typography variant="body2" sx={{ color: '#1f2937' }}>
-                          {user?.department || 'Not specified'}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                </Grid>
+        {/* Hero Section with Split Layout */}
+        <Fade in timeout={600}>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {/* LEFT: Large Stats Card */}
+            <Grid item xs={12} md={5}>
+              <Card elevation={0} sx={{ borderRadius: '28px', background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)', color: '#ffffff', height: '100%', minHeight: 380, position: 'relative', overflow: 'hidden', boxShadow: '0 20px 60px rgba(33,46,70,0.3)' }}>
+                {/* Decorative circles */}
+                <Box sx={{ position: 'absolute', top: -50, right: -50, width: 200, height: 200, borderRadius: '50%', background: 'rgba(249,115,22,0.1)' }} />
+                <Box sx={{ position: 'absolute', bottom: -30, left: -30, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
                 
-                <Grid item xs={12} md={6}>
-                  <Box sx={{ mb: 4 }}>
-                    <Typography variant="subtitle1" fontWeight="600" sx={{ color: '#1f2937', mb: 2 }}>
-                      Account Information
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <Box>
-                        <Typography variant="caption" sx={{ color: '#6b7280', display: 'block', mb: 0.5 }}>
-                          User ID
+                <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', zIndex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <Avatar sx={{ width: 64, height: 64, background: stats.todayStatus === 'present' ? '#10b981' : '#f97316', fontSize: '1.75rem', fontWeight: 'bold', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+                      {user?.full_name.charAt(0)}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h6" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif', mb: 0.5 }}>
+                        {user?.full_name.split(' ')[0]}
+                      </Typography>
+                      <Chip label={user?.role || 'Employee'} size="small" sx={{ background: 'rgba(255,255,255,0.2)', color: '#ffffff', fontWeight: '600', fontSize: '0.7rem', height: '22px' }} />
+                    </Box>
+                  </Box>
+
+                  <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)', mb: 3 }} />
+
+                  {/* Circular Progress - Attendance Rate */}
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3, position: 'relative' }}>
+                    <Box sx={{ position: 'relative' }}>
+                      <CircularProgress variant="determinate" value={100} size={160} thickness={4} sx={{ color: 'rgba(255,255,255,0.1)', position: 'absolute' }} />
+                      <CircularProgress variant="determinate" value={stats.attendanceRate} size={160} thickness={4} sx={{ color: '#f97316' }} />
+                      <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                        <Typography variant="h3" fontWeight="800" sx={{ fontFamily: '"Inter", sans-serif', lineHeight: 1 }}>
+                          {stats.attendanceRate}%
                         </Typography>
-                        <Typography variant="body2" sx={{ color: '#1f2937', fontFamily: 'monospace' }}>
-                          {user?.unique_id}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" sx={{ color: '#6b7280', display: 'block', mb: 0.5 }}>
-                          Face Registration Status
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label={user?.face_registered ? 'Registered' : 'Pending'}
-                          sx={{
-                            background: user?.face_registered ? '#dcfce7' : '#fef3c7',
-                            color: user?.face_registered ? '#16a34a' : '#d97706',
-                            fontWeight: '500',
-                            fontSize: '0.75rem',
-                          }}
-                        />
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" sx={{ color: '#6b7280', display: 'block', mb: 0.5 }}>
-                          Account Status
-                        </Typography>
-                        <Chip
-                          size="small"
-                          label="Active"
-                          sx={{
-                            background: '#dcfce7',
-                            color: '#16a34a',
-                            fontWeight: '500',
-                            fontSize: '0.75rem',
-                          }}
-                        />
-                      </Box>
-                      <Box>
-                        <Typography variant="caption" sx={{ color: '#6b7280', display: 'block', mb: 0.5 }}>
-                          Member Since
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: '#1f2937' }}>
-                          {user?.created_at ? format(parseISO(user.created_at), 'dd/MM/yyyy') : '09/06/2025'}
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600', mt: 0.5 }}>
+                          This Month
                         </Typography>
                       </Box>
                     </Box>
                   </Box>
-                </Grid>
-              </Grid>
-            </Box>
-          </Card>
-        </Fade>
 
-        {/* Stats Cards */}
-        <Fade in timeout={1200}>
-          <Grid container spacing={4} sx={{ mb: 6 }}>
-            {[
-              {
-                title: 'This Week',
-                value: `${stats.thisWeekPresent}/7`,
-                subtitle: 'Present days',
-                icon: <CalendarToday />,
-                color: '#3b82f6',
-                background: '#dbeafe',
-              },
-              {
-                title: 'This Month',
-                value: stats.thisMonthPresent,
-                subtitle: 'Present days',
-                icon: <DateRange />,
-                color: '#16a34a',
-                background: '#dcfce7',
-              },
-              {
-                title: 'Attendance Rate',
-                value: `${stats.attendanceRate}%`,
-                subtitle: 'This month',
-                icon: <TrendingUp />,
-                color: '#7c3aed',
-                background: '#e9d5ff',
-              },
-              {
-                title: 'Today Status',
-                value: stats.todayStatus === 'present' ? 'Present' : 'Absent',
-                subtitle: format(new Date(), 'MMM dd, yyyy'),
-                icon: <Today />,
-                color: stats.todayStatus === 'present' ? '#16a34a' : '#dc2626',
-                background: stats.todayStatus === 'present' ? '#dcfce7' : '#fecaca',
-              },
-            ].map((stat, index) => (
-              <Grid item xs={12} sm={6} lg={3} key={index}>
-                <Card
-                  elevation={0}
-                  sx={{
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '16px',
-                    background: '#ffffff',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 4 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                      <Box
-                        sx={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: '12px',
-                          background: stat.background,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: stat.color,
-                        }}
-                      >
-                        {React.cloneElement(stat.icon, { sx: { fontSize: 24 } })}
+                  {/* Quick Stats Row */}
+                  <Grid container spacing={2} sx={{ mt: 'auto' }}>
+                    <Grid item xs={4}>
+                      <Box textAlign="center">
+                        <Typography variant="h5" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif' }}>{stats.streak}</Typography>
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>Streak</Typography>
                       </Box>
-                    </Box>
-                    <Typography variant="body2" sx={{ color: '#6b7280', mb: 1, fontWeight: 500 }}>
-                      {stat.title}
-                    </Typography>
-                    <Typography variant="h4" fontWeight="700" sx={{ color: '#1f2937', mb: 1 }}>
-                      {stat.value}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#9ca3af' }}>
-                      {stat.subtitle}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Fade>
-
-        {/* Main Content */}
-        <Grid container spacing={4}>
-          {/* Weekly Overview */}
-          <Grid item xs={12} lg={6}>
-            <Fade in timeout={1400}>
-              <Card
-                elevation={0}
-                sx={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '16px',
-                  background: '#ffffff',
-                  height: '100%',
-                }}
-              >
-                <Box sx={{ p: 4, borderBottom: '1px solid #f3f4f6' }}>
-                  <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937', mb: 1 }}>
-                    This Week's Attendance
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                    {format(startOfWeek(new Date()), 'MMM dd')} - {format(endOfWeek(new Date()), 'MMM dd')}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ p: 4 }}>
-                  {weeklyData.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <Schedule sx={{ fontSize: 48, color: '#d1d5db', mb: 2 }} />
-                      <Typography variant="body1" sx={{ color: '#6b7280' }}>
-                        No attendance records for this week
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {weeklyData.map((record, index) => {
-                        const statusConfig = getStatusColor(record.status);
-                        return (
-                          <Box
-                            key={index}
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              p: 3,
-                              borderRadius: '12px',
-                              background: '#f9fafb',
-                              border: '1px solid #f3f4f6',
-                            }}
-                          >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Box
-                                sx={{
-                                  width: 8,
-                                  height: 8,
-                                  borderRadius: '50%',
-                                  background: statusConfig.color,
-                                }}
-                              />
-                              <Box>
-                                <Typography variant="body2" fontWeight="500" sx={{ color: '#1f2937' }}>
-                                  {format(parseISO(record.date), 'EEEE, MMM dd')}
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                                  {record.time_in || 'No time recorded'}
-                                </Typography>
-                              </Box>
-                            </Box>
-                            <Chip
-                              label={record.status}
-                              size="small"
-                              sx={{
-                                background: statusConfig.bg,
-                                color: statusConfig.color,
-                                fontWeight: '500',
-                                fontSize: '0.75rem',
-                                textTransform: 'capitalize',
-                              }}
-                            />
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  )}
-                </Box>
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Box textAlign="center">
+                        <Typography variant="h5" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif' }}>{stats.thisWeekPresent}/7</Typography>
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>This Week</Typography>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={4}>
+                      <Box textAlign="center">
+                        <Typography variant="h5" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif' }}>{stats.thisMonthPresent}</Typography>
+                        <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>Days</Typography>
+                      </Box>
+                    </Grid>
+                  </Grid>
+                </CardContent>
               </Card>
-            </Fade>
-          </Grid>
+            </Grid>
 
-          {/* Recent Attendance History */}
-          <Grid item xs={12} lg={6}>
-            <Fade in timeout={1600}>
-              <Card
-                elevation={0}
-                sx={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '16px',
-                  background: '#ffffff',
-                  height: '100%',
-                }}
-              >
-                <Box sx={{ p: 4, borderBottom: '1px solid #f3f4f6' }}>
+            {/* RIGHT: Welcome & Actions */}
+            <Grid item xs={12} md={7}>
+              <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* Welcome Message */}
+                <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', p: 3 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
-                      <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937', mb: 1 }}>
-                        Recent History
+                      <Typography variant="h5" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif', mb: 0.5 }}>
+                        Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 18 ? 'Afternoon' : 'Evening'}
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                        Last 10 attendance records
+                      <Typography variant="body1" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
+                        {format(new Date(), 'EEEE, MMMM dd, yyyy')}
                       </Typography>
                     </Box>
-                    <Tooltip title="Refresh Data">
-                      <IconButton
-                        onClick={fetchData}
-                        sx={{
-                          color: '#6b7280',
-                          '&:hover': {
-                            background: '#f3f4f6',
-                          },
-                        }}
-                      >
-                        <Refresh />
-                      </IconButton>
-                    </Tooltip>
+                    <Chip
+                      label={stats.todayStatus === 'present' ? 'Present Today' : stats.todayStatus === 'absent' ? 'Absent' : 'Not Marked'}
+                      sx={{ background: stats.todayStatus === 'present' ? '#dcfce7' : stats.todayStatus === 'absent' ? '#fecaca' : '#fef3c7', color: stats.todayStatus === 'present' ? '#16a34a' : stats.todayStatus === 'absent' ? '#dc2626' : '#d97706', fontWeight: '700', px: 2, height: '40px', fontSize: '0.9rem' }}
+                    />
+                  </Box>
+                </Card>
+
+                {/* Action Buttons */}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Button fullWidth variant="contained" size="large" startIcon={<CameraAlt />} onClick={() => window.location.href = '/mark-attendance'}
+                      sx={{ py: 3, borderRadius: '16px', background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', textTransform: 'none', fontWeight: '700', fontSize: '1rem', fontFamily: '"Inter", sans-serif', boxShadow: '0 8px 24px rgba(249,115,22,0.3)', '&:hover': { background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)', transform: 'translateY(-2px)', boxShadow: '0 12px 32px rgba(249,115,22,0.4)' }, transition: 'all 0.3s ease' }}>
+                      Mark Attendance
+                    </Button>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Button fullWidth variant="outlined" size="large" startIcon={<Download />}
+                      sx={{ py: 3, borderRadius: '16px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontSize: '1rem', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9', transform: 'translateY(-2px)' }, transition: 'all 0.3s ease' }}>
+                      Download Report
+                    </Button>
+                  </Grid>
+                </Grid>
+
+                {/* Mini Stats Cards */}
+                <Grid container spacing={2}>
+                  {[
+                    { icon: <Bolt sx={{ fontSize: 24 }} />, label: 'Streak Days', value: stats.streak, color: '#f59e0b', bg: '#fef3c7' },
+                    { icon: <EmojiEvents sx={{ fontSize: 24 }} />, label: 'Attendance Rate', value: `${stats.attendanceRate}%`, color: '#10b981', bg: '#dcfce7' },
+                    { icon: <TrendingUp sx={{ fontSize: 24 }} />, label: 'This Month', value: stats.thisMonthPresent, color: '#3b82f6', bg: '#dbeafe' },
+                  ].map((stat, i) => (
+                    <Grid item xs={12} sm={4} key={i}>
+                      <Card elevation={0} sx={{ borderRadius: '16px', background: stat.bg, border: 'none', p: 2.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                          <Box sx={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.color }}>
+                            {stat.icon}
+                          </Box>
+                          <Box>
+                            <Typography variant="h6" fontWeight="700" sx={{ color: stat.color, fontFamily: '"Inter", sans-serif' }}>{stat.value}</Typography>
+                            <Typography variant="caption" sx={{ color: stat.color, fontWeight: '600', opacity: 0.8, fontFamily: '"Inter", sans-serif' }}>{stat.label}</Typography>
+                          </Box>
+                        </Box>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            </Grid>
+          </Grid>
+        </Fade>
+
+        {/* Monthly Calendar & Activity Feed */}
+        <Grid container spacing={3}>
+          {/* Calendar View */}
+          <Grid item xs={12} lg={7}>
+            <Card elevation={0} sx={{ borderRadius: '24px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+              <Box sx={{ p: 4, borderBottom: '1px solid #f3f4f6' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="h5" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif', mb: 0.5 }}>
+                      Monthly Calendar
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
+                      {format(new Date(), 'MMMM yyyy')}
+                    </Typography>
+                  </Box>
+                  <Chip label={`${stats.thisMonthPresent} Present Days`} sx={{ background: '#dcfce7', color: '#16a34a', fontWeight: '700', fontFamily: '"Inter", sans-serif' }} />
+                </Box>
+              </Box>
+
+              <Box sx={{ p: 4 }}>
+                <Grid container spacing={1.5}>
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <Grid item xs={12/7} key={day}>
+                      <Typography variant="caption" fontWeight="700" textAlign="center" display="block" sx={{ color: '#78716c', mb: 1, fontFamily: '"Inter", sans-serif' }}>{day}</Typography>
+                    </Grid>
+                  ))}
+                  {monthlyCalendar.map((day, idx) => (
+                    <Grid item xs={12/7} key={idx}>
+                      <Paper elevation={0} sx={{ aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', background: day.status === 'present' ? 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)' : day.status === 'absent' ? 'linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)' : '#fafaf9', border: format(day.date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd') ? '2px solid #f97316' : '1px solid #e7e5e4', position: 'relative' }}>
+                        <Typography variant="body2" fontWeight="600" sx={{ color: day.status === 'present' ? '#16a34a' : day.status === 'absent' ? '#dc2626' : '#78716c', fontFamily: '"Inter", sans-serif' }}>
+                          {format(day.date, 'd')}
+                        </Typography>
+                        {day.status && (
+                          <Box sx={{ position: 'absolute', top: 4, right: 4, width: 6, height: 6, borderRadius: '50%', background: day.status === 'present' ? '#16a34a' : '#dc2626' }} />
+                        )}
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            </Card>
+          </Grid>
+
+          {/* Activity Timeline */}
+          <Grid item xs={12} lg={5}>
+            <Stack spacing={3}>
+              {/* Recent Activity Card */}
+              <Card elevation={0} sx={{ borderRadius: '24px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+                <Box sx={{ p: 4, borderBottom: '1px solid #f3f4f6' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Timeline sx={{ color: '#f97316' }} />
+                    <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
+                      Recent Activity
+                    </Typography>
                   </Box>
                 </Box>
-
-                <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                  {attendance.length === 0 ? (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <History sx={{ fontSize: 48, color: '#d1d5db', mb: 2 }} />
-                      <Typography variant="body1" sx={{ color: '#6b7280' }}>
-                        No attendance history available
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                            Date
-                          </TableCell>
-                          <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                            Time
-                          </TableCell>
-                          <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                            Status
-                          </TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {attendance.slice(0, 10).map((record, index) => {
-                          const statusConfig = getStatusColor(record.status);
-                          return (
-                            <TableRow key={index} sx={{ '&:hover': { background: '#f9fafb' } }}>
-                              <TableCell sx={{ py: 2 }}>
-                                <Typography variant="body2" fontWeight="500" sx={{ color: '#1f2937' }}>
-                                  {format(parseISO(record.date), 'MMM dd, yyyy')}
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                                  {format(parseISO(record.date), 'EEEE')}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ py: 2 }}>
-                                <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                                  {record.time_in || '-'}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ py: 2 }}>
-                                <Chip
-                                  size="small"
-                                  label={record.status}
-                                  sx={{
-                                    background: statusConfig.bg,
-                                    color: statusConfig.color,
-                                    fontWeight: '500',
-                                    fontSize: '0.75rem',
-                                    textTransform: 'capitalize',
-                                  }}
-                                />
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  )}
+                <Box sx={{ p: 4, maxHeight: 400, overflow: 'auto' }}>
+                  <Stack spacing={3}>
+                    {attendance.slice(0, 8).map((record, idx) => (
+                      <Box key={idx} sx={{ display: 'flex', gap: 2, position: 'relative' }}>
+                        {idx !== attendance.slice(0, 8).length - 1 && (
+                          <Box sx={{ position: 'absolute', left: 15, top: 36, bottom: -12, width: 2, background: '#f3f4f6' }} />
+                        )}
+                        <Avatar sx={{ width: 32, height: 32, background: record.status === 'present' ? '#dcfce7' : '#fecaca', color: record.status === 'present' ? '#16a34a' : '#dc2626', fontSize: '0.85rem' }}>
+                          <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: record.status === 'present' ? '#16a34a' : '#dc2626' }} />
+                        </Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                            <Typography variant="body2" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
+                              {format(parseISO(record.date), 'EEEE')}
+                            </Typography>
+                            <Chip label={record.status} size="small" sx={{ background: record.status === 'present' ? '#dcfce7' : '#fecaca', color: record.status === 'present' ? '#16a34a' : '#dc2626', fontWeight: '600', fontSize: '0.7rem', height: '20px', textTransform: 'capitalize' }} />
+                          </Box>
+                          <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif', display: 'block' }}>
+                            {format(parseISO(record.date), 'MMM dd, yyyy')} • {record.time_in || 'No time'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Box>
+                <Box sx={{ p: 3, borderTop: '1px solid #f3f4f6' }}>
+                  <Button fullWidth variant="text" endIcon={<ArrowForward />} sx={{ color: '#f97316', fontWeight: '700', textTransform: 'none', fontFamily: '"Inter", sans-serif' }}>
+                    View Full History
+                  </Button>
                 </Box>
               </Card>
-            </Fade>
+
+              {/* Notifications */}
+              <Card elevation={0} sx={{ borderRadius: '20px', background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa' }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                    <NotificationsActive sx={{ color: '#f97316', fontSize: 28 }} />
+                    <Typography variant="h6" fontWeight="800" sx={{ color: '#ea580c', fontFamily: '"Inter", sans-serif' }}>
+                      Quick Tip
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ color: '#9a3412', fontFamily: '"Inter", sans-serif', lineHeight: 1.6 }}>
+                    Maintain a streak of 7 days to unlock achievement badges! You're currently at {stats.streak} {stats.streak === 1 ? 'day' : 'days'}.
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Stack>
           </Grid>
         </Grid>
-
-        {/* Attendance Rate Progress */}
-        <Fade in timeout={1800}>
-          <Card
-            elevation={0}
-            sx={{
-              border: '1px solid #e5e7eb',
-              borderRadius: '16px',
-              background: '#ffffff',
-              mt: 4,
-            }}
-          >
-            <Box sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box>
-                  <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937', mb: 1 }}>
-                    Monthly Attendance Progress
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                    Your attendance performance for {format(new Date(), 'MMMM yyyy')}
-                  </Typography>
-                </Box>
-                <Typography variant="h4" fontWeight="700" sx={{ color: '#3b82f6' }}>
-                  {stats.attendanceRate}%
-                </Typography>
-              </Box>
-              
-              <LinearProgress
-                variant="determinate"
-                value={stats.attendanceRate}
-                sx={{
-                  height: 12,
-                  borderRadius: '6px',
-                  background: '#f3f4f6',
-                  '& .MuiLinearProgress-bar': {
-                    borderRadius: '6px',
-                    background: stats.attendanceRate >= 80 ? '#16a34a' : stats.attendanceRate >= 60 ? '#f59e0b' : '#dc2626',
-                  },
-                }}
-              />
-              
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-                <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                  Present: {stats.thisMonthPresent} days
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                  Target: 80%
-                </Typography>
-              </Box>
-            </Box>
-          </Card>
-        </Fade>
       </Container>
     </Box>
   );
 };
 
-export default EmployeeDashboard; 
+export default EmployeeDashboard;

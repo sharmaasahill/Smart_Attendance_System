@@ -24,9 +24,7 @@ import {
   TrendingUp,
   People,
   Assessment,
-  Warning,
   Download,
-  CheckCircle,
   Analytics,
   Speed,
   Refresh,
@@ -179,10 +177,10 @@ const AnalyticsDashboard = () => {
       });
     } else if (trend < -5) {
       insights.push({
-        type: 'warning',
+        type: 'alert',
         title: 'Attendance Declining',
         description: `Attendance has decreased by ${Math.abs(trend)}% this week. Consider investigating causes.`,
-        icon: <Warning />,
+        icon: <Assessment />,
         color: 'warning'
       });
     }
@@ -205,7 +203,7 @@ const AnalyticsDashboard = () => {
         type: 'urgent',
         title: 'Urgent Attention Required',
         description: `${highSeverityAnomalies.length} high-priority anomalies detected requiring immediate action.`,
-        icon: <Warning />,
+        icon: <Assessment />,
         color: 'error'
       });
     }
@@ -230,25 +228,27 @@ const AnalyticsDashboard = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 3 }}>
+    <Box sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)', minHeight: '100vh', py: 4 }}>
+      <Container maxWidth="xl">
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
         <Box>
-          <Typography variant="h4" fontWeight="bold" gutterBottom>
+          <Typography variant="h5" fontWeight="700" gutterBottom sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
             Analytics Dashboard
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
             Last updated: {format(lastUpdated, 'HH:mm:ss')}
           </Typography>
         </Box>
         
         <Box display="flex" gap={2} alignItems="center">
           <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Timeframe</InputLabel>
+            <InputLabel sx={{ '&.Mui-focused': { color: '#f97316' } }}>Timeframe</InputLabel>
             <Select
               value={timeframe}
               label="Timeframe"
               onChange={(e) => setTimeframe(e.target.value)}
+              sx={{ borderRadius: '12px', fontFamily: '"Inter", sans-serif', '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#f97316' } }}
             >
               <MenuItem value="day">Today</MenuItem>
               <MenuItem value="week">This Week</MenuItem>
@@ -259,7 +259,7 @@ const AnalyticsDashboard = () => {
           
           <Tooltip title="Refresh Data">
             <span>
-              <IconButton onClick={fetchAnalytics} disabled={loading}>
+              <IconButton onClick={fetchAnalytics} disabled={loading} sx={{ color: '#212E46' }}>
                 <Refresh />
               </IconButton>
             </span>
@@ -269,7 +269,7 @@ const AnalyticsDashboard = () => {
             variant="outlined"
             startIcon={<Download />}
             onClick={() => exportData('pdf')}
-            sx={{ mr: 1 }}
+            sx={{ mr: 1, borderRadius: '12px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9' } }}
           >
             PDF
           </Button>
@@ -277,50 +277,42 @@ const AnalyticsDashboard = () => {
             variant="outlined"
             startIcon={<Download />}
             onClick={() => exportData('excel')}
-            sx={{ mr: 1 }}
+            sx={{ mr: 1, borderRadius: '12px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9' } }}
           >
             Excel
           </Button>
           <Button
-            variant="outlined"
-            startIcon={<Download />}
-            onClick={() => exportData('csv')}
-            sx={{ mr: 1 }}
-          >
-            CSV
-          </Button>
-          <Button
             variant="contained"
             startIcon={<Download />}
-            onClick={() => exportData('json')}
-            color="success"
+            onClick={() => exportData('csv')}
+            sx={{ borderRadius: '12px', background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', boxShadow: 'none', '&:hover': { background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)', boxShadow: 'none' } }}
           >
-            JSON
+            CSV
           </Button>
         </Box>
       </Box>
 
-      {loading && <LinearProgress sx={{ mb: 2 }} />}
+      {loading && <LinearProgress sx={{ mb: 3, height: 6, borderRadius: 3, background: '#e7e5e4', '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #f97316 0%, #fb923c 100%)', borderRadius: 3 } }} />}
 
       {/* Live Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 3 }}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                     Currently Present
                   </Typography>
-                  <Typography variant="h3" fontWeight="bold" sx={{ color: '#1f2937' }}>
+                  <Typography variant="h4" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
                     {analytics.liveStats?.currentlyPresent || 0}/{analytics.liveStats?.totalEmployees || 0}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                     {Math.round(((analytics.liveStats?.currentlyPresent || 0) / (analytics.liveStats?.totalEmployees || 1)) * 100)}% attendance rate
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: 'primary.main' }}>
-                  <People />
+                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', color: '#212E46' }}>
+                  <People sx={{ fontSize: 28 }} />
                 </Avatar>
               </Box>
             </CardContent>
@@ -328,22 +320,22 @@ const AnalyticsDashboard = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 3 }}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                     On Time Today
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" color="success.main">
+                  <Typography variant="h4" fontWeight="700" sx={{ color: '#16a34a', fontFamily: '"Inter", sans-serif' }}>
                     {analytics.liveStats?.onTimeToday || 0}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                     Avg arrival: {analytics.liveStats?.averageArrival || 'N/A'}
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: 'success.main' }}>
-                  <CheckCircle />
+                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', color: '#16a34a' }}>
+                  <TrendingUp sx={{ fontSize: 28 }} />
                 </Avatar>
               </Box>
             </CardContent>
@@ -351,22 +343,22 @@ const AnalyticsDashboard = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 3 }}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                     Productivity Score
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" color="info.main">
+                  <Typography variant="h4" fontWeight="700" sx={{ color: '#f97316', fontFamily: '"Inter", sans-serif' }}>
                     {analytics.liveStats?.productivityScore || 0}%
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                     {analytics.productivity?.trend || '+0%'} from last week
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: 'info.main' }}>
-                  <Speed />
+                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)', color: '#f97316' }}>
+                  <Speed sx={{ fontSize: 28 }} />
                 </Avatar>
               </Box>
             </CardContent>
@@ -374,22 +366,22 @@ const AnalyticsDashboard = () => {
         </Grid>
 
         <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 3 }}>
               <Box display="flex" alignItems="center" justifyContent="space-between">
                 <Box>
-                  <Typography color="textSecondary" gutterBottom>
+                  <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                     Anomalies Detected
                   </Typography>
-                  <Typography variant="h4" fontWeight="bold" color="warning.main">
+                  <Typography variant="h4" fontWeight="700" sx={{ color: '#dc2626', fontFamily: '"Inter", sans-serif' }}>
                     {analytics.anomalies?.length || 0}
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
+                  <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                     Requires attention
                   </Typography>
                 </Box>
-                <Avatar sx={{ bgcolor: 'warning.main' }}>
-                  <Warning />
+                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)', color: '#dc2626' }}>
+                  <Assessment sx={{ fontSize: 28 }} />
                 </Avatar>
               </Box>
             </CardContent>
@@ -399,11 +391,11 @@ const AnalyticsDashboard = () => {
 
       {/* Business Insights Section */}
       {getBusinessInsights().length > 0 && (
-        <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid container spacing={2} sx={{ mb: 4 }}>
           <Grid item xs={12}>
-            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1, fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
               Business Insights
-              <Chip label="AI Powered" size="small" color="info" />
+              <Chip label="AI Powered" size="small" sx={{ background: '#dbeafe', color: '#212E46', fontWeight: '700', fontFamily: '"Inter", sans-serif' }} />
             </Typography>
           </Grid>
           {getBusinessInsights().map((insight, index) => (
@@ -411,12 +403,12 @@ const AnalyticsDashboard = () => {
               <Alert 
                 severity={insight.color} 
                 icon={insight.icon}
-                sx={{ height: '100%' }}
+                sx={{ height: '100%', borderRadius: '16px', border: insight.color === 'success' ? '1px solid #86efac' : insight.color === 'warning' ? '1px solid #fed7aa' : '1px solid #fca5a5', background: insight.color === 'success' ? '#dcfce7' : insight.color === 'warning' ? '#ffedd5' : '#fecaca', '& .MuiAlert-icon': { color: insight.color === 'success' ? '#16a34a' : insight.color === 'warning' ? '#f97316' : '#dc2626' }, fontFamily: '"Inter", sans-serif' }}
               >
-                <Typography variant="subtitle2" fontWeight="bold">
+                <Typography variant="subtitle2" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif' }}>
                   {insight.title}
                 </Typography>
-                <Typography variant="body2">
+                <Typography variant="body2" sx={{ fontFamily: '"Inter", sans-serif' }}>
                   {insight.description}
                 </Typography>
               </Alert>
@@ -426,41 +418,42 @@ const AnalyticsDashboard = () => {
       )}
 
       {/* Real-time Department Status */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
                 Department Status - Live
-                <Chip label="Real-time" size="small" color="success" />
+                <Chip label="Real-time" size="small" sx={{ background: '#dcfce7', color: '#16a34a', fontWeight: '700', fontFamily: '"Inter", sans-serif' }} />
               </Typography>
               <Grid container spacing={2} sx={{ mt: 1 }}>
                 {analytics.liveStats?.departmentStats && Object.entries(analytics.liveStats.departmentStats).map(([dept, stats]) => (
-                  <Grid item xs={12} sm={6} md={4} lg={2} key={dept}>
-                    <Paper elevation={1} sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50' }}>
-                      <Typography variant="subtitle2" fontWeight="bold" sx={{ textTransform: 'capitalize', mb: 1 }}>
+                  <Grid item xs={12} sm={6} md={4} lg={2.4} key={dept}>
+                    <Paper elevation={0} sx={{ p: 3, textAlign: 'center', background: '#fafaf9', border: '1px solid #e7e5e4', borderRadius: '16px' }}>
+                      <Typography variant="subtitle2" fontWeight="700" sx={{ textTransform: 'capitalize', mb: 1, fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
                         {dept}
                       </Typography>
-                      <Typography variant="h6" color="primary.main">
+                      <Typography variant="h5" sx={{ color: '#f97316', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}>
                         {stats.present}/{stats.total}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                         {Math.round((stats.present / stats.total) * 100)}% present
                       </Typography>
                       <LinearProgress 
                         variant="determinate" 
                         value={stats.productivity} 
                         sx={{ 
-                          mt: 1, 
+                          mt: 1.5, 
                           height: 6, 
                           borderRadius: 3,
-                          backgroundColor: 'grey.200',
+                          backgroundColor: '#e7e5e4',
                           '& .MuiLinearProgress-bar': {
-                            backgroundColor: getProductivityColor(stats.productivity)
+                            backgroundColor: getProductivityColor(stats.productivity),
+                            borderRadius: 3,
                           }
                         }} 
                       />
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                         {stats.productivity}% productivity
                       </Typography>
                     </Paper>
@@ -475,25 +468,25 @@ const AnalyticsDashboard = () => {
       <Grid container spacing={3}>
         {/* Enhanced Attendance Trends with Multiple Metrics */}
         <Grid item xs={12} lg={8}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
                 Comprehensive Attendance Analysis
               </Typography>
               <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Chip 
                   label={`Trend: ${calculateAttendanceTrend() > 0 ? '+' : ''}${calculateAttendanceTrend()}%`}
-                  color={calculateAttendanceTrend() > 0 ? 'success' : calculateAttendanceTrend() < 0 ? 'error' : 'default'}
+                  sx={{ background: calculateAttendanceTrend() > 0 ? '#dcfce7' : calculateAttendanceTrend() < 0 ? '#fecaca' : '#fafaf9', color: calculateAttendanceTrend() > 0 ? '#16a34a' : calculateAttendanceTrend() < 0 ? '#dc2626' : '#78716c', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}
                   size="small"
                 />
                 <Chip 
                   label={`Avg Working Hours: ${analytics.liveStats?.avgWorkingHoursToday || 'N/A'}`}
-                  color="info"
+                  sx={{ background: '#dbeafe', color: '#212E46', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}
                   size="small"
                 />
                 <Chip 
                   label={`Remote Workers: ${analytics.liveStats?.workingRemotely || 0}`}
-                  color="secondary"
+                  sx={{ background: '#ffedd5', color: '#f97316', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}
                   size="small"
                 />
               </Box>
@@ -501,16 +494,16 @@ const AnalyticsDashboard = () => {
                 <AreaChart data={analytics.dailyTrends || []}>
                   <defs>
                     <linearGradient id="colorAttendance" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3f51b5" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#3f51b5" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="#212E46" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#212E46" stopOpacity={0.1}/>
                     </linearGradient>
                     <linearGradient id="colorProductivity" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4caf50" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#4caf50" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="#16a34a" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#16a34a" stopOpacity={0.1}/>
                     </linearGradient>
                     <linearGradient id="colorOnTime" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ff9800" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#ff9800" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0.1}/>
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="date" />
@@ -519,8 +512,9 @@ const AnalyticsDashboard = () => {
                   <RechartsTooltip 
                     contentStyle={{ 
                       backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px'
+                      border: '1px solid #e7e5e4',
+                      borderRadius: '12px',
+                      fontFamily: '"Inter", sans-serif',
                     }}
                     labelFormatter={(label) => `Date: ${label}`}
                     formatter={(value, name) => [`${value}%`, name]}
@@ -529,7 +523,7 @@ const AnalyticsDashboard = () => {
                   <Area 
                     type="monotone" 
                     dataKey="attendance" 
-                    stroke="#3f51b5" 
+                    stroke="#212E46" 
                     fillOpacity={1} 
                     fill="url(#colorAttendance)" 
                     name="Overall Attendance %" 
@@ -537,7 +531,7 @@ const AnalyticsDashboard = () => {
                   <Area 
                     type="monotone" 
                     dataKey="onTime" 
-                    stroke="#ff9800" 
+                    stroke="#f97316" 
                     fillOpacity={1} 
                     fill="url(#colorOnTime)" 
                     name="On-Time Arrivals %" 
@@ -545,7 +539,7 @@ const AnalyticsDashboard = () => {
                   <Area 
                     type="monotone" 
                     dataKey="productivity" 
-                    stroke="#4caf50" 
+                    stroke="#16a34a" 
                     fillOpacity={1} 
                     fill="url(#colorProductivity)" 
                     name="Productivity Score %" 
@@ -558,9 +552,9 @@ const AnalyticsDashboard = () => {
 
         {/* Enhanced Weekly Pattern with Detailed Metrics */}
         <Grid item xs={12} lg={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
                 Weekly Performance Patterns
               </Typography>
               <ResponsiveContainer width="100%" height={350}>
@@ -571,8 +565,9 @@ const AnalyticsDashboard = () => {
                   <RechartsTooltip 
                     contentStyle={{ 
                       backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px'
+                      border: '1px solid #e7e5e4',
+                      borderRadius: '12px',
+                      fontFamily: '"Inter", sans-serif',
                     }}
                     formatter={(value, name) => [
                       name.includes('Arrivals') || name.includes('Departures') ? value : `${value}%`, 
@@ -580,9 +575,9 @@ const AnalyticsDashboard = () => {
                     ]}
                   />
                   <Legend />
-                  <Bar dataKey="attendance" fill="#3f51b5" name="Attendance %" />
-                  <Bar dataKey="productivity" fill="#4caf50" name="Productivity %" />
-                  <Bar dataKey="lateArrivals" fill="#ff9800" name="Late Arrivals" />
+                  <Bar dataKey="attendance" fill="#212E46" name="Attendance %" />
+                  <Bar dataKey="productivity" fill="#16a34a" name="Productivity %" />
+                  <Bar dataKey="lateArrivals" fill="#f97316" name="Late Arrivals" />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -591,9 +586,9 @@ const AnalyticsDashboard = () => {
 
         {/* Enhanced Department Productivity with Business KPIs */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
                 Department Performance Analytics
               </Typography>
               <Box sx={{ mt: 2 }}>
@@ -601,15 +596,15 @@ const AnalyticsDashboard = () => {
                   analytics.productivity.departments.map((dept, index) => (
                     <Box key={dept.name} sx={{ mb: 3 }}>
                       <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                        <Typography variant="body2" fontWeight="bold">{dept.name}</Typography>
+                        <Typography variant="body2" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif', color: '#212E46' }}>{dept.name}</Typography>
                         <Box display="flex" alignItems="center" gap={1}>
-                          <Typography variant="body2" fontWeight="bold">
+                          <Typography variant="body2" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
                             {dept.score}%
                           </Typography>
                           <Chip 
                             label={dept.trend} 
                             size="small" 
-                            color={dept.trend.startsWith('+') ? 'success' : 'error'}
+                            sx={{ background: dept.trend.startsWith('+') ? '#dcfce7' : '#fecaca', color: dept.trend.startsWith('+') ? '#16a34a' : '#dc2626', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}
                           />
                         </Box>
                       </Box>
@@ -619,7 +614,7 @@ const AnalyticsDashboard = () => {
                         sx={{ 
                           height: 10,
                           borderRadius: 5,
-                          backgroundColor: 'grey.200',
+                          backgroundColor: '#e7e5e4',
                           '& .MuiLinearProgress-bar': {
                             backgroundColor: getProductivityColor(dept.score),
                             borderRadius: 5,
@@ -627,20 +622,20 @@ const AnalyticsDashboard = () => {
                         }} 
                       />
                       <Box display="flex" justifyContent="space-between" sx={{ mt: 0.5 }}>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                           {dept.employeeCount || 'N/A'} employees
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                           {dept.avgWorkingHours?.toFixed(1) || 'N/A'}h avg
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                           {dept.projectsCompleted || 'N/A'} projects
                         </Typography>
                       </Box>
                     </Box>
                   ))
                 ) : (
-                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                  <Typography variant="body2" sx={{ color: '#78716c', textAlign: 'center', py: 2, fontFamily: '"Inter", sans-serif' }}>
                     No department data available
                   </Typography>
                 )}
@@ -651,11 +646,11 @@ const AnalyticsDashboard = () => {
 
         {/* Enhanced Anomaly Detection with Action Items */}
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+            <CardContent sx={{ p: 4 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
                 Intelligent Anomaly Detection
-                <Chip label="ML Powered" size="small" color="secondary" />
+                <Chip label="ML Powered" size="small" sx={{ background: '#ffedd5', color: '#f97316', fontWeight: '700', fontFamily: '"Inter", sans-serif' }} />
               </Typography>
               <Box sx={{ mt: 2, maxHeight: 400, overflowY: 'auto' }}>
                 {analytics.anomalies?.length > 0 ? (
@@ -663,7 +658,7 @@ const AnalyticsDashboard = () => {
                     <Alert 
                       key={index} 
                       severity={getSeverityColor(anomaly.severity)} 
-                      sx={{ mb: 2 }}
+                      sx={{ mb: 2, borderRadius: '12px', border: getSeverityColor(anomaly.severity) === 'error' ? '1px solid #fca5a5' : getSeverityColor(anomaly.severity) === 'warning' ? '1px solid #fed7aa' : '1px solid #bfdbfe', background: getSeverityColor(anomaly.severity) === 'error' ? '#fecaca' : getSeverityColor(anomaly.severity) === 'warning' ? '#ffedd5' : '#dbeafe', '& .MuiAlert-icon': { color: getSeverityColor(anomaly.severity) === 'error' ? '#dc2626' : getSeverityColor(anomaly.severity) === 'warning' ? '#f97316' : '#212E46' }, fontFamily: '"Inter", sans-serif' }}
                       action={
                         anomaly.suggestedAction && (
                           <Tooltip title={anomaly.suggestedAction}>
@@ -677,21 +672,21 @@ const AnalyticsDashboard = () => {
                       }
                     >
                       <Box>
-                        <Typography variant="subtitle2" fontWeight="bold">
+                        <Typography variant="subtitle2" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif' }}>
                           {anomaly.user} - {anomaly.date}
                           {anomaly.affectedCount && (
                             <Chip 
                               label={`${anomaly.affectedCount} affected`} 
                               size="small" 
-                              sx={{ ml: 1 }} 
+                              sx={{ ml: 1, background: 'rgba(255,255,255,0.5)', fontFamily: '"Inter", sans-serif' }} 
                             />
                           )}
                         </Typography>
-                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        <Typography variant="body2" sx={{ mt: 0.5, fontFamily: '"Inter", sans-serif' }}>
                           {anomaly.description}
                         </Typography>
                         {anomaly.suggestedAction && (
-                          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                          <Typography variant="caption" sx={{ mt: 1, display: 'block', opacity: 0.8, fontFamily: '"Inter", sans-serif' }}>
                             Suggested: {anomaly.suggestedAction}
                           </Typography>
                         )}
@@ -699,8 +694,8 @@ const AnalyticsDashboard = () => {
                     </Alert>
                   ))
                 ) : (
-                  <Alert severity="success">
-                    <Typography variant="body2">
+                  <Alert severity="success" sx={{ borderRadius: '12px', border: '1px solid #86efac', background: '#dcfce7', '& .MuiAlert-icon': { color: '#16a34a' }, fontFamily: '"Inter", sans-serif' }}>
+                    <Typography variant="body2" sx={{ fontFamily: '"Inter", sans-serif' }}>
                       No anomalies detected - All systems running smoothly!
                     </Typography>
                   </Alert>
@@ -737,7 +732,7 @@ const AnalyticsDashboard = () => {
                         >
                           {index === 0 && (
                             <Chip 
-                              label="🥇 Top Performer" 
+                              label="Top Performer" 
                               size="small" 
                               color="warning"
                               sx={{ position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)' }}
@@ -796,6 +791,7 @@ const AnalyticsDashboard = () => {
         </Grid>
       </Grid>
     </Container>
+    </Box>
   );
 };
 

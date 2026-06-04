@@ -23,8 +23,6 @@ import {
 import {
   CalendarToday as CalendarIcon,
   TrendingUp as TrendingUpIcon,
-  CheckCircle as CheckCircleIcon,
-  Cancel as CancelIcon,
   FilterList as FilterIcon,
   Assessment as AssessmentIcon,
   Download as DownloadIcon,
@@ -89,40 +87,37 @@ const UserAttendance = () => {
     return status === 'present' ? 'success' : 'error';
   };
 
-  const getStatusIcon = (status) => {
-    return status === 'present' ? <CheckCircleIcon /> : <CancelIcon />;
-  };
-
   if (loading && !attendanceRecords.length) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
-          <CircularProgress />
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px" sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)' }}>
+          <CircularProgress sx={{ color: '#f97316' }} />
         </Box>
       </Container>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      {/* Header */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Box display="flex" alignItems="center" mb={2}>
-          <AssessmentIcon sx={{ mr: 2, fontSize: 32, color: 'primary.main' }} />
-          <Typography variant="h4" gutterBottom>
-            My Attendance
-          </Typography>
-        </Box>
-        
-        {user && (
-          <Typography variant="subtitle1" color="text.secondary">
-            Welcome back, {user.full_name}! Here's your attendance overview.
-          </Typography>
-        )}
-      </Paper>
+    <Box sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)', minHeight: '100vh', py: 4 }}>
+      <Container maxWidth="lg">
+        {/* Header */}
+        <Card elevation={0} sx={{ p: 4, mb: 4, borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+          <Box display="flex" alignItems="center" mb={2}>
+            <AssessmentIcon sx={{ mr: 2, fontSize: 32, color: '#f97316' }} />
+            <Typography variant="h5" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
+              My Attendance
+            </Typography>
+          </Box>
+          
+          {user && (
+            <Typography variant="body1" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
+              Welcome back, {user.full_name}! Here's your attendance overview.
+            </Typography>
+          )}
+        </Card>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, borderRadius: '12px', border: '1px solid #fecaca', background: '#fef2f2', fontFamily: '"Inter", sans-serif' }}>
           {error}
         </Alert>
       )}
@@ -131,15 +126,17 @@ const UserAttendance = () => {
       {stats && (
         <Grid container spacing={3} sx={{ mb: 4 }}>
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center">
-                  <CalendarIcon sx={{ mr: 2, color: 'primary.main' }} />
+            <Card elevation={0} sx={{ borderRadius: '18px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.08)' } }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CalendarIcon sx={{ color: '#212E46', fontSize: 24 }} />
+                  </Box>
                   <Box>
-                    <Typography variant="h4" color="primary">
+                    <Typography variant="h5" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
                       {stats.total_days}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                       Total Days
                     </Typography>
                   </Box>
@@ -149,15 +146,17 @@ const UserAttendance = () => {
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center">
-                  <CheckCircleIcon sx={{ mr: 2, color: 'success.main' }} />
+            <Card elevation={0} sx={{ borderRadius: '18px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.08)' } }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#16a34a' }} />
+                  </Box>
                   <Box>
-                    <Typography variant="h4" color="success.main">
+                    <Typography variant="h5" fontWeight="700" sx={{ color: '#16a34a', fontFamily: '"Inter", sans-serif' }}>
                       {stats.present_days}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                       Present Days
                     </Typography>
                   </Box>
@@ -167,15 +166,17 @@ const UserAttendance = () => {
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center">
-                  <CancelIcon sx={{ mr: 2, color: 'error.main' }} />
+            <Card elevation={0} sx={{ borderRadius: '18px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.08)' } }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#fecaca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: '#dc2626' }} />
+                  </Box>
                   <Box>
-                    <Typography variant="h4" color="error.main">
+                    <Typography variant="h5" fontWeight="700" sx={{ color: '#dc2626', fontFamily: '"Inter", sans-serif' }}>
                       {stats.absent_days}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                       Absent Days
                     </Typography>
                   </Box>
@@ -185,27 +186,22 @@ const UserAttendance = () => {
           </Grid>
 
           <Grid item xs={12} sm={6} md={3}>
-            <Card>
-              <CardContent>
-                <Box display="flex" alignItems="center">
-                  <TrendingUpIcon sx={{ mr: 2, color: 'info.main' }} />
+            <Card elevation={0} sx={{ borderRadius: '18px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.08)' } }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box display="flex" alignItems="center" gap={2} mb={1}>
+                  <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <TrendingUpIcon sx={{ color: '#f97316', fontSize: 24 }} />
+                  </Box>
                   <Box>
-                    <Typography variant="h4" color="info.main">
+                    <Typography variant="h5" fontWeight="700" sx={{ color: '#f97316', fontFamily: '"Inter", sans-serif' }}>
                       {stats.attendance_percentage}%
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: '#78716c', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>
                       Attendance Rate
                     </Typography>
                   </Box>
                 </Box>
-                <Box sx={{ mt: 1 }}>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={stats.attendance_percentage} 
-                    color="info"
-                    sx={{ height: 8, borderRadius: 4 }}
-                  />
-                </Box>
+                <LinearProgress variant="determinate" value={stats.attendance_percentage} sx={{ height: 6, borderRadius: 3, background: '#f3f4f6', '& .MuiLinearProgress-bar': { borderRadius: 3, background: 'linear-gradient(90deg, #f97316 0%, #fb923c 100%)' } }} />
               </CardContent>
             </Card>
           </Grid>
@@ -213,9 +209,9 @@ const UserAttendance = () => {
       )}
 
       {/* Filters */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          <FilterIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+      <Card elevation={0} sx={{ p: 4, mb: 4, borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
+          <FilterIcon sx={{ color: '#f97316' }} />
           Filters
         </Typography>
         
@@ -229,6 +225,7 @@ const UserAttendance = () => {
               onChange={(e) => setStartDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               size="small"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', fontFamily: '"Inter", sans-serif', '&.Mui-focused fieldset': { borderColor: '#f97316' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' } }}
             />
           </Grid>
           
@@ -241,6 +238,7 @@ const UserAttendance = () => {
               onChange={(e) => setEndDate(e.target.value)}
               InputLabelProps={{ shrink: true }}
               size="small"
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', fontFamily: '"Inter", sans-serif', '&.Mui-focused fieldset': { borderColor: '#f97316' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' } }}
             />
           </Grid>
           
@@ -249,6 +247,7 @@ const UserAttendance = () => {
               variant="contained"
               onClick={handleFilterApply}
               fullWidth
+              sx={{ py: 1.5, borderRadius: '12px', background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', boxShadow: 'none', '&:hover': { background: 'linear-gradient(135deg, #1a2333 0%, #212E46 100%)', boxShadow: 'none' } }}
             >
               Apply Filter
             </Button>
@@ -263,7 +262,7 @@ const UserAttendance = () => {
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 SelectProps={{ native: true }}
                 size="small"
-                sx={{ minWidth: 100 }}
+                sx={{ minWidth: 100, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontFamily: '"Inter", sans-serif', '&.Mui-focused fieldset': { borderColor: '#f97316' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' } }}
               >
                 {Array.from({ length: 12 }, (_, i) => (
                   <option key={i + 1} value={i + 1}>
@@ -279,7 +278,7 @@ const UserAttendance = () => {
                 onChange={(e) => setSelectedYear(e.target.value)}
                 SelectProps={{ native: true }}
                 size="small"
-                sx={{ minWidth: 100 }}
+                sx={{ minWidth: 100, '& .MuiOutlinedInput-root': { borderRadius: '12px', fontFamily: '"Inter", sans-serif', '&.Mui-focused fieldset': { borderColor: '#f97316' } }, '& .MuiInputLabel-root.Mui-focused': { color: '#f97316' } }}
               >
                 {Array.from({ length: 5 }, (_, i) => {
                   const year = new Date().getFullYear() - 2 + i;
@@ -295,24 +294,25 @@ const UserAttendance = () => {
                 variant="outlined"
                 onClick={handleStatsFilter}
                 size="small"
+                sx={{ borderRadius: '12px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9' } }}
               >
                 Update Stats
               </Button>
             </Box>
           </Grid>
         </Grid>
-      </Paper>
+      </Card>
 
       {/* Attendance Records Table */}
-      <Paper elevation={2}>
-        <Box p={3}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h6">
+      <Card elevation={0} sx={{ borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+        <Box p={4}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h6" sx={{ fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
               Attendance Records ({attendanceRecords.length} records)
             </Typography>
             {attendanceRecords.length > 0 && (
               <Button
-                variant="outlined"
+                variant="contained"
                 startIcon={<DownloadIcon />}
                 onClick={() => {
                   const csv = [
@@ -336,9 +336,16 @@ const UserAttendance = () => {
                   window.URL.revokeObjectURL(url);
                 }}
                 sx={{
-                  borderRadius: '8px',
+                  borderRadius: '12px',
                   textTransform: 'none',
-                  fontWeight: '500',
+                  fontWeight: '700',
+                  fontFamily: '"Inter", sans-serif',
+                  background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)',
+                  boxShadow: 'none',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
+                    boxShadow: 'none',
+                  },
                 }}
               >
                 Export CSV
@@ -348,11 +355,11 @@ const UserAttendance = () => {
           
           {loading ? (
             <Box display="flex" justifyContent="center" p={3}>
-              <CircularProgress />
+              <CircularProgress sx={{ color: '#f97316' }} />
             </Box>
           ) : attendanceRecords.length === 0 ? (
             <Box textAlign="center" p={4}>
-              <Typography variant="body1" color="text.secondary">
+              <Typography variant="body1" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                 No attendance records found for the selected period.
               </Typography>
             </Box>
@@ -360,17 +367,17 @@ const UserAttendance = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow>
-                    <TableCell><strong>Date</strong></TableCell>
-                    <TableCell><strong>Time In</strong></TableCell>
-                    <TableCell><strong>Status</strong></TableCell>
-                    <TableCell><strong>Recorded At</strong></TableCell>
+                  <TableRow sx={{ background: '#fafaf9' }}>
+                    <TableCell sx={{ fontWeight: '700', color: '#212E46', fontFamily: '"Inter", sans-serif' }}>Date</TableCell>
+                    <TableCell sx={{ fontWeight: '700', color: '#212E46', fontFamily: '"Inter", sans-serif' }}>Time In</TableCell>
+                    <TableCell sx={{ fontWeight: '700', color: '#212E46', fontFamily: '"Inter", sans-serif' }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: '700', color: '#212E46', fontFamily: '"Inter", sans-serif' }}>Recorded At</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {attendanceRecords.map((record) => (
-                    <TableRow key={record.id} hover>
-                      <TableCell>
+                    <TableRow key={record.id} hover sx={{ '&:hover': { background: '#fafaf9' } }}>
+                      <TableCell sx={{ fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
                         {new Date(record.date).toLocaleDateString('en-US', {
                           weekday: 'short',
                           year: 'numeric',
@@ -378,7 +385,7 @@ const UserAttendance = () => {
                           day: 'numeric'
                         })}
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
                         {record.time_in ? 
                           new Date(`2000-01-01T${record.time_in}`).toLocaleTimeString('en-US', {
                             hour: '2-digit',
@@ -389,13 +396,12 @@ const UserAttendance = () => {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          icon={getStatusIcon(record.status)}
                           label={record.status.charAt(0).toUpperCase() + record.status.slice(1)}
-                          color={getStatusColor(record.status)}
+                          sx={{ background: record.status === 'present' ? '#dcfce7' : '#fecaca', color: record.status === 'present' ? '#16a34a' : '#dc2626', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}
                           size="small"
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ fontFamily: '"Inter", sans-serif', color: '#78716c' }}>
                         {new Date(record.created_at).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -410,8 +416,9 @@ const UserAttendance = () => {
             </TableContainer>
           )}
         </Box>
-      </Paper>
-    </Container>
+      </Card>
+      </Container>
+    </Box>
   );
 };
 

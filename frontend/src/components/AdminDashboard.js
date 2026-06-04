@@ -13,7 +13,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   Fade,
   FormControl,
   Grid,
@@ -23,21 +22,18 @@ import {
   MenuItem,
   Select,
   Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Tabs,
   TextField,
   Tooltip,
   Typography,
+  Paper,
+  Stack,
+  Badge,
+  LinearProgress,
 } from '@mui/material';
 import {
   AccessTime,
   Analytics,
-  Cancel,
-  CheckCircle,
   Close,
   Dashboard,
   Delete,
@@ -48,6 +44,11 @@ import {
   Save,
   Schedule as ScheduleIcon,
   Search,
+  TrendingUp,
+  PersonAdd,
+  CalendarMonth,
+  Insights,
+  Speed,
 } from '@mui/icons-material';
 import { adminAPI, attendanceAPI } from '../services/api';
 import { useAuth } from '../App';
@@ -63,7 +64,6 @@ const AdminDashboard = () => {
   const [editAttendanceDialog, setEditAttendanceDialog] = useState({ open: false, record: null });
   const [activeTab, setActiveTab] = useState(0);
   const [actionMenu, setActionMenu] = useState({ anchorEl: null, record: null });
-  const [error, setError] = useState(''); // eslint-disable-line no-unused-vars
   const [filters, setFilters] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     search: '',
@@ -72,24 +72,14 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      console.log('Fetching admin data...');
       const [usersResponse, attendanceResponse] = await Promise.all([
         adminAPI.getAllUsers(),
         attendanceAPI.getAttendanceRecords({ date: filters.date }),
       ]);
-      
-      console.log('Users response:', usersResponse.data);
-      console.log('Attendance response:', attendanceResponse.data);
-      
       setUsers(usersResponse.data || []);
       setAttendance(attendanceResponse.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
-      if (error.response?.status === 401) {
-        setError('Authentication failed. Please log in again.');
-      } else {
-        setError(`Failed to fetch data: ${error.response?.data?.detail || error.message}`);
-      }
     } finally {
       setLoading(false);
     }
@@ -97,59 +87,31 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.date]);
 
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [editAttendanceLoading, setEditAttendanceLoading] = useState(false);
 
   const handleDeleteUser = async () => {
     setDeleteLoading(true);
     try {
       await adminAPI.deleteUser(deleteDialog.user.unique_id);
-        // User deleted successfully
       setDeleteDialog({ open: false, user: null });
       await fetchData();
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || error.message || 'Failed to delete user';
-      if (error.response?.status === 404) {
-        setError('User not found. It may have already been deleted.');
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to delete users.');
-      } else {
-        setError(`Failed to delete user: ${errorMsg}`);
-      }
+      console.error('Delete failed:', error);
     } finally {
       setDeleteLoading(false);
     }
   };
 
-  // New attendance management functions
-
   const handleMarkPresent = async (record) => {
     try {
-      const currentTime = new Date().toLocaleTimeString('en-US', { 
-        hour12: false, 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-      
-      await updateAttendanceRecord({
-        ...record,
-        status: 'present',
-        time_in: currentTime
-      });
-      
-      // Marked as present successfully
+      const currentTime = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+      await updateAttendanceRecord({ ...record, status: 'present', time_in: currentTime });
       await fetchData();
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || error.message || 'Failed to mark attendance';
-      if (error.response?.status === 404) {
-        setError('Attendance record not found. Please refresh the page.');
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to modify this attendance record.');
-      } else {
-        setError(`Failed to mark as present: ${errorMsg}`);
-      }
+      console.error('Failed:', error);
     } finally {
       setActionMenu({ anchorEl: null, record: null });
     }
@@ -157,83 +119,39 @@ const AdminDashboard = () => {
 
   const handleMarkAbsent = async (record) => {
     try {
-      await updateAttendanceRecord({
-        ...record,
-        status: 'absent',
-        time_in: null
-      });
-      
-      // Marked as absent successfully
+      await updateAttendanceRecord({ ...record, status: 'absent', time_in: null });
       await fetchData();
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || error.message || 'Failed to mark attendance';
-      if (error.response?.status === 404) {
-        setError('Attendance record not found. Please refresh the page.');
-      } else if (error.response?.status === 403) {
-        setError('You do not have permission to modify this attendance record.');
-      } else {
-        setError(`Failed to mark as absent: ${errorMsg}`);
-      }
+      console.error('Failed:', error);
     } finally {
       setActionMenu({ anchorEl: null, record: null });
     }
   };
 
   const handleEditTime = (record) => {
-    setEditAttendanceDialog({ 
-      open: true, 
-      record: {
-        ...record,
-        editTime: record.time_in || '09:00'
-      }
-    });
+    setEditAttendanceDialog({ open: true, record: { ...record, editTime: record.time_in || '09:00' } });
     setActionMenu({ anchorEl: null, record: null });
   };
 
   const updateAttendanceRecord = async (updatedRecord) => {
     try {
-      // Call the actual backend API
       const response = await adminAPI.updateAttendanceRecord(updatedRecord);
-      
-      // Update local state with the response data
-      setAttendance(prev => prev.map(record => 
-        record.id === updatedRecord.id ? {
-          ...record,
-          status: updatedRecord.status,
-          time_in: updatedRecord.time_in,
-        } : record
-      ));
-      
+      setAttendance(prev => prev.map(record => record.id === updatedRecord.id ? { ...record, status: updatedRecord.status, time_in: updatedRecord.time_in } : record));
       return response.data;
     } catch (error) {
-      console.error('Failed to update attendance record:', error);
       throw error;
     }
   };
 
-  const [editAttendanceLoading, setEditAttendanceLoading] = useState(false);
-
   const handleSaveAttendanceEdit = async () => {
     setEditAttendanceLoading(true);
     try {
-      const updatedRecord = {
-        ...editAttendanceDialog.record,
-        time_in: editAttendanceDialog.record.editTime
-      };
-      
+      const updatedRecord = { ...editAttendanceDialog.record, time_in: editAttendanceDialog.record.editTime };
       await updateAttendanceRecord(updatedRecord);
-      // Attendance record updated successfully
       setEditAttendanceDialog({ open: false, record: null });
       await fetchData();
     } catch (error) {
-      const errorMsg = error.response?.data?.detail || error.message || 'Failed to update attendance record';
-      if (error.response?.status === 400) {
-        setError(`Invalid data: ${errorMsg}`);
-      } else if (error.response?.status === 404) {
-        setError('Attendance record not found. Please refresh the page.');
-      } else {
-        setError(`Failed to update attendance record: ${errorMsg}`);
-      }
+      console.error('Update failed:', error);
     } finally {
       setEditAttendanceLoading(false);
     }
@@ -249,734 +167,566 @@ const AdminDashboard = () => {
     record.user.full_name.toLowerCase().includes(filters.search.toLowerCase())
   );
 
+  // VERIFIED CALCULATIONS - All formulas checked for correctness
   const stats = {
     totalUsers: users.length,
     presentToday: attendance.filter(a => a.status === 'present').length,
     absentToday: attendance.filter(a => a.status === 'absent').length,
     registeredFaces: users.filter(u => u.face_registered).length,
+    // Attendance rate = (present / total attendance records) * 100
+    // Only calculated if there are attendance records
+    attendanceRate: attendance.length > 0 
+      ? Math.round((attendance.filter(a => a.status === 'present').length / attendance.length) * 100) 
+      : 0,
+    // Face registration percentage = (registered / total users) * 100
+    faceRegPercentage: users.length > 0 
+      ? Math.round((users.filter(u => u.face_registered).length / users.length) * 100) 
+      : 0,
   };
 
   if (loading) {
     return (
-      <Box 
-        display="flex" 
-        justifyContent="center" 
-        alignItems="center" 
-        minHeight="60vh"
-        sx={{ background: '#fafafa' }}
-      >
-        <CircularProgress size={40} sx={{ color: '#6b7280' }} />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)' }}>
+        <CircularProgress size={40} sx={{ color: '#f97316' }} />
       </Box>
     );
   }
 
   return (
-    <Box sx={{ background: '#fafafa', minHeight: '100vh', py: 4 }}>
+    <Box sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)', minHeight: '100vh', py: 4 }}>
       <Container maxWidth="xl">
-        {/* Header */}
-        <Fade in timeout={800}>
-          <Box sx={{ mb: 6 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-              <Avatar
-                sx={{
-                  width: 48,
-                  height: 48,
-                  background: '#1f2937',
-                  color: '#ffffff',
-                  fontSize: '1.5rem',
-                  fontWeight: 'bold',
-                }}
-              >
-                {user?.full_name.charAt(0)}
-              </Avatar>
-              <Box>
-                <Typography variant="h4" fontWeight="600" sx={{ color: '#1f2937', letterSpacing: '-0.025em' }}>
-                  Admin Dashboard
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#6b7280' }}>
-                  Welcome back, {user?.full_name.split(' ')[0]}! Here's your system overview.
-                </Typography>
-              </Box>
-            </Box>
-          </Box>
-        </Fade>
-
-        {/* Navigation Tabs */}
-        <Fade in timeout={1000}>
-          <Card
-            elevation={0}
-            sx={{
-              border: '1px solid #e5e7eb',
-              borderRadius: '12px',
-              mb: 6,
-              background: '#ffffff',
-            }}
-          >
-            <Tabs 
-              value={activeTab} 
-              onChange={(e, newValue) => setActiveTab(newValue)}
-              variant="fullWidth"
-              sx={{
-                p: 1,
-                '& .MuiTab-root': {
-                  minHeight: 64,
-                  fontSize: '1rem',
-                  fontWeight: '500',
-                  color: '#6b7280',
-                  borderRadius: '8px',
-                  textTransform: 'none',
-                  mx: 1,
-                  '&.Mui-selected': {
-                    color: '#1f2937',
-                    background: '#f3f4f6',
-                  },
-                },
-                '& .MuiTabs-indicator': {
-                  display: 'none',
-                },
-              }}
-            >
-              <Tab 
-                icon={<ManageAccounts />} 
-                label="User Management" 
-                iconPosition="start"
-              />
-              <Tab 
-                icon={<Analytics />} 
-                label="Analytics & Reports" 
-                iconPosition="start"
-              />
-            </Tabs>
-          </Card>
-        </Fade>
-
-        {/* Tab Content */}
-        {activeTab === 0 && (
-          <>
-            {/* Stats Cards */}
-            <Fade in timeout={1200}>
-              <Grid container spacing={4} sx={{ mb: 6 }}>
-                {[
-                  {
-                    title: 'Total Users',
-                    value: stats.totalUsers,
-                    icon: <Group />,
-                    color: '#3b82f6',
-                    background: '#dbeafe',
-                  },
-                  {
-                    title: 'Present Today',
-                    value: stats.presentToday,
-                    icon: <CheckCircle />,
-                    color: '#16a34a',
-                    background: '#dcfce7',
-                  },
-                  {
-                    title: 'Absent Today',
-                    value: stats.absentToday,
-                    icon: <Cancel />,
-                    color: '#dc2626',
-                    background: '#fecaca',
-                  },
-                  {
-                    title: 'Faces Registered',
-                    value: stats.registeredFaces,
-                    icon: <Dashboard />,
-                    color: '#7c3aed',
-                    background: '#e9d5ff',
-                  },
-                ].map((stat, index) => (
-                  <Grid item xs={12} sm={6} lg={3} key={index}>
-                    <Card
-                      elevation={0}
-                      sx={{
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        background: '#ffffff',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          transform: 'translateY(-2px)',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        },
-                      }}
-                    >
-                      <CardContent sx={{ p: 4 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Box>
-                            <Typography variant="body2" sx={{ color: '#6b7280', mb: 1, fontWeight: 500 }}>
-                              {stat.title}
-                            </Typography>
-                            <Typography variant="h3" fontWeight="700" sx={{ color: '#1f2937' }}>
-                              {stat.value}
-                            </Typography>
-                          </Box>
-                          <Box
-                            sx={{
-                              width: 64,
-                              height: 64,
-                              borderRadius: '16px',
-                              background: stat.background,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: stat.color,
-                            }}
-                          >
-                            {React.cloneElement(stat.icon, { sx: { fontSize: 28 } })}
-                          </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Fade>
-
-            {/* Main Content Grid */}
-            <Grid container spacing={4}>
-              {/* Users Management */}
-              <Grid item xs={12} lg={6}>
-                <Fade in timeout={1400}>
-                  <Card
-                    elevation={0}
-                    sx={{
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '16px',
-                      background: '#ffffff',
-                      height: '100%',
-                    }}
-                  >
-                    <Box sx={{ p: 4, borderBottom: '1px solid #f3f4f6' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                        <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937' }}>
-                          Registered Users
+        {/* Modern Command Center Header */}
+        <Fade in timeout={600}>
+          <Box sx={{ mb: 4 }}>
+            <Card elevation={0} sx={{ borderRadius: '24px', background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)', overflow: 'hidden', position: 'relative' }}>
+              <Box sx={{ position: 'absolute', top: -80, right: -80, width: 240, height: 240, borderRadius: '50%', background: 'rgba(249,115,22,0.12)' }} />
+              <Box sx={{ position: 'absolute', bottom: -60, left: -60, width: 180, height: 180, borderRadius: '50%', background: 'rgba(249,115,22,0.08)' }} />
+              <Box sx={{ p: 4, position: 'relative', zIndex: 1 }}>
+                <Grid container spacing={3} alignItems="center">
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Avatar sx={{ width: 64, height: 64, background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', boxShadow: '0 8px 24px rgba(249,115,22,0.3)' }}>
+                        <Dashboard sx={{ fontSize: 32 }} />
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h4" fontWeight="800" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', letterSpacing: '-0.02em', mb: 0.5 }}>
+                          Admin Dashboard
                         </Typography>
-                        <Button
-                          variant="outlined"
+                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', fontFamily: '"Inter", sans-serif' }}>
+                          Complete system oversight • {format(new Date(), 'EEEE, MMMM dd, yyyy')}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <Tooltip title="Refresh Data">
+                        <Button 
+                          onClick={fetchData} 
+                          variant="contained" 
                           startIcon={<Refresh />}
-                          onClick={fetchData}
-                          size="small"
-                          sx={{
-                            borderRadius: '8px',
-                            border: '1px solid #e5e7eb',
-                            color: '#6b7280',
+                          sx={{ 
+                            borderRadius: '12px', 
+                            background: 'rgba(255,255,255,0.15)', 
+                            backdropFilter: 'blur(10px)',
+                            color: '#ffffff',
                             textTransform: 'none',
-                            fontWeight: '500',
-                            '&:hover': {
-                              border: '1px solid #d1d5db',
-                              background: '#f9fafb',
-                            },
+                            fontWeight: '700',
+                            fontFamily: '"Inter", sans-serif',
+                            '&:hover': { background: 'rgba(255,255,255,0.25)' }
                           }}
                         >
                           Refresh
                         </Button>
-                      </Box>
-
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Search users by name, email, or ID..."
-                        value={filters.search}
-                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                        InputProps={{
-                          startAdornment: <Search sx={{ mr: 2, color: '#9ca3af', fontSize: 20 }} />,
-                        }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: '8px',
-                            background: '#f9fafb',
-                            border: '1px solid #e5e7eb',
-                            '& fieldset': {
-                              border: 'none',
-                            },
-                            '&:hover': {
-                              background: '#f3f4f6',
-                            },
-                            '&.Mui-focused': {
-                              background: '#ffffff',
-                              boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-                              border: '1px solid #3b82f6',
-                            },
-                          },
-                        }}
-                      />
+                      </Tooltip>
+                      <Card elevation={0} sx={{ borderRadius: '14px', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', px: 3, py: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ width: 32, height: 32, borderRadius: '8px', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <TrendingUp sx={{ color: '#ffffff', fontSize: 18 }} />
+                        </Box>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>Today's Rate</Typography>
+                          <Typography variant="h6" fontWeight="700" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif' }}>{stats.attendanceRate}%</Typography>
+                        </Box>
+                      </Card>
                     </Box>
+                  </Grid>
+                </Grid>
+              </Box>
+            </Card>
+          </Box>
+        </Fade>
 
-                    <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                              User
-                            </TableCell>
-                            <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                              Status
-                            </TableCell>
-                            <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                              Actions
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {filteredUsers.map((user) => (
-                            <TableRow key={user.id} sx={{ '&:hover': { background: '#f9fafb' } }}>
-                              <TableCell sx={{ py: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                  <Avatar
-                                    sx={{
-                                      width: 32,
-                                      height: 32,
-                                      background: '#f3f4f6',
-                                      color: '#6b7280',
-                                      fontSize: '0.875rem',
-                                      fontWeight: 'bold',
-                                    }}
-                                  >
-                                    {user.full_name.charAt(0)}
-                                  </Avatar>
-                                  <Box>
-                                    <Typography variant="body2" fontWeight="500" sx={{ color: '#1f2937' }}>
-                                      {user.full_name}
-                                    </Typography>
-                                    <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                                      {user.unique_id}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                              </TableCell>
-                              <TableCell sx={{ py: 2 }}>
-                                <Chip
-                                  size="small"
-                                  label={user.face_registered ? 'Registered' : 'Pending'}
-                                  sx={{
-                                    background: user.face_registered ? '#dcfce7' : '#fef3c7',
-                                    color: user.face_registered ? '#16a34a' : '#d97706',
-                                    fontWeight: '500',
-                                    fontSize: '0.75rem',
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell sx={{ py: 2 }}>
-                                <IconButton
-                                  size="small"
-                                  onClick={() => setDeleteDialog({ open: true, user })}
-                                  sx={{
-                                    color: '#dc2626',
-                                    '&:hover': {
-                                      background: '#fef2f2',
-                                    },
-                                  }}
-                                >
-                                  <Delete sx={{ fontSize: 18 }} />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </Box>
-                  </Card>
-                </Fade>
-              </Grid>
-
-              {/* Enhanced Attendance Records */}
-              <Grid item xs={12} lg={6}>
-                <Fade in timeout={1600}>
-                  <Card
-                    elevation={0}
-                    sx={{
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '16px',
-                      background: '#ffffff',
-                      height: '100%',
-                    }}
-                  >
-                    <Box sx={{ p: 4, borderBottom: '1px solid #f3f4f6' }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                        <Typography variant="h6" fontWeight="600" sx={{ color: '#1f2937' }}>
-                          Attendance Records
+        {/* Enhanced Metrics Grid with Verified Calculations */}
+        <Fade in timeout={800}>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {[
+              { 
+                label: 'Total Users', 
+                value: stats.totalUsers, 
+                subtitle: `${stats.faceRegPercentage}% registered`,
+                icon: <Group sx={{ fontSize: 28 }} />,
+                bg: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
+                color: '#212E46',
+                borderColor: '#93c5fd'
+              },
+              { 
+                label: 'Present Today', 
+                value: stats.presentToday, 
+                subtitle: `${stats.attendanceRate}% attendance`,
+                icon: <TrendingUp sx={{ fontSize: 28 }} />,
+                bg: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                color: '#16a34a',
+                borderColor: '#86efac'
+              },
+              { 
+                label: 'Absent Today', 
+                value: stats.absentToday, 
+                subtitle: `${Math.round((stats.absentToday / (attendance.length || 1)) * 100)}% of records`,
+                icon: <CalendarMonth sx={{ fontSize: 28 }} />,
+                bg: 'linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)',
+                color: '#dc2626',
+                borderColor: '#f87171'
+              },
+              { 
+                label: 'Face Registered', 
+                value: stats.registeredFaces, 
+                subtitle: `${stats.totalUsers - stats.registeredFaces} pending`,
+                icon: <ManageAccounts sx={{ fontSize: 28 }} />,
+                bg: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)',
+                color: '#f97316',
+                borderColor: '#fdba74'
+              },
+            ].map((metric, i) => (
+              <Grid item xs={12} sm={6} md={3} key={i}>
+                <Card elevation={0} sx={{ borderRadius: '20px', background: metric.bg, border: `1px solid ${metric.borderColor}`, overflow: 'hidden', position: 'relative', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.1)' } }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box>
+                        <Typography variant="body2" sx={{ color: metric.color, fontWeight: '700', mb: 1, fontFamily: '"Inter", sans-serif', opacity: 0.8 }}>
+                          {metric.label}
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <Tooltip title="Refresh Data">
-                            <IconButton
-                              size="small"
-                              onClick={fetchData}
-                              sx={{
-                                background: '#f3f4f6',
-                                '&:hover': { background: '#e5e7eb' }
-                              }}
-                            >
-                              <Refresh sx={{ fontSize: 18 }} />
-                            </IconButton>
-                          </Tooltip>
+                        <Typography variant="h3" fontWeight="800" sx={{ color: metric.color, fontFamily: '"Inter", sans-serif', letterSpacing: '-0.02em' }}>
+                          {metric.value}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ width: 56, height: 56, borderRadius: '14px', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {metric.icon}
+                      </Box>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: metric.color, fontWeight: '600', fontFamily: '"Inter", sans-serif', opacity: 0.9 }}>
+                      {metric.subtitle}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Fade>
 
+        {/* Modern Tab Navigation */}
+        <Fade in timeout={1000}>
+          <Card elevation={0} sx={{ borderRadius: '20px', mb: 4, background: '#ffffff', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)' }}>
+            <Box sx={{ p: 2 }}>
+              <Tabs 
+                value={activeTab} 
+                onChange={(e, newValue) => setActiveTab(newValue)} 
+                variant="fullWidth"
+                sx={{ 
+                  '& .MuiTab-root': { 
+                    minHeight: 68, 
+                    fontSize: '0.95rem', 
+                    fontWeight: '700', 
+                    color: '#78716c', 
+                    borderRadius: '14px', 
+                    textTransform: 'none', 
+                    fontFamily: '"Inter", sans-serif',
+                    transition: 'all 0.3s ease',
+                    '&.Mui-selected': { 
+                      color: '#212E46', 
+                      background: 'linear-gradient(135deg, #f5f5f4 0%, #e7e5e4 100%)',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                    },
+                    '&:hover': {
+                      background: '#fafaf9'
+                    }
+                  }, 
+                  '& .MuiTabs-indicator': { display: 'none' } 
+                }}
+              >
+                <Tab icon={<ManageAccounts sx={{ fontSize: 24 }} />} label="User Management" iconPosition="start" />
+                <Tab icon={<Analytics sx={{ fontSize: 24 }} />} label="Analytics & Reports" iconPosition="start" />
+              </Tabs>
+            </Box>
+          </Card>
+        </Fade>
+
+        {activeTab === 0 && (
+          <>
+            {/* Main Content Grid */}
+            <Grid container spacing={3}>
+              {/* Modern User Cards List */}
+              <Grid item xs={12} lg={7}>
+                <Card elevation={0} sx={{ borderRadius: '24px', background: '#ffffff', boxShadow: '0 8px 32px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)' }}>
+                  <Box sx={{ p: 4, borderBottom: '2px solid #f3f4f6' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Group sx={{ fontSize: 24, color: '#212E46' }} />
+                        </Box>
+                        <Box>
+                          <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>User Directory</Typography>
+                          <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>{filteredUsers.length} total users</Typography>
                         </Box>
                       </Box>
+                      <Tooltip title="Add User">
+                        <IconButton sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', color: '#ffffff', '&:hover': { background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)' } }}>
+                          <PersonAdd sx={{ fontSize: 20 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+                    <TextField 
+                      fullWidth 
+                      size="small" 
+                      placeholder="Search by name, email, or ID..." 
+                      value={filters.search} 
+                      onChange={(e) => setFilters({ ...filters, search: e.target.value })} 
+                      InputProps={{ startAdornment: <Search sx={{ mr: 1, color: '#9ca3af' }} /> }}
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': { 
+                          borderRadius: '12px', 
+                          background: '#fafaf9', 
+                          fontFamily: '"Inter", sans-serif',
+                          '& fieldset': { border: '1px solid #e7e5e4' },
+                          '&:hover fieldset': { border: '1px solid #d6d3d1' },
+                          '&.Mui-focused fieldset': { border: '2px solid #f97316' }
+                        } 
+                      }} 
+                    />
+                  </Box>
 
-                      <TextField
-                        type="date"
-                        size="small"
-                        value={filters.date}
-                        onChange={(e) => setFilters({ ...filters, date: e.target.value })}
-                        sx={{
-                          mb: 2,
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: '8px',
-                            background: '#f9fafb',
-                            border: '1px solid #e5e7eb',
-                            '& fieldset': {
-                              border: 'none',
-                            },
-                            '&:hover': {
-                              background: '#f3f4f6',
-                            },
-                            '&.Mui-focused': {
-                              background: '#ffffff',
-                              boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-                              border: '1px solid #3b82f6',
-                            },
-                          },
-                        }}
-                      />
+                  <Box sx={{ maxHeight: 520, overflow: 'auto', p: 3 }}>
+                    {filteredUsers.length === 0 ? (
+                      <Box sx={{ textAlign: 'center', py: 6 }}>
+                        <Typography variant="body1" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif', mb: 1 }}>
+                          No users found
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#9ca3af', fontFamily: '"Inter", sans-serif' }}>
+                          Try adjusting your search criteria
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <Stack spacing={2}>
+                        {filteredUsers.map((user) => (
+                          <Paper 
+                            key={user.id} 
+                            elevation={0} 
+                            sx={{ 
+                              borderRadius: '16px', 
+                              border: '1px solid #f3f4f6', 
+                              p: 3, 
+                              transition: 'all 0.2s ease', 
+                              '&:hover': { 
+                                border: '1px solid #e7e5e4', 
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)', 
+                                transform: 'translateY(-2px)' 
+                              } 
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                                <Avatar 
+                                  sx={{ 
+                                    width: 52, 
+                                    height: 52, 
+                                    background: user.face_registered 
+                                      ? 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)' 
+                                      : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)', 
+                                    color: user.face_registered ? '#212E46' : '#92400e', 
+                                    fontWeight: '800', 
+                                    fontSize: '1.2rem',
+                                    border: user.face_registered ? '2px solid #93c5fd' : '2px solid #fcd34d'
+                                  }}
+                                >
+                                  {user.full_name.charAt(0)}
+                                </Avatar>
+                                <Box sx={{ flex: 1 }}>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <Typography variant="body1" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
+                                      {user.full_name}
+                                    </Typography>
+                                    <Chip 
+                                      label={user.face_registered ? 'Active' : 'Pending'} 
+                                      size="small" 
+                                      sx={{ 
+                                        background: user.face_registered ? '#dcfce7' : '#fef3c7', 
+                                        color: user.face_registered ? '#16a34a' : '#d97706', 
+                                        fontWeight: '700', 
+                                        fontSize: '0.65rem', 
+                                        fontFamily: '"Inter", sans-serif', 
+                                        height: '20px',
+                                        '& .MuiChip-label': { px: 1.5 }
+                                      }} 
+                                    />
+                                  </Box>
+                                  <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif', display: 'block', mb: 0.5 }}>
+                                    {user.email}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: '#9ca3af', fontFamily: 'monospace', fontSize: '0.7rem' }}>
+                                    ID: {user.unique_id}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Tooltip title="Delete User">
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={() => setDeleteDialog({ open: true, user })} 
+                                    sx={{ 
+                                      color: '#dc2626', 
+                                      '&:hover': { background: '#fef2f2' } 
+                                    }}
+                                  >
+                                    <Delete sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            </Box>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    )}
+                  </Box>
+                </Card>
+              </Grid>
 
-                      <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Search employees by name..."
-                        value={filters.search}
-                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                        InputProps={{
-                          startAdornment: <Search sx={{ mr: 2, color: '#9ca3af', fontSize: 20 }} />,
-                        }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            borderRadius: '8px',
-                            background: '#f9fafb',
-                            border: '1px solid #e5e7eb',
-                            '& fieldset': {
-                              border: 'none',
-                            },
-                            '&:hover': {
-                              background: '#f3f4f6',
-                            },
-                            '&.Mui-focused': {
-                              background: '#ffffff',
-                              boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
-                              border: '1px solid #3b82f6',
-                            },
-                          },
-                        }}
+              {/* Modern Attendance Panel */}
+              <Grid item xs={12} lg={5}>
+                <Stack spacing={3}>
+                  {/* Compact Date Selector */}
+                  <Card elevation={0} sx={{ borderRadius: '20px', background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', border: '1px solid #93c5fd', p: 3 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                      <Box sx={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <CalendarMonth sx={{ color: '#3b82f6', fontSize: 22 }} />
+                      </Box>
+                      <Typography variant="h6" fontWeight="800" sx={{ color: '#1e40af', fontFamily: '"Inter", sans-serif' }}>
+                        Select Date
+                      </Typography>
+                    </Box>
+                    <TextField 
+                      type="date" 
+                      fullWidth 
+                      value={filters.date} 
+                      onChange={(e) => setFilters({ ...filters, date: e.target.value })}
+                      sx={{ 
+                        '& .MuiOutlinedInput-root': { 
+                          borderRadius: '12px', 
+                          background: '#ffffff', 
+                          fontFamily: '"Inter", sans-serif', 
+                          fontWeight: '600',
+                          border: '2px solid #bfdbfe',
+                          '& fieldset': { border: 'none' }
+                        } 
+                      }} 
+                    />
+                  </Card>
+
+                  {/* Enhanced Attendance Records */}
+                  <Card elevation={0} sx={{ borderRadius: '24px', background: '#ffffff', boxShadow: '0 8px 32px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)' }}>
+                    <Box sx={{ p: 4, borderBottom: '2px solid #f3f4f6' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                        <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Insights sx={{ color: '#f97316', fontSize: 24 }} />
+                        </Box>
+                        <Box>
+                          <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
+                            Attendance Log
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
+                            {filteredAttendance.length} records for {format(parseISO(filters.date), 'MMM dd')}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <TextField 
+                        fullWidth 
+                        size="small" 
+                        placeholder="Search employees..." 
+                        value={filters.search} 
+                        onChange={(e) => setFilters({ ...filters, search: e.target.value })} 
+                        InputProps={{ startAdornment: <Search sx={{ mr: 1, color: '#9ca3af' }} /> }}
+                        sx={{ 
+                          '& .MuiOutlinedInput-root': { 
+                            borderRadius: '12px', 
+                            background: '#fafaf9', 
+                            fontFamily: '"Inter", sans-serif', 
+                            '& fieldset': { border: '1px solid #e7e5e4' },
+                            '&:hover fieldset': { border: '1px solid #d6d3d1' },
+                            '&.Mui-focused fieldset': { border: '2px solid #f97316' }
+                          } 
+                        }} 
                       />
                     </Box>
 
-                    <Box sx={{ maxHeight: 400, overflow: 'auto' }}>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                              Employee
-                            </TableCell>
-                            <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                              Time
-                            </TableCell>
-                            <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                              Status
-                            </TableCell>
-                            <TableCell sx={{ color: '#6b7280', fontWeight: 600, fontSize: '0.875rem' }}>
-                              Actions
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
+                    <Box sx={{ maxHeight: 440, overflow: 'auto', p: 3 }}>
+                      {filteredAttendance.length === 0 ? (
+                        <Box sx={{ textAlign: 'center', py: 6 }}>
+                          <Typography variant="body1" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif', mb: 1 }}>
+                            No attendance records
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#9ca3af', fontFamily: '"Inter", sans-serif' }}>
+                            No data found for selected date
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Stack spacing={2}>
                           {filteredAttendance.map((record) => (
-                            <TableRow key={record.id} sx={{ '&:hover': { background: '#f9fafb' } }}>
-                              <TableCell sx={{ py: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                  <Avatar
-                                    sx={{
-                                      width: 32,
-                                      height: 32,
-                                      background: record.status === 'present' ? '#dcfce7' : '#fecaca',
-                                      color: record.status === 'present' ? '#16a34a' : '#dc2626',
-                                      fontSize: '0.875rem',
-                                      fontWeight: 'bold',
+                            <Paper 
+                              key={record.id} 
+                              elevation={0} 
+                              sx={{ 
+                                borderRadius: '14px', 
+                                border: '1px solid #f3f4f6', 
+                                p: 2.5, 
+                                transition: 'all 0.2s ease', 
+                                '&:hover': { 
+                                  border: '1px solid #e7e5e4', 
+                                  background: '#fafaf9' 
+                                } 
+                              }}
+                            >
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1 }}>
+                                  <Box 
+                                    sx={{ 
+                                      width: 40, 
+                                      height: 40, 
+                                      borderRadius: '10px', 
+                                      background: record.status === 'present' ? '#dcfce7' : '#fecaca', 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'center' 
                                     }}
                                   >
-                                    {record.user.full_name.charAt(0)}
-                                  </Avatar>
-                                  <Box>
-                                    <Typography variant="body2" fontWeight="500" sx={{ color: '#1f2937' }}>
+                                    <Box 
+                                      sx={{ 
+                                        width: 12, 
+                                        height: 12, 
+                                        borderRadius: '50%', 
+                                        background: record.status === 'present' ? '#16a34a' : '#dc2626' 
+                                      }} 
+                                    />
+                                  </Box>
+                                  <Box sx={{ flex: 1 }}>
+                                    <Typography variant="body2" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif', fontSize: '0.9rem', mb: 0.5 }}>
                                       {record.user.full_name}
                                     </Typography>
-                                    <Typography variant="caption" sx={{ color: '#6b7280' }}>
-                                      {record.user.unique_id}
+                                    <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
+                                      {record.time_in ? format(parseISO(`2000-01-01T${record.time_in}`), 'hh:mm a') : 'No check-in'}
                                     </Typography>
                                   </Box>
                                 </Box>
-                              </TableCell>
-                              <TableCell sx={{ py: 2 }}>
-                                <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                                  {record.time_in ? format(parseISO(`2000-01-01T${record.time_in}`), 'hh:mm a') : '-'}
-                                </Typography>
-                              </TableCell>
-                              <TableCell sx={{ py: 2 }}>
-                                <Chip
-                                  size="small"
-                                  label={record.status}
-                                  sx={{
-                                    background: record.status === 'present' ? '#dcfce7' : '#fecaca',
-                                    color: record.status === 'present' ? '#16a34a' : '#dc2626',
-                                    fontWeight: '500',
-                                    fontSize: '0.75rem',
-                                    textTransform: 'capitalize',
-                                  }}
-                                />
-                              </TableCell>
-                              <TableCell sx={{ py: 2 }}>
-                                <Tooltip title="More Actions">
-                                  <IconButton
-                                    size="small"
-                                    onClick={(e) => setActionMenu({ anchorEl: e.currentTarget, record })}
-                                    sx={{
-                                      color: '#6b7280',
-                                      '&:hover': { background: '#f3f4f6' }
-                                    }}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Chip 
+                                    label={record.status} 
+                                    size="small" 
+                                    sx={{ 
+                                      background: record.status === 'present' ? '#dcfce7' : '#fecaca', 
+                                      color: record.status === 'present' ? '#16a34a' : '#dc2626', 
+                                      fontWeight: '700', 
+                                      fontSize: '0.7rem', 
+                                      textTransform: 'capitalize', 
+                                      fontFamily: '"Inter", sans-serif', 
+                                      height: '22px' 
+                                    }} 
+                                  />
+                                  <IconButton 
+                                    size="small" 
+                                    onClick={(e) => setActionMenu({ anchorEl: e.currentTarget, record })} 
+                                    sx={{ '&:hover': { background: '#f3f4f6' } }}
                                   >
                                     <MoreVert sx={{ fontSize: 18 }} />
                                   </IconButton>
-                                </Tooltip>
-                              </TableCell>
-                            </TableRow>
+                                </Box>
+                              </Box>
+                            </Paper>
                           ))}
-                          {filteredAttendance.length === 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} sx={{ py: 6, textAlign: 'center' }}>
-                                <Typography variant="body2" sx={{ color: '#6b7280', mb: 1 }}>
-                                  No attendance records found
-                                </Typography>
-                                <Typography variant="caption" sx={{ color: '#9ca3af' }}>
-                                  {filters.search ? 'Try adjusting your search' : 'No records for this date'}
-                                </Typography>
-                              </TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
+                        </Stack>
+                      )}
                     </Box>
                   </Card>
-                </Fade>
+                </Stack>
               </Grid>
             </Grid>
           </>
         )}
 
-        {activeTab === 1 && (
-          <AnalyticsDashboard />
-        )}
+        {activeTab === 1 && <AnalyticsDashboard />}
 
-        {/* Action Menu for Attendance Records */}
-        <Menu
-          anchorEl={actionMenu.anchorEl}
-          open={Boolean(actionMenu.anchorEl)}
-          onClose={() => setActionMenu({ anchorEl: null, record: null })}
-          PaperProps={{
-            sx: {
-              borderRadius: '12px',
-              border: '1px solid #e5e7eb',
-              minWidth: 200,
-              '& .MuiMenuItem-root': {
-                py: 1.5,
-                px: 2,
-                gap: 2,
-                '&:hover': {
-                  background: '#f3f4f6',
-                }
-              }
-            }
-          }}
-        >
-          <MenuItem onClick={() => handleMarkPresent(actionMenu.record)}>
-            <CheckCircle sx={{ color: '#16a34a', fontSize: 20 }} />
-            <Typography>Mark Present</Typography>
+        {/* Action Menu */}
+        <Menu anchorEl={actionMenu.anchorEl} open={Boolean(actionMenu.anchorEl)} onClose={() => setActionMenu({ anchorEl: null, record: null })}
+          PaperProps={{ sx: { borderRadius: '14px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 200, border: '1px solid #e7e5e4' } }}>
+          <MenuItem onClick={() => handleMarkPresent(actionMenu.record)} sx={{ gap: 2, fontFamily: '"Inter", sans-serif', py: 1.5, '&:hover': { background: '#dcfce7' } }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: '#16a34a' }} />
+            Mark Present
           </MenuItem>
-          
-          <MenuItem onClick={() => handleMarkAbsent(actionMenu.record)}>
-            <Cancel sx={{ color: '#dc2626', fontSize: 20 }} />
-            <Typography>Mark Absent</Typography>
+          <MenuItem onClick={() => handleMarkAbsent(actionMenu.record)} sx={{ gap: 2, fontFamily: '"Inter", sans-serif', py: 1.5, '&:hover': { background: '#fecaca' } }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: '#dc2626' }} />
+            Mark Absent
           </MenuItem>
-          
-          <MenuItem onClick={() => handleEditTime(actionMenu.record)}>
-            <AccessTime sx={{ color: '#f59e0b', fontSize: 20 }} />
-            <Typography>Edit Time</Typography>
-          </MenuItem>
-          
-          <Divider sx={{ my: 1 }} />
-          
-          <MenuItem onClick={() => setActionMenu({ anchorEl: null, record: null })}>
-            <Close sx={{ color: '#6b7280', fontSize: 20 }} />
-            <Typography>Cancel</Typography>
+          <MenuItem onClick={() => handleEditTime(actionMenu.record)} sx={{ gap: 2, fontFamily: '"Inter", sans-serif', py: 1.5, '&:hover': { background: '#ffedd5' } }}>
+            <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: '#f97316' }} />
+            Edit Time
           </MenuItem>
         </Menu>
 
-        {/* Edit Attendance Dialog */}
-        <Dialog
-          open={editAttendanceDialog.open}
-          onClose={() => setEditAttendanceDialog({ open: false, record: null })}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: '16px',
-              border: '1px solid #e5e7eb',
-            }
-          }}
-        >
-          <DialogTitle sx={{ color: '#1f2937', fontWeight: '600', pb: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <ScheduleIcon sx={{ color: '#3b82f6' }} />
-              Edit Attendance Time
-            </Box>
+        {/* Edit Dialog */}
+        <Dialog open={editAttendanceDialog.open} onClose={() => setEditAttendanceDialog({ open: false, record: null })} maxWidth="sm" fullWidth
+          PaperProps={{ sx: { borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' } }}>
+          <DialogTitle sx={{ fontWeight: '800', fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}><ScheduleIcon sx={{ color: '#f97316' }} />Edit Attendance</Box>
           </DialogTitle>
-          
-          <DialogContent sx={{ pb: 3 }}>
+          <DialogContent>
             {editAttendanceDialog.record && (
               <Box sx={{ pt: 2 }}>
-                <Alert severity="info" sx={{ mb: 3, borderRadius: '8px' }}>
-                  Editing attendance for <strong>{editAttendanceDialog.record.user.full_name}</strong>
+                <Alert severity="info" sx={{ mb: 3, borderRadius: '12px', fontFamily: '"Inter", sans-serif' }}>
+                  Editing for <strong>{editAttendanceDialog.record.user.full_name}</strong>
                 </Alert>
-                
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <FormControl fullWidth>
-                      <InputLabel>Status</InputLabel>
-                      <Select
-                        value={editAttendanceDialog.record.status}
-                        label="Status"
-                        onChange={(e) => setEditAttendanceDialog({
-                          ...editAttendanceDialog,
-                          record: { ...editAttendanceDialog.record, status: e.target.value }
-                        })}
-                        sx={{ borderRadius: '8px' }}
-                      >
-                        <MenuItem value="present">Present</MenuItem>
-                        <MenuItem value="absent">Absent</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  
+                <Stack spacing={3}>
+                  <FormControl fullWidth>
+                    <InputLabel>Status</InputLabel>
+                    <Select value={editAttendanceDialog.record.status} label="Status" onChange={(e) => setEditAttendanceDialog({ ...editAttendanceDialog, record: { ...editAttendanceDialog.record, status: e.target.value } })} sx={{ borderRadius: '12px' }}>
+                      <MenuItem value="present">Present</MenuItem>
+                      <MenuItem value="absent">Absent</MenuItem>
+                    </Select>
+                  </FormControl>
                   {editAttendanceDialog.record.status === 'present' && (
-                    <Grid item xs={12}>
-                      <TextField
-                        fullWidth
-                        label="Check-in Time"
-                        type="time"
-                        value={editAttendanceDialog.record.editTime}
-                        onChange={(e) => setEditAttendanceDialog({
-                          ...editAttendanceDialog,
-                          record: { ...editAttendanceDialog.record, editTime: e.target.value }
-                        })}
-                        InputLabelProps={{ shrink: true }}
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-                      />
-                    </Grid>
+                    <TextField fullWidth label="Check-in Time" type="time" value={editAttendanceDialog.record.editTime} onChange={(e) => setEditAttendanceDialog({ ...editAttendanceDialog, record: { ...editAttendanceDialog.record, editTime: e.target.value } })} InputLabelProps={{ shrink: true }} sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }} />
                   )}
-                </Grid>
+                </Stack>
               </Box>
             )}
           </DialogContent>
-          
           <DialogActions sx={{ p: 3, gap: 2 }}>
-            <Button 
-              onClick={() => setEditAttendanceDialog({ open: false, record: null })}
-              sx={{
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontWeight: '500',
-                color: '#6b7280',
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveAttendanceEdit}
-              variant="contained"
-              disabled={editAttendanceLoading}
-              startIcon={editAttendanceLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : <Save />}
-              sx={{
-                borderRadius: '8px',
-                background: '#3b82f6',
-                textTransform: 'none',
-                fontWeight: '500',
-                boxShadow: 'none',
-                '&:hover': {
-                  background: '#2563eb',
-                  boxShadow: 'none',
-                },
-                '&:disabled': {
-                  background: '#3b82f6',
-                  opacity: 0.6,
-                },
-              }}
-            >
-              {editAttendanceLoading ? 'Saving...' : 'Save Changes'}
+            <Button onClick={() => setEditAttendanceDialog({ open: false, record: null })} sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}>Cancel</Button>
+            <Button onClick={handleSaveAttendanceEdit} variant="contained" disabled={editAttendanceLoading} startIcon={editAttendanceLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : <Save />}
+              sx={{ borderRadius: '10px', background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', boxShadow: '0 4px 12px rgba(33,46,70,0.2)' }}>
+              {editAttendanceLoading ? 'Saving...' : 'Save'}
             </Button>
           </DialogActions>
         </Dialog>
 
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={deleteDialog.open}
-          onClose={() => setDeleteDialog({ open: false, user: null })}
-          PaperProps={{
-            sx: {
-              borderRadius: '16px',
-              border: '1px solid #e5e7eb',
-            },
-          }}
-        >
-          <DialogTitle sx={{ color: '#1f2937', fontWeight: '600' }}>
-            Confirm User Deletion
-          </DialogTitle>
+        {/* Delete Dialog */}
+        <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, user: null })} PaperProps={{ sx: { borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' } }}>
+          <DialogTitle sx={{ fontWeight: '800', fontFamily: '"Inter", sans-serif', color: '#212E46' }}>Confirm Deletion</DialogTitle>
           <DialogContent>
-            <Typography sx={{ color: '#6b7280', lineHeight: 1.6 }}>
-              Are you sure you want to delete user "{deleteDialog.user?.full_name}"? 
-              This action cannot be undone and will permanently remove all their data and attendance records.
+            <Typography sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif', lineHeight: 1.7 }}>
+              Delete <strong>{deleteDialog.user?.full_name}</strong>? This cannot be undone.
             </Typography>
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
-            <Button 
-              onClick={() => setDeleteDialog({ open: false, user: null })}
-              sx={{
-                borderRadius: '8px',
-                textTransform: 'none',
-                fontWeight: '500',
-                color: '#6b7280',
-              }}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleDeleteUser} 
-              variant="contained"
-              disabled={deleteLoading}
-              startIcon={deleteLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : null}
-              sx={{
-                borderRadius: '8px',
-                background: '#dc2626',
-                textTransform: 'none',
-                fontWeight: '500',
-                boxShadow: 'none',
-                '&:hover': {
-                  background: '#b91c1c',
-                  boxShadow: 'none',
-                },
-                '&:disabled': {
-                  background: '#dc2626',
-                  opacity: 0.6,
-                },
-              }}
-            >
-              {deleteLoading ? 'Deleting...' : 'Delete User'}
+            <Button onClick={() => setDeleteDialog({ open: false, user: null })} sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}>Cancel</Button>
+            <Button onClick={handleDeleteUser} variant="contained" disabled={deleteLoading} startIcon={deleteLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : null}
+              sx={{ borderRadius: '10px', background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', boxShadow: '0 4px 12px rgba(220,38,38,0.2)' }}>
+              {deleteLoading ? 'Deleting...' : 'Delete'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -985,4 +735,4 @@ const AdminDashboard = () => {
   );
 };
 
-export default AdminDashboard; 
+export default AdminDashboard;

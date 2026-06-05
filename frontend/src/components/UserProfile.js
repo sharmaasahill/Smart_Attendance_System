@@ -17,6 +17,9 @@ import {
   IconButton,
   Fade,
   CircularProgress,
+  CardMedia,
+  Stack,
+  Paper,
 } from '@mui/material';
 import {
   Person as PersonIcon,
@@ -29,6 +32,8 @@ import {
   Business as BusinessIcon,
   Badge as BadgeIcon,
   Close as CloseIcon,
+  Visibility as VisibilityIcon,
+  Face as FaceIcon,
 } from '@mui/icons-material';
 import { userAPI } from '../services/api';
 
@@ -39,6 +44,9 @@ const UserProfile = () => {
   const [success, setSuccess] = useState('');
   const [editMode, setEditMode] = useState(false);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [viewFacesDialogOpen, setViewFacesDialogOpen] = useState(false);
+  const [registeredFaces, setRegisteredFaces] = useState(null);
+  const [loadingFaces, setLoadingFaces] = useState(false);
 
   // Form states
   const [profileForm, setProfileForm] = useState({
@@ -158,6 +166,39 @@ const UserProfile = () => {
     });
     setEditMode(false);
     setError('');
+  };
+
+  const handleViewRegisteredFaces = async () => {
+    setViewFacesDialogOpen(true);
+    setLoadingFaces(true);
+    setError('');
+    
+    try {
+      const response = await userAPI.getRegisteredFaces();
+      console.log('Face API Response:', response); // Debug log
+      
+      // Check if response has data
+      if (response && response.data) {
+        // Ensure faces array exists
+        if (!response.data.faces) {
+          response.data.faces = [];
+        }
+        setRegisteredFaces(response.data);
+      } else {
+        setError('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Error loading faces:', error); // Debug log
+      let errorMsg = 'Failed to load registered faces';
+      if (error.response?.status === 404) {
+        errorMsg = 'No face data found. Please register your face first.';
+      } else if (error.response?.data?.detail) {
+        errorMsg = error.response.data.detail;
+      }
+      setError(errorMsg);
+    } finally {
+      setLoadingFaces(false);
+    }
   };
 
   if (loading) {
@@ -515,16 +556,64 @@ const UserProfile = () => {
                         <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500, mb: 1 }}>
                           Face Registration Status
                         </Typography>
-                        <Chip 
-                          label={user?.face_registered ? 'Registered' : 'Pending'} 
-                          sx={{
-                            background: user?.face_registered ? '#dcfce7' : '#fef3c7',
-                            color: user?.face_registered ? '#16a34a' : '#d97706',
-                            fontWeight: '500',
-                            fontSize: '0.75rem',
-                            ml: 0,
-                          }}
-                        />
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Chip 
+                            label={user?.face_registered ? 'Registered' : 'Pending'} 
+                            sx={{
+                              background: user?.face_registered ? '#dcfce7' : '#fef3c7',
+                              color: user?.face_registered ? '#16a34a' : '#d97706',
+                              fontWeight: '500',
+                              fontSize: '0.75rem',
+                              ml: 0,
+                            }}
+                          />
+                          {user?.face_registered ? (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<VisibilityIcon />}
+                              onClick={handleViewRegisteredFaces}
+                              sx={{
+                                borderRadius: '8px',
+                                border: '1px solid #e5e7eb',
+                                color: '#6b7280',
+                                textTransform: 'none',
+                                fontWeight: '600',
+                                fontSize: '0.75rem',
+                                fontFamily: '"Inter", sans-serif',
+                                '&:hover': {
+                                  border: '1px solid #d1d5db',
+                                  background: '#f9fafb',
+                                },
+                              }}
+                            >
+                              View Faces
+                            </Button>
+                          ) : (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<FaceIcon />}
+                              onClick={() => window.location.href = '/face-capture'}
+                              sx={{
+                                borderRadius: '8px',
+                                background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)',
+                                color: '#ffffff',
+                                textTransform: 'none',
+                                fontWeight: '600',
+                                fontSize: '0.75rem',
+                                fontFamily: '"Inter", sans-serif',
+                                boxShadow: '0 2px 8px rgba(249,115,22,0.3)',
+                                '&:hover': {
+                                  background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)',
+                                  boxShadow: '0 4px 12px rgba(249,115,22,0.4)',
+                                },
+                              }}
+                            >
+                              Register Face
+                            </Button>
+                          )}
+                        </Stack>
                       </Box>
 
                       <Box>
@@ -699,6 +788,271 @@ const UserProfile = () => {
               }}
             >
               {passwordLoading ? 'Changing...' : 'Change Password'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* View Registered Faces Dialog */}
+        <Dialog 
+          open={viewFacesDialogOpen} 
+          onClose={() => setViewFacesDialogOpen(false)} 
+          maxWidth="md" 
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '20px',
+              border: '1px solid rgba(0,0,0,0.08)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            },
+          }}
+        >
+          <DialogTitle sx={{ 
+            color: '#212E46', 
+            fontWeight: '700', 
+            pb: 2, 
+            fontFamily: '"Inter", sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <FaceIcon sx={{ color: '#f97316', fontSize: 28 }} />
+              Registered Face Images
+            </Box>
+            <IconButton
+              onClick={() => setViewFacesDialogOpen(false)}
+              sx={{ color: '#6b7280' }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ px: 3, pb: 3 }}>
+            {loadingFaces ? (
+              <Box 
+                display="flex" 
+                flexDirection="column"
+                justifyContent="center" 
+                alignItems="center" 
+                minHeight="300px"
+                gap={2}
+              >
+                <CircularProgress size={40} sx={{ color: '#f97316' }} />
+                <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                  Loading your registered faces...
+                </Typography>
+              </Box>
+            ) : error ? (
+              <Box 
+                display="flex" 
+                flexDirection="column"
+                justifyContent="center" 
+                alignItems="center" 
+                minHeight="200px"
+                gap={2}
+              >
+                <Typography variant="body1" sx={{ color: '#dc2626', textAlign: 'center' }}>
+                  {error}
+                </Typography>
+              </Box>
+            ) : registeredFaces ? (
+              <Box>
+                {/* Summary */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    mb: 3,
+                    background: '#f0fdf4',
+                    border: '1px solid #dcfce7',
+                    borderRadius: '12px',
+                  }}
+                >
+                  <Stack direction="row" spacing={3} alignItems="center">
+                    <Box>
+                      <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
+                        Total Faces
+                      </Typography>
+                      <Typography variant="h6" sx={{ color: '#16a34a', fontWeight: '700' }}>
+                        {registeredFaces.total_faces}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ width: '1px', height: '40px', background: '#dcfce7' }} />
+                    <Box>
+                      <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
+                        User ID
+                      </Typography>
+                      <Typography variant="body1" sx={{ color: '#212E46', fontWeight: '600', fontFamily: 'monospace' }}>
+                        {registeredFaces.user_id}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </Paper>
+
+                {/* Face Images Grid */}
+                <Grid container spacing={2}>
+                  {registeredFaces?.faces && Array.isArray(registeredFaces.faces) && registeredFaces.faces.map((face, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                      <Card
+                        elevation={0}
+                        sx={{
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          transition: 'all 0.2s ease',
+                          '&:hover': {
+                            boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+                            transform: 'translateY(-2px)',
+                          },
+                        }}
+                      >
+                        {/* Image */}
+                        <CardMedia
+                          component="img"
+                          image={face.image_data}
+                          alt={face.filename}
+                          sx={{
+                            width: '100%',
+                            height: 200,
+                            objectFit: 'cover',
+                            background: '#f9fafb',
+                          }}
+                        />
+                        
+                        {/* Info */}
+                        <Box sx={{ p: 2 }}>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: '#6b7280', 
+                              fontWeight: '600',
+                              display: 'block',
+                              mb: 1,
+                            }}
+                          >
+                            {face.filename}
+                          </Typography>
+                          
+                          {/* Quality Score */}
+                          {face.quality_score !== null && face.quality_score !== undefined && (
+                            <Box sx={{ mb: 1 }}>
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+                                <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 500 }}>
+                                  Quality Score:
+                                </Typography>
+                                <Chip
+                                  label={`${Math.round(face.quality_score)}%`}
+                                  size="small"
+                                  sx={{
+                                    height: '20px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: '600',
+                                    background: face.quality_score >= 70 ? '#dcfce7' : face.quality_score >= 50 ? '#fef3c7' : '#fecaca',
+                                    color: face.quality_score >= 70 ? '#16a34a' : face.quality_score >= 50 ? '#d97706' : '#dc2626',
+                                  }}
+                                />
+                              </Stack>
+                              
+                              {/* Quality Details */}
+                              {face.quality_details && (
+                                <Box sx={{ mt: 1 }}>
+                                  {Object.entries(face.quality_details)
+                                    .filter(([key, value]) => key !== 'accepted' && value !== null && value !== undefined)
+                                    .map(([key, value]) => {
+                                      const labelMap = {
+                                        'face_size_score': 'Size',
+                                        'brightness_score': 'Brightness',
+                                        'sharpness_score': 'Sharpness',
+                                        'pose_score': 'Pose',
+                                        'eye_visibility_score': 'Eyes',
+                                      };
+                                      return (
+                                        <Box 
+                                          key={key} 
+                                          sx={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            py: 0.3,
+                                          }}
+                                        >
+                                          <Typography variant="caption" sx={{ color: '#6b7280', fontSize: '0.65rem' }}>
+                                            {labelMap[key] || key}
+                                          </Typography>
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Box
+                                              sx={{
+                                                width: '6px',
+                                                height: '6px',
+                                                borderRadius: '50%',
+                                                background: value >= 70 ? '#16a34a' : value >= 50 ? '#d97706' : '#dc2626',
+                                              }}
+                                            />
+                                            <Typography variant="caption" sx={{ color: '#1f2937', fontSize: '0.65rem', fontWeight: '500' }}>
+                                              {Math.round(value)}%
+                                            </Typography>
+                                          </Box>
+                                        </Box>
+                                      );
+                                    })}
+                                </Box>
+                              )}
+                            </Box>
+                          )}
+                          
+                          {/* Registered Date */}
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              color: '#9ca3af',
+                              fontSize: '0.65rem',
+                              display: 'block',
+                              mt: 1,
+                            }}
+                          >
+                            {new Date(face.created_at).toLocaleDateString()}
+                          </Typography>
+                        </Box>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+
+                {/* No faces message */}
+                {registeredFaces?.faces && registeredFaces.faces.length === 0 && (
+                  <Box 
+                    display="flex" 
+                    flexDirection="column"
+                    justifyContent="center" 
+                    alignItems="center" 
+                    minHeight="200px"
+                    gap={2}
+                  >
+                    <FaceIcon sx={{ fontSize: 48, color: '#d1d5db' }} />
+                    <Typography variant="body1" sx={{ color: '#6b7280', textAlign: 'center' }}>
+                      No face images found
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            ) : null}
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 0 }}>
+            <Button 
+              onClick={() => setViewFacesDialogOpen(false)}
+              variant="outlined"
+              sx={{
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb',
+                color: '#6b7280',
+                textTransform: 'none',
+                fontWeight: '600',
+                '&:hover': {
+                  border: '1px solid #d1d5db',
+                  background: '#f9fafb',
+                },
+              }}
+            >
+              Close
             </Button>
           </DialogActions>
         </Dialog>

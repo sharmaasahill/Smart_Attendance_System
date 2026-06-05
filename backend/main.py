@@ -104,13 +104,88 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     }
 
 
+@app.post("/face/check-liveness")
+async def check_liveness_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_user(cred, db))
+):
+    """
+    Real-time liveness detection (anti-spoofing)
+    Detects photo attacks, screen replay, and other spoofing attempts
+    """
+    temp_path = None
+    try:
+        # Save uploaded image temporarily
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+        temp_path = f"uploads/liveness_check_{timestamp}.jpg"
+        
+        with open(temp_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Check liveness
+        liveness_result = face_service.check_image_liveness(temp_path)
+        
+        # Clean up temporary file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        
+        return {
+            "liveness_check": liveness_result,
+            "timestamp": datetime.now().isoformat(),
+            "status": "live_person" if liveness_result['is_live'] else "spoof_detected"
+        }
+    
+    except Exception as e:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise HTTPException(status_code=500, detail=f"Liveness check failed: {str(e)}")
+
+
+@app.post("/face/check-quality")
+async def check_face_quality_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_user(cred, db))
+):
+    """
+    Real-time face quality check for image capture
+    Returns quality metrics and recommendations
+    """
+    temp_path = None
+    try:
+        # Save uploaded image temporarily
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
+        temp_path = f"uploads/quality_check_{timestamp}.jpg"
+        
+        with open(temp_path, "wb") as buffer:
+            content = await file.read()
+            buffer.write(content)
+        
+        # Check quality
+        quality_result = face_service.check_image_quality(temp_path)
+        
+        # Clean up temporary file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        
+        return {
+            "quality_check": quality_result,
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    except Exception as e:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise HTTPException(status_code=500, detail=f"Quality check failed: {str(e)}")
+
+
 @app.post("/face/register")
 async def register_face(
     files: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_user(cred, db))
 ):
-    """Register face images for current user"""
+    """Register face images for current user with quality checks"""
     
     if len(files) < 5:
         raise HTTPException(status_code=400, detail="At least 5 face images required")
@@ -119,34 +194,84 @@ async def register_face(
         raise HTTPException(status_code=400, detail="Maximum 20 face images allowed")
     
     try:
-        # Save uploaded images and train face recognition
+        # Save uploaded images
         image_paths = []
         user_dir = f"dataset/{current_user.unique_id}"
         os.makedirs(user_dir, exist_ok=True)
         
+        # Save uploaded images temporarily for duplicate check
+        temp_image_paths = []
         for i, file in enumerate(files):
-            file_path = f"{user_dir}/face_{i+1}.jpg"
+            file_path = f"{user_dir}/temp_face_{i+1}.jpg"
             with open(file_path, "wb") as buffer:
                 content = await file.read()
                 buffer.write(content)
-            image_paths.append(file_path)
+            temp_image_paths.append(file_path)
         
-        # Train face recognition model
-        face_encoding = face_service.train_user_face(current_user.unique_id, image_paths)
+        # Check for duplicate faces in database
+        try:
+            duplicate_user = face_service.find_duplicate_face(temp_image_paths[0], db, current_user.unique_id)
+            if duplicate_user:
+                # Clean up temp files
+                for temp_file in temp_image_paths:
+                    if os.path.exists(temp_file):
+                        os.remove(temp_file)
+                
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"This face is already registered to user: {duplicate_user['full_name']} (ID: {duplicate_user['unique_id']}). Each person can only register once."
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Duplicate detection failed: {str(e)}")
+            # Continue with registration if duplicate check fails
+        
+        # Rename temp files to final names
+        for i, temp_file in enumerate(temp_image_paths):
+            final_file = f"{user_dir}/face_{i+1}.jpg"
+            if os.path.exists(final_file):
+                os.remove(final_file)
+            os.rename(temp_file, final_file)
+            image_paths.append(final_file)
+        
+        # Train face recognition model with quality checks
+        result = face_service.train_user_face(current_user.unique_id, image_paths)
+        
+        if not result.get('success', False):
+            raise HTTPException(
+                status_code=400, 
+                detail=result.get('message', 'Face registration failed'),
+                headers={"X-Quality-Reports": str(result.get('quality_reports', []))}
+            )
         
         # Update user with face registration status
         current_user.face_registered = True
         current_user.face_encoding_path = f"{user_dir}/encoding.json"
         db.commit()
         
-        return {"message": "Face registration successful", "user_id": current_user.unique_id}
+        return {
+            "message": "Face registration successful with quality and liveness validation",
+            "user_id": current_user.unique_id,
+            "statistics": result.get('statistics', {}),
+            "quality_summary": {
+                "total_images": result['statistics']['total_images'],
+                "acceptable_images": result['statistics']['acceptable_images'],
+                "average_quality_score": round(result['statistics']['average_quality_score'], 2),
+                "liveness_checked": result['statistics'].get('liveness_checked', False),
+                "average_liveness_confidence": round(result['statistics']['average_liveness_confidence'], 2) if result['statistics'].get('average_liveness_confidence') else None
+            }
+        }
     
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Face registration failed: {str(e)}")
 
 @app.post("/attendance/mark")
 async def mark_attendance(
     file: UploadFile = File(...),
+    skip_liveness: bool = Form(False),
     db: Session = Depends(get_db)
 ):
     temp_path = None
@@ -162,6 +287,32 @@ async def mark_attendance(
             buffer.write(content)
         
         print(f"[DEBUG] Saved temp file: {temp_path}, size: {len(content)} bytes")
+        
+        # Check liveness (anti-spoofing) if enabled - TEMPORARILY DISABLED
+        liveness_result = None
+        if False and face_service.enable_liveness_check and not skip_liveness:  # Disabled for now
+            print(f"[DEBUG] Performing liveness detection...")
+            liveness_result = face_service.check_image_liveness(temp_path)
+            print(f"[DEBUG] Liveness result: Live={liveness_result['is_live']}, "
+                  f"Confidence={liveness_result['confidence']:.1f}%")
+            
+            # Reject if spoofing detected
+            if not liveness_result['is_live']:
+                raise HTTPException(
+                    status_code=403, 
+                    detail=f"Spoof attack detected. Liveness confidence: {liveness_result['confidence']:.1f}%. "
+                           f"Please use a live camera feed, not photos or screens. "
+                           f"Recommendations: {', '.join(liveness_result['recommendations'])}"
+                )
+            
+            # Check minimum confidence threshold
+            if liveness_result['confidence'] < face_service.min_liveness_confidence:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Liveness confidence too low: {liveness_result['confidence']:.1f}%. "
+                           f"Required: {face_service.min_liveness_confidence}%. "
+                           f"Recommendations: {', '.join(liveness_result['recommendations'])}"
+                )
         
         # Recognize face
         print(f"[DEBUG] Starting face recognition...")
@@ -201,7 +352,9 @@ async def mark_attendance(
                 return {
                     "message": f"Attendance updated successfully for {user.full_name} - Status changed from absent to present",
                     "user": UserResponse.from_orm(user),
-                    "attendance": AttendanceResponse.from_orm(existing_attendance)
+                    "attendance": AttendanceResponse.from_orm(existing_attendance),
+                    "liveness_verified": liveness_result is not None,
+                    "liveness_confidence": liveness_result['confidence'] if liveness_result else None
                 }
             else:
                 # If already present, don't allow duplicate marking
@@ -225,7 +378,9 @@ async def mark_attendance(
         return {
             "message": f"Attendance marked successfully for {user.full_name}",
             "user": UserResponse.from_orm(user),
-            "attendance": AttendanceResponse.from_orm(attendance)
+            "attendance": AttendanceResponse.from_orm(attendance),
+            "liveness_verified": liveness_result is not None,
+            "liveness_confidence": liveness_result['confidence'] if liveness_result else None
         }
     
     except HTTPException:
@@ -476,6 +631,409 @@ async def delete_user(
     
     return {"message": f"User {user.full_name} deleted successfully"}
 
+# ============ ADMIN FACE MANAGEMENT ENDPOINTS ============
+
+@app.get("/admin/users/face-status")
+async def get_users_face_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_admin_user(cred, db))
+):
+    """Admin only: Get all users with face registration status"""
+    
+    users = db.query(User).all()
+    users_status = []
+    
+    for user in users:
+        user_dir = f"dataset/{user.unique_id}"
+        encoding_file = f"{user_dir}/encoding.pkl"
+        
+        # Check if face is registered
+        face_registered = os.path.exists(encoding_file)
+        
+        # Get registration details if available
+        registration_details = None
+        if face_registered:
+            try:
+                import pickle
+                with open(encoding_file, 'rb') as f:
+                    data = pickle.load(f)
+                    registration_details = {
+                        'registered_date': datetime.fromtimestamp(os.path.getctime(encoding_file)).isoformat(),
+                        'valid_images': data.get('valid_images', 0),
+                        'model': data.get('model', 'unknown'),
+                        'quality_checked': data.get('quality_checked', False),
+                        'liveness_checked': data.get('liveness_checked', False),
+                    }
+            except Exception as e:
+                print(f"Error reading face data for {user.unique_id}: {str(e)}")
+        
+        # Count face images
+        face_images_count = 0
+        if os.path.exists(user_dir):
+            face_images_count = len([f for f in os.listdir(user_dir) if f.startswith('face_') and f.endswith('.jpg')])
+        
+        users_status.append({
+            'user': UserResponse.from_orm(user),
+            'face_registered': face_registered,
+            'face_images_count': face_images_count,
+            'registration_details': registration_details
+        })
+    
+    return {
+        'total_users': len(users),
+        'users_with_faces': sum(1 for u in users_status if u['face_registered']),
+        'users_without_faces': sum(1 for u in users_status if not u['face_registered']),
+        'users': users_status
+    }
+
+@app.delete("/admin/user/{user_id}/face")
+async def delete_user_face_data(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_admin_user(cred, db))
+):
+    """Admin only: Delete user's face data (for re-registration)"""
+    
+    user = db.query(User).filter(User.unique_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_dir = f"dataset/{user.unique_id}"
+    
+    if not os.path.exists(user_dir):
+        raise HTTPException(status_code=404, detail="No face data found for this user")
+    
+    # Delete face data directory
+    import shutil
+    shutil.rmtree(user_dir)
+    
+    # Update user record
+    user.face_registered = False
+    user.face_encoding_path = None
+    db.commit()
+    
+    return {
+        "message": f"Face data deleted successfully for {user.full_name}",
+        "user_id": user_id,
+        "user_name": user.full_name
+    }
+
+@app.post("/admin/user/{user_id}/face/register")
+async def admin_register_user_face(
+    user_id: str,
+    files: list[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_admin_user(cred, db))
+):
+    """Admin only: Register face for any user"""
+    
+    # Get target user
+    target_user = db.query(User).filter(User.unique_id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if len(files) < 5:
+        raise HTTPException(status_code=400, detail="At least 5 face images required")
+    
+    if len(files) > 20:
+        raise HTTPException(status_code=400, detail="Maximum 20 face images allowed")
+    
+    try:
+        # Delete existing face data if any
+        user_dir = f"dataset/{target_user.unique_id}"
+        if os.path.exists(user_dir):
+            import shutil
+            shutil.rmtree(user_dir)
+        
+        # Create fresh directory
+        os.makedirs(user_dir, exist_ok=True)
+        
+        # Save uploaded images
+        image_paths = []
+        for i, file in enumerate(files):
+            file_path = f"{user_dir}/face_{i+1}.jpg"
+            with open(file_path, "wb") as buffer:
+                content = await file.read()
+                buffer.write(content)
+            image_paths.append(file_path)
+        
+        # Train face recognition model with quality and liveness checks
+        result = face_service.train_user_face(target_user.unique_id, image_paths, check_liveness=False)
+        
+        if not result.get('success', False):
+            raise HTTPException(
+                status_code=400, 
+                detail=result.get('message', 'Face registration failed')
+            )
+        
+        # Update user record
+        target_user.face_registered = True
+        target_user.face_encoding_path = f"{user_dir}/encoding.json"
+        db.commit()
+        
+        return {
+            "message": f"Face registration successful for {target_user.full_name}",
+            "user_id": target_user.unique_id,
+            "user_name": target_user.full_name,
+            "registered_by_admin": current_user.full_name,
+            "statistics": result.get('statistics', {}),
+            "quality_summary": {
+                "total_images": result['statistics']['total_images'],
+                "acceptable_images": result['statistics']['acceptable_images'],
+                "live_images": result['statistics'].get('live_images', 0),
+                "average_quality_score": round(result['statistics']['average_quality_score'], 2),
+                "average_liveness_confidence": round(result['statistics'].get('average_liveness_confidence', 0), 2) if result['statistics'].get('average_liveness_confidence') else None,
+                "liveness_checked": result['statistics'].get('liveness_checked', False)
+            }
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Clean up on failure
+        if os.path.exists(user_dir):
+            import shutil
+            shutil.rmtree(user_dir)
+        raise HTTPException(status_code=500, detail=f"Face registration failed: {str(e)}")
+
+@app.get("/user/face/images")
+async def get_user_registered_faces(
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_user(cred, db)),
+    db: Session = Depends(get_db)
+):
+    """Get current user's registered face images"""
+    
+    user_dir = f"dataset/{current_user.unique_id}"
+    
+    if not os.path.exists(user_dir):
+        raise HTTPException(status_code=404, detail="No face data found. Please register your face first.")
+    
+    # Get face images
+    face_images = []
+    for filename in os.listdir(user_dir):
+        if filename.startswith('face_') and filename.endswith('.jpg'):
+            file_path = os.path.join(user_dir, filename)
+            
+            # Read image and convert to base64
+            try:
+                with open(file_path, 'rb') as img_file:
+                    import base64
+                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                    face_images.append({
+                        'filename': filename,
+                        'data': f"data:image/jpeg;base64,{img_data}",
+                        'registered_date': datetime.fromtimestamp(os.path.getctime(file_path)).isoformat()
+                    })
+            except Exception as e:
+                print(f"Error reading image {filename}: {str(e)}")
+                continue
+    
+    # Get registration details
+    encoding_file = f"{user_dir}/encoding.pkl"
+    registration_details = None
+    
+    if os.path.exists(encoding_file):
+        try:
+            import pickle
+            with open(encoding_file, 'rb') as f:
+                data = pickle.load(f)
+                registration_details = {
+                    'registered_date': datetime.fromtimestamp(os.path.getctime(encoding_file)).isoformat(),
+                    'valid_images': data.get('valid_images', 0),
+                    'model': data.get('model', 'unknown'),
+                    'quality_checked': data.get('quality_checked', False),
+                    'liveness_checked': data.get('liveness_checked', False),
+                    'min_quality_score': data.get('min_quality_score', 0),
+                    'min_liveness_confidence': data.get('min_liveness_confidence', 0),
+                }
+        except Exception as e:
+            print(f"Error reading registration details: {str(e)}")
+    
+    if not face_images:
+        raise HTTPException(status_code=404, detail="No face images found")
+    
+    return {
+        'user_id': current_user.unique_id,
+        'user_name': current_user.full_name,
+        'face_registered': current_user.face_registered,
+        'total_images': len(face_images),
+        'images': face_images,
+        'registration_details': registration_details
+    }
+
+
+@app.get("/admin/user/{user_id}/face/images")
+async def get_user_face_images_admin(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_admin_user(cred, db))
+):
+    """Admin only: Get any user's registered face images"""
+    
+    target_user = db.query(User).filter(User.unique_id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_dir = f"dataset/{target_user.unique_id}"
+    
+    if not os.path.exists(user_dir):
+        raise HTTPException(status_code=404, detail="No face data found for this user")
+    
+    # Get face images
+    face_images = []
+    for filename in os.listdir(user_dir):
+        if filename.startswith('face_') and filename.endswith('.jpg'):
+            file_path = os.path.join(user_dir, filename)
+            
+            # Read image and convert to base64
+            try:
+                with open(file_path, 'rb') as img_file:
+                    import base64
+                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                    face_images.append({
+                        'filename': filename,
+                        'data': f"data:image/jpeg;base64,{img_data}",
+                        'registered_date': datetime.fromtimestamp(os.path.getctime(file_path)).isoformat()
+                    })
+            except Exception as e:
+                print(f"Error reading image {filename}: {str(e)}")
+                continue
+    
+    # Get registration details
+    encoding_file = f"{user_dir}/encoding.pkl"
+    registration_details = None
+    
+    if os.path.exists(encoding_file):
+        try:
+            import pickle
+            with open(encoding_file, 'rb') as f:
+                data = pickle.load(f)
+                registration_details = {
+                    'registered_date': datetime.fromtimestamp(os.path.getctime(encoding_file)).isoformat(),
+                    'valid_images': data.get('valid_images', 0),
+                    'model': data.get('model', 'unknown'),
+                    'quality_checked': data.get('quality_checked', False),
+                    'liveness_checked': data.get('liveness_checked', False),
+                }
+        except Exception as e:
+            print(f"Error reading registration details: {str(e)}")
+    
+    return {
+        'user_id': target_user.unique_id,
+        'user_name': target_user.full_name,
+        'face_registered': target_user.face_registered,
+        'total_images': len(face_images),
+        'images': face_images,
+        'registration_details': registration_details
+    }
+
+
+@app.get("/admin/user/{user_id}/face/details")
+async def get_user_face_details(
+    user_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_admin_user(cred, db))
+):
+    """Admin only: Get detailed face registration info for a user"""
+    
+    user = db.query(User).filter(User.unique_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    user_dir = f"dataset/{user.unique_id}"
+    encoding_file = f"{user_dir}/encoding.pkl"
+    
+    if not os.path.exists(encoding_file):
+        return {
+            "user": UserResponse.from_orm(user),
+            "face_registered": False,
+            "message": "No face data registered for this user"
+        }
+    
+    # Read face data
+    try:
+        import pickle
+        with open(encoding_file, 'rb') as f:
+            face_data = pickle.load(f)
+        
+        # Get file info
+        registration_date = datetime.fromtimestamp(os.path.getctime(encoding_file))
+        file_size = os.path.getsize(encoding_file)
+        
+        # Get face images
+        face_images = []
+        if os.path.exists(user_dir):
+            for filename in sorted(os.listdir(user_dir)):
+                if filename.startswith('face_') and filename.endswith('.jpg'):
+                    file_path = os.path.join(user_dir, filename)
+                    face_images.append({
+                        'filename': filename,
+                        'size': os.path.getsize(file_path),
+                        'created': datetime.fromtimestamp(os.path.getctime(file_path)).isoformat()
+                    })
+        
+        return {
+            "user": UserResponse.from_orm(user),
+            "face_registered": True,
+            "registration_info": {
+                "registered_date": registration_date.isoformat(),
+                "file_size_bytes": file_size,
+                "model": face_data.get('model', 'unknown'),
+                "tolerance": face_data.get('tolerance', 0.6),
+                "valid_images": face_data.get('valid_images', 0),
+                "quality_checked": face_data.get('quality_checked', False),
+                "min_quality_score": face_data.get('min_quality_score', 0),
+                "liveness_checked": face_data.get('liveness_checked', False),
+                "min_liveness_confidence": face_data.get('min_liveness_confidence', 0),
+            },
+            "face_images": face_images,
+            "total_images": len(face_images)
+        }
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read face data: {str(e)}")
+
+@app.post("/admin/faces/bulk-delete")
+async def bulk_delete_face_data(
+    user_ids: list[str] = Form(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_admin_user(cred, db))
+):
+    """Admin only: Delete face data for multiple users"""
+    
+    deleted_count = 0
+    errors = []
+    
+    for user_id in user_ids:
+        try:
+            user = db.query(User).filter(User.unique_id == user_id).first()
+            if not user:
+                errors.append(f"User {user_id} not found")
+                continue
+            
+            user_dir = f"dataset/{user.unique_id}"
+            if os.path.exists(user_dir):
+                import shutil
+                shutil.rmtree(user_dir)
+                
+                user.face_registered = False
+                user.face_encoding_path = None
+                deleted_count += 1
+            else:
+                errors.append(f"No face data for user {user_id}")
+        
+        except Exception as e:
+            errors.append(f"Error deleting {user_id}: {str(e)}")
+    
+    db.commit()
+    
+    return {
+        "message": f"Deleted face data for {deleted_count} users",
+        "deleted_count": deleted_count,
+        "total_requested": len(user_ids),
+        "errors": errors if errors else None
+    }
+
 # ============ USER ENDPOINTS ============
 
 @app.get("/user/profile")
@@ -601,6 +1159,90 @@ async def get_user_attendance_stats(
             "month": month,
             "year": year
         }
+    }
+
+@app.get("/user/face/images")
+async def get_user_registered_faces(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_user(cred, db))
+):
+    """Get current user's registered face images with quality scores"""
+    import base64
+    import json
+    from pathlib import Path
+    
+    # Check if face is registered
+    if not current_user.face_registered:
+        raise HTTPException(status_code=404, detail="No face data registered for this user")
+    
+    # Get user's dataset folder
+    DATASET_DIR = "dataset"  # Define the dataset directory
+    user_folder = os.path.join(DATASET_DIR, current_user.unique_id)
+    
+    if not os.path.exists(user_folder):
+        raise HTTPException(status_code=404, detail="Face data folder not found")
+    
+    # Collect all face images
+    face_images = []
+    quality_data = None
+    
+    # Load quality data if available
+    quality_file = os.path.join(user_folder, 'quality_scores.json')
+    if os.path.exists(quality_file):
+        with open(quality_file, 'r') as f:
+            quality_data = json.load(f)
+    
+    # Get all image files
+    for file in os.listdir(user_folder):
+        if file.endswith(('.jpg', '.jpeg', '.png')) and file.startswith('face_'):
+            image_path = os.path.join(user_folder, file)
+            
+            # Read and encode image to base64
+            with open(image_path, 'rb') as img_file:
+                img_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            # Get file stats
+            file_stats = os.stat(image_path)
+            created_time = datetime.fromtimestamp(file_stats.st_ctime).isoformat()
+            
+            # Extract face number from filename (e.g., face_1.jpg -> 1)
+            face_num = file.split('_')[1].split('.')[0]
+            
+            # Get quality score for this face if available
+            quality_score = None
+            quality_details = None
+            if quality_data and 'faces' in quality_data:
+                for face_quality in quality_data['faces']:
+                    if str(face_quality.get('face_number')) == face_num or face_quality.get('image') == file:
+                        quality_score = face_quality.get('overall_score')
+                        quality_details = {
+                            'face_size_score': face_quality.get('face_size_score'),
+                            'brightness_score': face_quality.get('brightness_score'),
+                            'sharpness_score': face_quality.get('sharpness_score'),
+                            'pose_score': face_quality.get('pose_score'),
+                            'eye_visibility_score': face_quality.get('eye_visibility_score'),
+                            'accepted': face_quality.get('accepted', True),
+                        }
+                        break
+            
+            face_images.append({
+                'filename': file,
+                'image_data': f'data:image/jpeg;base64,{img_data}',
+                'created_at': created_time,
+                'quality_score': quality_score,
+                'quality_details': quality_details,
+            })
+    
+    # Sort by filename (face_1, face_2, etc.)
+    face_images.sort(key=lambda x: int(x['filename'].split('_')[1].split('.')[0]))
+    
+    return {
+        "user_id": current_user.unique_id,
+        "user_name": current_user.full_name,
+        "face_registered": current_user.face_registered,
+        "total_faces": len(face_images),
+        "faces": face_images,
+        "registration_date": current_user.created_at.isoformat() if current_user.created_at else None,
     }
 
 # ======================================

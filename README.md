@@ -1,166 +1,110 @@
 # Smart Attendance System
 
-A web-based attendance management system using face recognition technology built with FastAPI and React.
+A production-grade web-based attendance management system using advanced face recognition technology.
 
-[![Python](https://img.shields.io/badge/Python-3.8+-3776ab?style=for-the-badge&logo=python&logoColor=white)](https://python.org/)
-[![React](https://img.shields.io/badge/React-18.0+-61dafb?style=for-the-badge&logo=react&logoColor=white)](https://reactjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![SQLite](https://img.shields.io/badge/SQLite-3.0+-003b57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org/)
+[![Python](https://img.shields.io/badge/Python-3.8+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org/)
+[![React](https://img.shields.io/badge/React-18.0+-61dafb?style=flat-square&logo=react&logoColor=white)](https://reactjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 
 ## Features
 
-### Authentication & User Management
-- JWT-based authentication
-- User registration and login
-- Role-based access control (Admin and User roles)
-- Password hashing with bcrypt
-- User profile management
+### Core Functionality
+- JWT-based authentication with role-based access control
+- Advanced face recognition using dlib and OpenCV
+- Real-time attendance marking via facial recognition
+- User and admin dashboards with analytics
+- Attendance history tracking and reporting
+- Data export in PDF, Excel, CSV, and JSON formats
 
-### Face Recognition
-- Face registration with multiple image captures
-- Face recognition for attendance marking
-- Uses face_recognition library (dlib-based)
-- Stores face encodings locally using pickle format
-
-### Attendance Management
-- Face recognition-based attendance marking
-- Manual attendance management (Admin)
-- Attendance history tracking
-- Daily attendance status (Present/Absent)
-- Time-in recording
-
-### Dashboards
-- **Admin Dashboard**: User management, attendance overview, manual attendance updates
-- **Employee Dashboard**: Personal attendance history and statistics
-- **Analytics Dashboard**: Attendance trends, department performance, export functionality
-
-### Reporting
-- Export attendance data to PDF, Excel, CSV, JSON formats
-- Attendance statistics and analytics
-- Department-wise analytics
+### Advanced Face Recognition
+- **Face Quality Assessment** - ISO/IEC 19794-5 compliant quality checks (size, brightness, sharpness, pose, eye visibility)
+- **Liveness Detection** - Anti-spoofing protection against photo and screen attacks using texture, color, and frequency analysis
+- **Duplicate Prevention** - Prevents same person from registering multiple accounts
+- **Quality Scoring** - Real-time feedback with detailed quality metrics
+- **Face Gallery** - View registered face images with quality scores
 
 ## Technology Stack
 
-### Backend
-- **FastAPI** - Python web framework
-- **SQLite** - Database with SQLAlchemy ORM
-- **face_recognition** - Face recognition library (dlib-based)
-- **OpenCV** - Image processing
-- **JWT** - Authentication tokens
-- **Bcrypt** - Password hashing
+**Backend:** FastAPI, SQLite, SQLAlchemy, face_recognition, OpenCV, NumPy, SciPy  
+**Frontend:** React 18, Material-UI, Axios, Recharts, React Webcam  
+**Authentication:** JWT tokens with bcrypt password hashing
 
-### Frontend
-- **React 18** - UI framework
-- **Material-UI (MUI)** - Component library
-- **React Router** - Routing
-- **Recharts** - Data visualization
-- **React Webcam** - Camera access
+## Prerequisites
+
+- Python 3.8+
+- Node.js 16+
+- Webcam
+- CMake (for dlib installation)
 
 ## Installation
-
-### Prerequisites
-- Python 3.8 or higher
-- Node.js 16 or higher
-- Webcam for face recognition
 
 ### Backend Setup
 
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Create virtual environment
 python -m venv venv
 
-# Activate virtual environment
-# Windows:
+# Windows
 venv\Scripts\activate
-# macOS/Linux:
+
+# macOS/Linux
 source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
-
-# Run the server
 python -m uvicorn main:app --reload --host localhost --port 8000
 ```
 
-The backend API will be available at `http://localhost:8000`
-API documentation available at `http://localhost:8000/docs`
+Backend runs at `http://localhost:8000`  
+API docs available at `http://localhost:8000/docs`
 
 ### Frontend Setup
 
 ```bash
-# Navigate to frontend directory
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm start
 ```
 
-The frontend will be available at `http://localhost:3000`
+Frontend runs at `http://localhost:3000`
 
-## Usage
+## Quick Start
 
-### Initial Setup
-1. Start both backend and frontend servers
-2. Register a new user account
-3. For the first user, run the migration script to assign admin role:
-   ```bash
-   cd backend
-   python migrate_add_role.py
-   ```
+1. Start backend and frontend servers
+2. Register a new account at `http://localhost:3000`
+3. Set admin role: `python backend/migrate_add_role.py`
+4. Login and navigate to face registration
+5. Capture 5-6 face images for enrollment
+6. Mark attendance using face recognition
 
-### User Registration
-1. Register with email and password
-2. Login to your account
-3. Navigate to Face Registration
-4. Capture 5-6 face images for enrollment
-5. Once registered, you can mark attendance using face recognition
+## Configuration
 
-### Marking Attendance
-1. Navigate to "Mark Attendance" page
-2. Click "Mark Attendance" button
-3. Position your face in front of the camera
-4. System will recognize your face and mark attendance
+### Backend Environment Variables
 
-### Admin Functions
-- View all users and their attendance records
-- Manually mark attendance for users
-- View analytics and export reports
-- Update user information
+Create `backend/.env`:
 
-## Project Structure
-
+```env
+SECRET_KEY=your-secret-key-here
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+ADMIN_EMAIL=admin@example.com
 ```
-Smart_Attendance_System/
-├── backend/
-│   ├── main.py                      # FastAPI application
-│   ├── models.py                   # Database models
-│   ├── schemas.py                  # Pydantic schemas
-│   ├── database.py                 # Database configuration
-│   ├── auth.py                     # Authentication utilities
-│   ├── face_recognition_service.py # Face recognition logic
-│   ├── migrate_add_role.py         # Role migration script
-│   ├── requirements.txt            # Python dependencies
-│   ├── dataset/                    # Face encoding storage (gitignored)
-│   └── uploads/                    # Temporary uploads (gitignored)
-│
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── components/             # React components
-│   │   ├── services/               # API services
-│   │   ├── App.js                  # Main app component
-│   │   └── index.js                # Entry point
-│   └── package.json
-│
-├── requirements.txt                # Root requirements (for scripts)
-├── README.md
-└── .gitignore
+
+### Frontend Environment Variables
+
+Create `frontend/.env`:
+
+```env
+REACT_APP_API_URL=http://localhost:8000
+```
+
+### Face Recognition Settings
+
+Edit `backend/face_recognition_service.py`:
+
+```python
+MIN_FACE_SIZE = 50              # Minimum face width (pixels)
+MIN_OVERALL_SCORE = 30          # Minimum quality score (%)
+MIN_LIVENESS_CONFIDENCE = 20    # Minimum liveness confidence (%)
+tolerance = 0.6                  # Face matching tolerance
 ```
 
 ## API Endpoints
@@ -170,71 +114,115 @@ Smart_Attendance_System/
 - `POST /auth/login` - User login
 
 ### Face Recognition
-- `POST /face/register` - Register face data
-- `POST /attendance/mark` - Mark attendance via face recognition
+- `POST /face/register` - Register face with quality and liveness checks
+- `POST /face/check-quality` - Check face image quality
+- `POST /face/check-liveness` - Check image liveness
 
-### User
-- `GET /user/profile` - Get user profile
-- `PUT /user/profile` - Update user profile
-- `PUT /user/password` - Change password
+### Attendance
+- `POST /attendance/mark` - Mark attendance via face recognition
 - `GET /user/attendance` - Get attendance history
 - `GET /user/attendance/stats` - Get attendance statistics
 
-### Admin
+### User Management
+- `GET /user/profile` - Get user profile
+- `PUT /user/profile` - Update user profile
+- `POST /user/change-password` - Change password
+- `GET /user/face/images` - Get registered face images with quality scores
+
+### Admin Operations
 - `GET /admin/users` - Get all users
 - `GET /admin/attendance` - Get all attendance records
 - `PUT /admin/attendance/{id}` - Update attendance record
 - `POST /admin/mark-absent` - Mark users as absent
-- `POST /admin/attendance/bulk-update` - Bulk update attendance
+- `DELETE /admin/user/{user_id}/face` - Delete user face data
 
-### Analytics
-- `GET /analytics/dashboard` - Get dashboard analytics
-- `GET /analytics/anomalies` - Get anomaly detection data
-- `GET /analytics/report` - Get report data
+Full API documentation: Visit `/docs` when backend is running
 
-Full API documentation available at `/docs` when backend is running.
+## Project Structure
 
-## Configuration
-
-### Backend Environment Variables
-Create a `.env` file in the backend directory (optional):
-
-```env
-SECRET_KEY=your-secret-key-here
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
+Smart_Attendance_System/
+├── backend/
+│   ├── main.py                       # FastAPI application
+│   ├── models.py                     # Database models
+│   ├── auth.py                       # Authentication
+│   ├── face_recognition_service.py   # Face recognition
+│   ├── face_quality_checker.py       # Quality assessment
+│   ├── liveness_detector.py          # Anti-spoofing
+│   ├── requirements.txt              # Dependencies
+│   └── dataset/                      # Face encodings (gitignored)
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/               # React components
+│   │   └── services/api.js           # API integration
+│   └── package.json
+│
+└── README.md
 ```
 
-### Frontend Environment Variables
-Create a `.env` file in the frontend directory (optional):
+## Database Schema
 
-```env
-REACT_APP_API_URL=http://localhost:8000
+**Users Table**
+- id, email, password (hashed), full_name, unique_id
+- phone_number, department, role, is_active
+- face_registered, face_encoding_path, created_at
+
+**Attendance Table**
+- id, user_id (FK), date, time_in, status, created_at
+
+## Security Features
+
+- Password hashing with bcrypt
+- JWT token authentication
+- Role-based access control
+- SQL injection protection via SQLAlchemy ORM
+- Face data isolation in user-specific folders
+- Liveness detection for anti-spoofing
+- Duplicate face prevention
+
+**Installation Issues:**
+```bash
+# dlib installation on Windows
+pip install cmake
+pip install dlib
+
+# face_recognition installation
+pip install face-recognition --no-cache-dir
 ```
 
-## Database
-
-The system uses SQLite database which is automatically created on first run. Database file: `backend/attendance_system.db`
-
-To reset the database, delete the `.db` file and restart the backend server.
-
-## Troubleshooting
-
-### Face Recognition Issues
-- Ensure good lighting conditions
-- Clear camera lens
-- Register with 5-6 clear face images
-- Face should be clearly visible in frame
-
-### Camera Access
+**Camera Access:**
 - Allow camera permissions in browser
-- Use HTTPS in production (required for camera access)
-- Ensure no other application is using the camera
+- HTTPS required for production
+- Ensure no other app is using camera
 
-### Installation Issues
-- Ensure Python 3.8+ and Node.js 16+ are installed
-- Use virtual environment for Python dependencies
-- If face_recognition installation fails, install cmake and dlib dependencies first
+**Database Reset:**
+```bash
+cd backend
+rm attendance_system.db
+# Restart backend - will create new DB
+```
+
+## Production Deployment
+
+### Backend
+```bash
+pip install gunicorn
+gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+```
+
+### Frontend
+```bash
+npm run build
+# Serve build/ folder with nginx or any static server
+```
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License
+
+## Authors
+
+Sahil Kumar Sharma
+
+---

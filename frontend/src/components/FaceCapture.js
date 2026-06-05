@@ -142,8 +142,23 @@ const FaceCapture = () => {
       console.log('Face registration completed successfully!');
       navigate('/profile');
     } catch (error) {
-      setError(error.response?.data?.detail || 'Face registration failed');
-      setError('Face registration failed. Please try again.');
+      console.error('Face registration error:', error);
+      
+      // Extract detailed error message from response
+      let errorMessage = 'Face registration failed. Please try again.';
+      
+      if (error.response?.status === 409) {
+        // Duplicate face detected
+        errorMessage = error.response?.data?.detail || 'This face is already registered to another user.';
+      } else if (error.response?.status === 400) {
+        // Quality or liveness issues
+        errorMessage = error.response?.data?.detail || 'Face quality is too low. Please try again with better lighting.';
+      } else if (error.response?.data?.detail) {
+        // Other specific errors
+        errorMessage = error.response.data.detail;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

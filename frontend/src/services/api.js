@@ -104,6 +104,7 @@ export const userAPI = {
     const today = new Date().toISOString().split('T')[0];
     return api.get(`/user/attendance?start_date=${today}&end_date=${today}`);
   },
+  getRegisteredFaces: () => api.get('/user/face/images'),
 };
 
 // Admin APIs
@@ -148,6 +149,32 @@ export const adminAPI = {
     });
   },
   exportAttendance: (params) => api.get('/admin/attendance/export', { params }),
+  
+  // Face Management
+  getUsersFaceStatus: () => api.get('/admin/users/face-status'),
+  deleteUserFaceData: (userId) => api.delete(`/admin/user/${userId}/face`),
+  registerUserFace: (userId, files) => {
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('files', file);
+    });
+    return api.post(`/admin/user/${userId}/face/register`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  getUserFaceDetails: (userId) => api.get(`/admin/user/${userId}/face/details`),
+  getUserFaceImages: (userId) => api.get(`/admin/user/${userId}/face/images`),
+  bulkDeleteFaceData: (userIds) => {
+    const formData = new FormData();
+    userIds.forEach(id => formData.append('user_ids', id));
+    return api.post('/admin/faces/bulk-delete', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 // Analytics APIs

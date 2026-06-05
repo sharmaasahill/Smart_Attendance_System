@@ -49,10 +49,12 @@ import {
   CalendarMonth,
   Insights,
   Speed,
+  Face,
 } from '@mui/icons-material';
 import { adminAPI, attendanceAPI } from '../services/api';
 import { useAuth } from '../App';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import AdminFaceManagement from './AdminFaceManagement';
 import { format, parseISO } from 'date-fns';
 
 const AdminDashboard = () => {
@@ -355,6 +357,7 @@ const AdminDashboard = () => {
               >
                 <Tab icon={<ManageAccounts sx={{ fontSize: 24 }} />} label="User Management" iconPosition="start" />
                 <Tab icon={<Analytics sx={{ fontSize: 24 }} />} label="Analytics & Reports" iconPosition="start" />
+                <Tab icon={<Face sx={{ fontSize: 24 }} />} label="Face Management" iconPosition="start" />
               </Tabs>
             </Box>
           </Card>
@@ -660,6 +663,8 @@ const AdminDashboard = () => {
         )}
 
         {activeTab === 1 && <AnalyticsDashboard />}
+        
+        {activeTab === 2 && <AdminFaceManagement />}
 
         {/* Action Menu */}
         <Menu anchorEl={actionMenu.anchorEl} open={Boolean(actionMenu.anchorEl)} onClose={() => setActionMenu({ anchorEl: null, record: null })}

@@ -26,7 +26,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
 import { faceAPI, webcamCaptureToFile } from '../services/api';
-import SimpleSmartWebcam from './SimpleSmartWebcam';
+import FaceCamera from './FaceCamera';
 
 const FaceCapture = () => {
   const navigate = useNavigate();
@@ -39,14 +39,19 @@ const FaceCapture = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [intervalId, setIntervalId] = useState(null);
+  const statusRef = useRef({ ready: false, faceDetected: false, quality: 0 });
 
   const steps = ['Camera Setup', 'Capture Images', 'Upload & Train'];
+
+  const handleStatus = useCallback((status) => {
+    statusRef.current = status;
+  }, []);
 
   const capture = useCallback((imageSrc, metadata) => {
     if (imageSrc) {
       setCapturedImages(prev => {
         const newImages = [...prev, { imageSrc, metadata }];
-        
+
         // Check if we have enough images and advance to next step
         if (newImages.length >= 5) {
           setStep(2);
@@ -56,7 +61,7 @@ const FaceCapture = () => {
             setIntervalId(null);
           }
         }
-        
+
         return newImages;
       });
     }
@@ -66,35 +71,34 @@ const FaceCapture = () => {
     setIsCapturing(true);
     setStep(1);
     setCapturedImages([]); // Reset images
-    
-    // Auto-capture images every 1.5 seconds
+
+    // Capture a frame roughly every 1.2s, but only when a real, well-framed
+    // face is detected (no simulated detection).
     const interval = setInterval(() => {
-      // Trigger capture via the smart webcam
-      if (webcamRef.current && webcamRef.current.captureImage) {
-        const imageSrc = webcamRef.current.captureImage();
+      const status = statusRef.current;
+      if (status && status.ready && webcamRef.current && webcamRef.current.getScreenshot) {
+        const imageSrc = webcamRef.current.getScreenshot();
         if (imageSrc) {
-          // Call our local capture function with the image
           capture(imageSrc, {
             faceDetected: true,
-            confidence: Math.floor(Math.random() * 23) + 75,
-            timestamp: new Date().toISOString()
+            quality: status.quality,
+            timestamp: new Date().toISOString(),
           });
         }
       }
-    }, 1500);
-    
+    }, 1200);
+
     setIntervalId(interval);
 
-    // Stop after 10 seconds maximum
+    // Stop after 20 seconds maximum
     setTimeout(() => {
       if (interval) {
         clearInterval(interval);
         setIntervalId(null);
         setIsCapturing(false);
-        // Advance to step 2 regardless of image count after timeout
         setStep(2);
       }
-    }, 10000);
+    }, 20000);
   };
 
   const resetCapture = () => {
@@ -301,15 +305,12 @@ const FaceCapture = () => {
                           mb: 4,
                         }}
                       >
-                        <SimpleSmartWebcam
+                        <FaceCamera
                           ref={webcamRef}
-                          height={300}
-                          width={400}
-                          onCapture={capture}
-                          showDetection={true}
-                          detectionColor="#212E46"
-                          borderColor="#f97316"
                           mode="capture"
+                          height={300}
+                          width="100%"
+                          onStatus={handleStatus}
                         />
                       </Box>
 

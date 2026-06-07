@@ -5,6 +5,7 @@
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@mediapipe/tasks-vision": "^0.10.18",
     "@mui/icons-material": "^5.15.0",
     "@mui/lab": "^5.0.0-alpha.155",
     "@mui/material": "^5.15.0",
@@ -13,7 +14,6 @@
     "@testing-library/user-event": "^14.5.2",
     "axios": "^1.6.2",
     "date-fns": "^2.30.0",
-    "face-api.js": "^0.22.2",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.40.0",
     "html2canvas": "^1.4.1",

@@ -38,9 +38,7 @@ import {
   FilterList,
 } from '@mui/icons-material';
 import { adminAPI, faceAPI, webcamCaptureToFile } from '../services/api';
-import SimpleSmartWebcam from './SimpleSmartWebcam';
-import FaceQualityIndicator from './FaceQualityIndicator';
-import LivenessIndicator from './LivenessIndicator';
+import FaceCamera from './FaceCamera';
 
 const AdminFaceManagement = () => {
   const [users, setUsers] = useState([]);
@@ -56,8 +54,6 @@ const AdminFaceManagement = () => {
   const [capturedImages, setCapturedImages] = useState([]);
   const [isCapturing, setIsCapturing] = useState(false);
   const [uploadingFace, setUploadingFace] = useState(false);
-  const [qualityData, setQualityData] = useState(null);
-  const [livenessData, setLivenessData] = useState(null);
   
   // Delete confirmation
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -70,6 +66,11 @@ const AdminFaceManagement = () => {
   
   const webcamRef = useRef(null);
   const [intervalId, setIntervalId] = useState(null);
+  const statusRef = useRef({ ready: false, faceDetected: false, quality: 0 });
+
+  const handleStatus = (status) => {
+    statusRef.current = status;
+  };
 
   // Statistics
   const [stats, setStats] = useState({
@@ -139,8 +140,6 @@ const AdminFaceManagement = () => {
     setSelectedUser(user);
     setCapturedImages([]);
     setRegisterDialog(true);
-    setQualityData(null);
-    setLivenessData(null);
   };
 
   const closeRegisterDialog = () => {
@@ -152,17 +151,16 @@ const AdminFaceManagement = () => {
     setSelectedUser(null);
     setCapturedImages([]);
     setIsCapturing(false);
-    setQualityData(null);
-    setLivenessData(null);
   };
 
   const startCapturing = () => {
     setIsCapturing(true);
     setCapturedImages([]);
-    
+
     const interval = setInterval(() => {
-      if (webcamRef.current && webcamRef.current.captureImage) {
-        const imageSrc = webcamRef.current.captureImage();
+      const status = statusRef.current;
+      if (status && status.ready && webcamRef.current && webcamRef.current.getScreenshot) {
+        const imageSrc = webcamRef.current.getScreenshot();
         if (imageSrc) {
           setCapturedImages(prev => {
             const newImages = [...prev, imageSrc];
@@ -175,8 +173,8 @@ const AdminFaceManagement = () => {
           });
         }
       }
-    }, 1500);
-    
+    }, 1200);
+
     setIntervalId(interval);
   };
 
@@ -494,15 +492,13 @@ const AdminFaceManagement = () => {
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <Box sx={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', border: '2px solid #e7e5e4' }}>
-                  <SimpleSmartWebcam
+                  <FaceCamera
                     ref={webcamRef}
+                    mode="capture"
                     height={300}
                     width="100%"
-                    showDetection={true}
-                    mode="capture"
+                    onStatus={handleStatus}
                   />
-                  {qualityData && <FaceQualityIndicator qualityData={qualityData} compact={true} />}
-                  {livenessData && <LivenessIndicator livenessData={livenessData} compact={true} />}
                 </Box>
                 
                 <Box sx={{ mt: 2 }}>

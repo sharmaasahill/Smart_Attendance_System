@@ -5,12 +5,16 @@ from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 import uvicorn
 import os
+import logging
 from datetime import datetime, timedelta
 import json
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("smart_attendance")
 
 from database import get_db, init_db
 from models import User, Attendance
@@ -282,96 +286,78 @@ async def register_face(
 @app.post("/attendance/mark")
 async def mark_attendance(
     file: UploadFile = File(...),
-    skip_liveness: bool = Form(False),
+    liveness_verified: bool = Form(False),
     db: Session = Depends(get_db)
 ):
+    """
+    Mark attendance from a single captured frame.
+
+    Liveness/anti-spoofing is performed live on the client via an active
+    blink/motion challenge (MediaPipe). The client sends liveness_verified=true
+    only after a genuine blink is observed; the server rejects frames that were
+    not liveness-verified.
+    """
     temp_path = None
     try:
-        print(f"[DEBUG] Received file: {file.filename}, content-type: {file.content_type}")
-        
+        if not liveness_verified:
+            raise HTTPException(
+                status_code=403,
+                detail="Liveness not verified. Please look at the camera and blink so we can confirm a live person."
+            )
+
         # Save uploaded image temporarily
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')
         temp_path = f"uploads/temp_{timestamp}.jpg"
-        
         with open(temp_path, "wb") as buffer:
             content = await file.read()
             buffer.write(content)
-        
-        print(f"[DEBUG] Saved temp file: {temp_path}, size: {len(content)} bytes")
-        
-        # Check liveness (anti-spoofing) if enabled - TEMPORARILY DISABLED
-        liveness_result = None
-        if False and face_service.enable_liveness_check and not skip_liveness:  # Disabled for now
-            print(f"[DEBUG] Performing liveness detection...")
-            liveness_result = face_service.check_image_liveness(temp_path)
-            print(f"[DEBUG] Liveness result: Live={liveness_result['is_live']}, "
-                  f"Confidence={liveness_result['confidence']:.1f}%")
-            
-            # Reject if spoofing detected
-            if not liveness_result['is_live']:
-                raise HTTPException(
-                    status_code=403, 
-                    detail=f"Spoof attack detected. Liveness confidence: {liveness_result['confidence']:.1f}%. "
-                           f"Please use a live camera feed, not photos or screens. "
-                           f"Recommendations: {', '.join(liveness_result['recommendations'])}"
-                )
-            
-            # Check minimum confidence threshold
-            if liveness_result['confidence'] < face_service.min_liveness_confidence:
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Liveness confidence too low: {liveness_result['confidence']:.1f}%. "
-                           f"Required: {face_service.min_liveness_confidence}%. "
-                           f"Recommendations: {', '.join(liveness_result['recommendations'])}"
-                )
-        
-        # Recognize face
-        print(f"[DEBUG] Starting face recognition...")
-        recognized_user_id = face_service.recognize_face(temp_path)
-        print(f"[DEBUG] Face recognition result: {recognized_user_id}")
-        
-        if not recognized_user_id:
-            print(f"[DEBUG] No face recognized - failing")
-            raise HTTPException(status_code=404, detail="Face not recognized. Please ensure your face is clearly visible and that you have registered properly.")
-        
+        logger.info(f"Attendance frame received: {len(content)} bytes")
+
+        # Recognize face (ArcFace embedding + cosine k-NN match with confidence)
+        recognition = face_service.recognize(temp_path)
+        if not recognition:
+            raise HTTPException(
+                status_code=404,
+                detail="Face not recognized. Please ensure your face is clearly visible and that you have registered."
+            )
+
+        recognized_user_id = recognition["user_id"]
+        confidence = recognition["confidence"]
+        logger.info(f"Recognition: {recognized_user_id} (confidence {confidence}%)")
+
         # Get user
         user = db.query(User).filter(User.unique_id == recognized_user_id).first()
         if not user:
-            print(f"[DEBUG] User not found in database: {recognized_user_id}")
             raise HTTPException(status_code=404, detail="User not found in database")
-        
-        print(f"[DEBUG] Found user: {user.full_name} ({user.unique_id})")
-        
+
         # Check if attendance already marked today
         today = datetime.now().date()
         existing_attendance = db.query(Attendance).filter(
             Attendance.user_id == user.id,
             Attendance.date == today
         ).first()
-        
+
         if existing_attendance:
-            print(f"[DEBUG] Attendance already exists for {user.full_name} today - Status: {existing_attendance.status}")
-            
-            # If user was marked absent by admin, allow face recognition to override to present
+            # If user was marked absent by admin, allow recognition to override to present
             if existing_attendance.status == "absent":
-                print(f"[DEBUG] Overriding absent status with present for {user.full_name}")
                 existing_attendance.status = "present"
                 existing_attendance.time_in = datetime.now().time()
                 db.commit()
                 db.refresh(existing_attendance)
-                
                 return {
-                    "message": f"Attendance updated successfully for {user.full_name} - Status changed from absent to present",
+                    "message": f"Attendance updated for {user.full_name} - status changed from absent to present",
                     "user": UserResponse.from_orm(user),
                     "attendance": AttendanceResponse.from_orm(existing_attendance),
-                    "liveness_verified": liveness_result is not None,
-                    "liveness_confidence": liveness_result['confidence'] if liveness_result else None
+                    "confidence": confidence,
                 }
             else:
-                # If already present, don't allow duplicate marking
                 time_str = existing_attendance.time_in.strftime('%I:%M %p') if existing_attendance.time_in else existing_attendance.status
-                raise HTTPException(status_code=400, detail=f"Attendance already marked for {user.full_name} today as {existing_attendance.status}" + (f" at {time_str}" if existing_attendance.time_in else ""))
-        
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Attendance already marked for {user.full_name} today as {existing_attendance.status}"
+                           + (f" at {time_str}" if existing_attendance.time_in else "")
+                )
+
         # Mark attendance (new record)
         attendance = Attendance(
             user_id=user.id,
@@ -379,35 +365,28 @@ async def mark_attendance(
             time_in=datetime.now().time(),
             status="present"
         )
-        
         db.add(attendance)
         db.commit()
         db.refresh(attendance)
-        
-        print(f"[DEBUG] Attendance marked successfully for {user.full_name}")
-        
+        logger.info(f"Attendance marked for {user.full_name} ({user.unique_id})")
+
         return {
             "message": f"Attendance marked successfully for {user.full_name}",
             "user": UserResponse.from_orm(user),
             "attendance": AttendanceResponse.from_orm(attendance),
-            "liveness_verified": liveness_result is not None,
-            "liveness_confidence": liveness_result['confidence'] if liveness_result else None
+            "confidence": confidence,
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[DEBUG] Exception occurred: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Attendance marking failed")
         raise HTTPException(status_code=500, detail=f"Attendance marking failed: {str(e)}")
     finally:
-        # Clean up temp file
         if temp_path and os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
-                print(f"[DEBUG] Cleaned up temp file: {temp_path}")
-            except:
+            except OSError:
                 pass
 
 @app.get("/admin/users")

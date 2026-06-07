@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { attendanceAPI, webcamCaptureToFile } from '../services/api';
 import { format } from 'date-fns';
-import SimpleWebcamWithFaceDetection from './SimpleWebcamWithFaceDetection';
+import FaceCamera from './FaceCamera';
 
 // Add pulse animation
 const pulseAnimation = `
@@ -80,6 +80,9 @@ const MarkAttendance = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceStatus, setAttendanceStatus] = useState('ready');
   const [faceDetected, setFaceDetected] = useState(false);
+  const [liveness, setLiveness] = useState(false);
+  const [detectReady, setDetectReady] = useState(false);
+  const [detectMsg, setDetectMsg] = useState('Position your face in the frame');
 
   // --- Auto-capture control ---
   // How long a face must stay steady before we capture (avoids blurry frames)
@@ -107,9 +110,12 @@ const MarkAttendance = () => {
     };
   }, []);
 
-  const handleFaceDetectionChange = (detected) => {
-    setFaceDetected(detected);
-  };
+  const handleStatus = useCallback((status) => {
+    setFaceDetected(status.faceDetected);
+    setLiveness(status.livenessVerified);
+    setDetectReady(status.ready);
+    setDetectMsg(status.message);
+  }, []);
 
   const scheduleReset = useCallback((delay) => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
@@ -119,6 +125,10 @@ const MarkAttendance = () => {
       setError('');
       setAlreadyMarked(null);
       setAttendanceStatus('ready');
+      // Require a fresh blink from the next person
+      if (webcamRef.current && webcamRef.current.resetLiveness) {
+        webcamRef.current.resetLiveness();
+      }
     }, delay);
   }, []);
 
@@ -144,11 +154,11 @@ const MarkAttendance = () => {
       setAttendanceStatus('processing');
 
       const imageFile = await webcamCaptureToFile(imageSrc, 'attendance.jpg');
-      const response = await attendanceAPI.markAttendance(imageFile);
+      // Liveness was verified live (blink) before this capture was allowed
+      const response = await attendanceAPI.markAttendance(imageFile, true);
 
       setSuccess(response.data);
       setAttendanceStatus('success');
-      // Require the person to step away before the next auto-capture
       requireFaceClearRef.current = true;
       scheduleReset(RESULT_DISPLAY_MS);
     } catch (error) {
@@ -175,15 +185,15 @@ const MarkAttendance = () => {
     }
   }, [scheduleReset]);
 
-  // Automatic capture: trigger when a face is held steady in the target zone
+  // Automatic capture: trigger when a real, centered face passes the live
+  // blink/liveness check (detectReady) and stays steady briefly.
   useEffect(() => {
-    // Re-arm once the previous person has stepped away
     if (requireFaceClearRef.current && !faceDetected) {
       requireFaceClearRef.current = false;
     }
 
     const canCapture =
-      faceDetected &&
+      detectReady &&
       !isCapturingRef.current &&
       attendanceStatus === 'ready' &&
       !requireFaceClearRef.current;
@@ -196,11 +206,10 @@ const MarkAttendance = () => {
         }, STABILITY_MS);
       }
     } else if (stabilityTimerRef.current) {
-      // Face left or state changed before it was steady enough — cancel
       clearTimeout(stabilityTimerRef.current);
       stabilityTimerRef.current = null;
     }
-  }, [faceDetected, attendanceStatus, captureAndMark]);
+  }, [detectReady, faceDetected, attendanceStatus, captureAndMark]);
 
   return (
     <>
@@ -239,7 +248,7 @@ const MarkAttendance = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: faceDetected ? '#16a34a' : '#9ca3af', boxShadow: faceDetected ? '0 0 0 3px rgba(22,163,74,0.2)' : 'none', transition: 'all 0.3s ease' }} />
                   <Typography variant="body2" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
-                    {attendanceStatus === 'success' ? 'Attendance Verified' : attendanceStatus === 'already-marked' ? 'Already Marked Today' : attendanceStatus === 'error' ? 'Recognition Failed' : loading ? 'Processing...' : faceDetected ? 'Face Detected - Ready' : 'Waiting for Face'}
+                    {attendanceStatus === 'success' ? 'Attendance Verified' : attendanceStatus === 'already-marked' ? 'Already Marked Today' : attendanceStatus === 'error' ? 'Recognition Failed' : loading ? 'Processing...' : detectReady ? 'Live Face Verified' : faceDetected ? 'Blink to Verify' : 'Waiting for Face'}
                   </Typography>
                 </Box>
                 <Chip 
@@ -258,13 +267,25 @@ const MarkAttendance = () => {
 
               {/* Camera Feed */}
               <Box sx={{ position: 'relative', background: '#000000', minHeight: isMobile ? 400 : 480 }}>
-                <SimpleWebcamWithFaceDetection 
-                  ref={webcamRef} 
-                  height={isMobile ? 400 : 480} 
-                  width="100%" 
-                  onFaceDetectionChange={handleFaceDetectionChange} 
-                  style={{ width: '100%', objectFit: 'cover' }} 
+                <FaceCamera
+                  ref={webcamRef}
+                  mode="attendance"
+                  height={isMobile ? 400 : 480}
+                  width="100%"
+                  onStatus={handleStatus}
                 />
+
+                {/* Liveness hint (blink) before a face is verified */}
+                {!loading && !success && !error && !alreadyMarked && faceDetected && !liveness && (
+                  <Box sx={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 1, borderRadius: '999px', background: 'rgba(33,46,70,0.85)', backdropFilter: 'blur(6px)' }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', animation: 'pulse 1.2s ease-in-out infinite' }} />
+                      <Typography variant="body2" fontWeight="700" sx={{ color: '#fff', fontFamily: '"Inter", sans-serif', letterSpacing: '0.04em' }}>
+                        Please blink to confirm you're live
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
 
                 {/* Scanning Overlay (while recognizing) */}
                 {loading && !success && !error && !alreadyMarked && (
@@ -391,9 +412,11 @@ const MarkAttendance = () => {
                           ? 'Attendance already marked today'
                           : (error && attendanceStatus === 'error')
                             ? 'Face not recognized — retrying shortly'
-                            : faceDetected
+                            : detectReady
                               ? 'Hold still — capturing automatically'
-                              : 'Position your face in the frame to mark attendance'}
+                              : faceDetected && !liveness
+                                ? 'Blink once to confirm you are live'
+                                : detectMsg}
                   </Typography>
                 </Box>
               </Box>

@@ -60,9 +60,10 @@ export const faceAPI = {
 
 // Attendance APIs
 export const attendanceAPI = {
-  markAttendance: (imageFile) => {
+  markAttendance: (imageFile, livenessVerified = false) => {
     const formData = new FormData();
     formData.append('file', imageFile);
+    formData.append('liveness_verified', livenessVerified ? 'true' : 'false');
     return api.post('/attendance/mark', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

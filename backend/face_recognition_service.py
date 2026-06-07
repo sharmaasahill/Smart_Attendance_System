@@ -1,595 +1,495 @@
+"""
+Advanced face recognition service.
+
+Uses InsightFace (SCRFD detector + ArcFace w600k_r50 512-d embeddings, ONNX /
+onnxruntime, CPU-capable) for detection and recognition.
+
+Design highlights (production-oriented):
+  * Stores ALL per-image embeddings per user (not a single averaged vector).
+  * Matching uses cosine similarity with per-user best-match + k-NN voting and
+    a tuned threshold, returning a real confidence score.
+  * In-memory embedding matrix cache, refreshed by file mtime, for fast
+    vectorized comparison against every enrolled embedding at once.
+"""
+
 import os
 import json
 import pickle
-import numpy as np
-import face_recognition
-import cv2
-from typing import List, Optional, Dict
 import logging
-from face_quality_checker import FaceQualityChecker, check_face_quality
-from liveness_detector import LivenessDetector, check_liveness
+from datetime import datetime
+from typing import List, Optional, Dict
+
+import cv2
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+DATASET_DIR = "dataset"
+
+
 class FaceRecognitionService:
     def __init__(self):
-        self.model = "hog"  # HOG model (faster) or 'cnn' for better accuracy
-        self.tolerance = 0.6  # Lower is more strict
-        self.num_jitters = 1  # Number of times to re-sample face when calculating encoding
-        self.quality_checker = FaceQualityChecker()  # Initialize quality checker
-        self.liveness_detector = LivenessDetector()  # Initialize liveness detector
-        self.min_quality_score = 30  # Minimum acceptable quality score (very lenient)
-        self.min_liveness_confidence = 20  # Minimum liveness confidence (very lenient for webcam)
-        self.enable_liveness_check = True  # Feature flag for liveness detection
-        self.recognition_max_dim = 800  # Downscale recognition frames to this max dimension for speed
+        # Model pack: buffalo_l = SCRFD det_10g + ArcFace w600k_r50 (512-d).
+        self.model_name = os.getenv("FACE_MODEL_PACK", "buffalo_l")
+        self.det_size = (640, 640)
 
-        # In-memory encoding cache for fast recognition.
-        # Avoids reading every user's encoding.pkl from disk on each request.
-        self._cache = {}            # user_id -> np.ndarray encoding
-        self._cache_mtimes = {}     # user_id -> last seen mtime of encoding.pkl
-        self._cache_ids = []        # ordered list of user_ids matching the matrix rows
-        self._cache_matrix = None   # stacked encodings (N, 128) for vectorized distance
+        # Cosine-similarity thresholds for ArcFace L2-normalized embeddings.
+        # Same person typically scores > ~0.45; different people < ~0.3.
+        self.match_threshold = float(os.getenv("FACE_MATCH_THRESHOLD", "0.42"))
+        self.duplicate_threshold = float(os.getenv("FACE_DUPLICATE_THRESHOLD", "0.50"))
+        self.knn_k = int(os.getenv("FACE_KNN_K", "5"))
 
-    def _downscale_image(self, image: np.ndarray) -> np.ndarray:
-        """Downscale an RGB image so its largest side is at most recognition_max_dim."""
+        # Real quality gates (used at enrollment).
+        self.min_det_score = float(os.getenv("FACE_MIN_DET_SCORE", "0.55"))
+        self.min_face_size = int(os.getenv("FACE_MIN_FACE_SIZE", "50"))      # px (shorter side of face box)
+        self.min_blur_var = float(os.getenv("FACE_MIN_BLUR_VAR", "40.0"))    # Laplacian variance
+        self.min_quality_score = int(os.getenv("FACE_MIN_QUALITY_SCORE", "45"))
+        self.min_required_encodings = int(os.getenv("FACE_MIN_ENCODINGS", "3"))
+
+        # Liveness is enforced on the attendance path via the client-side
+        # active blink/motion check (MediaPipe). Kept for API compatibility.
+        self.enable_liveness_check = True
+        self.min_liveness_confidence = 20
+
+        self.recognition_max_dim = 1024  # downscale very large frames before detection
+
+        self._app = None  # lazily initialized FaceAnalysis
+
+        # In-memory embedding cache (flattened across all users).
+        self._cache_embeddings = None   # np.ndarray (M, 512) float32, L2-normalized
+        self._cache_labels = []         # length M; user_id for each row
+        self._cache_mtimes = {}         # user_id -> encoding.pkl mtime
+
+    # ------------------------------------------------------------------ #
+    # Model
+    # ------------------------------------------------------------------ #
+    @property
+    def app(self):
+        """Lazily load the InsightFace model pack (first use only)."""
+        if self._app is None:
+            from insightface.app import FaceAnalysis
+            logger.info(f"Loading InsightFace model pack '{self.model_name}' (CPU)...")
+            app = FaceAnalysis(name=self.model_name, providers=["CPUExecutionProvider"])
+            app.prepare(ctx_id=-1, det_size=self.det_size)
+            self._app = app
+            logger.info("InsightFace model loaded.")
+        return self._app
+
+    def _read_image(self, image_path: str) -> Optional[np.ndarray]:
+        img = cv2.imread(image_path)
+        if img is None:
+            logger.warning(f"Could not read image: {image_path}")
+            return None
+        h, w = img.shape[:2]
+        longest = max(h, w)
+        if longest > self.recognition_max_dim:
+            scale = self.recognition_max_dim / longest
+            img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+        return img
+
+    @staticmethod
+    def _largest_face(faces):
+        """Return the face with the biggest bounding box (closest to camera)."""
+        if not faces:
+            return None
+        return max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
+
+    def _detect_primary_face(self, image_path: str):
+        img = self._read_image(image_path)
+        if img is None:
+            return None, None
+        faces = self.app.get(img)
+        return self._largest_face(faces), img
+
+    def get_embedding(self, image_path: str) -> Optional[np.ndarray]:
+        """Return the L2-normalized 512-d ArcFace embedding for the primary face."""
+        face, _ = self._detect_primary_face(image_path)
+        if face is None:
+            return None
+        emb = np.asarray(face.normed_embedding, dtype=np.float32)
+        return emb
+
+    # ------------------------------------------------------------------ #
+    # Quality (real, InsightFace + OpenCV based)
+    # ------------------------------------------------------------------ #
+    def check_image_quality(self, image_path: str) -> Dict:
+        """
+        Assess real face quality using detection score, face size, sharpness
+        (Laplacian variance) and brightness. Returns a 0-100 overall score.
+        """
         try:
-            height, width = image.shape[:2]
-            longest = max(height, width)
-            if longest > self.recognition_max_dim:
-                scale = self.recognition_max_dim / longest
-                image = cv2.resize(
-                    image,
-                    (int(width * scale), int(height * scale)),
-                    interpolation=cv2.INTER_AREA,
-                )
-            return image
+            img = self._read_image(image_path)
+            if img is None:
+                return self._quality_fail("Could not load image")
+
+            faces = self.app.get(img)
+            if not faces:
+                return self._quality_fail("No face detected", recommendation="Face the camera with good lighting")
+
+            face = self._largest_face(faces)
+            x1, y1, x2, y2 = [int(v) for v in face.bbox]
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(img.shape[1], x2), min(img.shape[0], y2)
+            face_w, face_h = x2 - x1, y2 - y1
+            face_size = min(face_w, face_h)
+
+            crop = img[y1:y2, x1:x2]
+            gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.size else None
+            blur_var = float(cv2.Laplacian(gray, cv2.CV_64F).var()) if gray is not None and gray.size else 0.0
+            brightness = float(np.mean(gray)) if gray is not None and gray.size else 0.0
+
+            det_score = float(face.det_score)
+
+            # Component scores (0-100)
+            det_component = min(100.0, det_score * 100.0)
+            size_component = min(100.0, (face_size / max(1, self.min_face_size)) * 60.0)
+            sharp_component = min(100.0, (blur_var / max(1.0, self.min_blur_var)) * 60.0)
+            # Brightness best around 110-170
+            if brightness <= 0:
+                bright_component = 0.0
+            elif brightness < 60:
+                bright_component = (brightness / 60.0) * 60.0
+            elif brightness > 210:
+                bright_component = max(0.0, 100.0 - (brightness - 210))
+            else:
+                bright_component = 100.0
+
+            overall = round(
+                det_component * 0.35
+                + size_component * 0.25
+                + sharp_component * 0.25
+                + bright_component * 0.15,
+                1,
+            )
+
+            issues = []
+            if det_score < self.min_det_score:
+                issues.append("Low detection confidence")
+            if face_size < self.min_face_size:
+                issues.append("Face too small / too far")
+            if blur_var < self.min_blur_var:
+                issues.append("Image too blurry")
+            if brightness < 60:
+                issues.append("Too dark")
+            elif brightness > 210:
+                issues.append("Overexposed")
+
+            is_acceptable = (
+                det_score >= self.min_det_score
+                and face_size >= self.min_face_size
+                and blur_var >= self.min_blur_var
+                and overall >= self.min_quality_score
+            )
+
+            return {
+                "is_acceptable": is_acceptable,
+                "overall_score": overall,
+                "metrics": {
+                    "det_score": round(det_score, 3),
+                    "face_size_px": int(face_size),
+                    "sharpness": round(blur_var, 1),
+                    "brightness": round(brightness, 1),
+                },
+                "issues": issues,
+                "recommendations": ["Move closer with steady, well-lit framing"] if issues else [],
+            }
         except Exception as e:
-            logger.warning(f"Image downscale failed, using original: {str(e)}")
-            return image
+            logger.error(f"Quality check failed for {image_path}: {str(e)}")
+            return self._quality_fail(f"Quality check error: {str(e)}")
 
+    @staticmethod
+    def _quality_fail(reason: str, recommendation: str = "Try capturing again") -> Dict:
+        return {
+            "is_acceptable": False,
+            "overall_score": 0,
+            "metrics": {},
+            "issues": [reason],
+            "recommendations": [recommendation],
+        }
+
+    def check_image_liveness(self, image_path: str) -> Dict:
+        """
+        Passive single-frame liveness cannot be done reliably without a
+        dedicated anti-spoofing model. Real liveness is enforced on the
+        attendance path via the client-side active blink/motion challenge.
+        This returns a face-presence based response for API compatibility.
+        """
+        face, _ = self._detect_primary_face(image_path)
+        present = face is not None
+        return {
+            "is_live": present,
+            "confidence": round(float(face.det_score) * 100, 1) if present else 0.0,
+            "spoof_probability": 0.0 if present else 100.0,
+            "checks_passed": {"face_present": present},
+            "recommendations": [] if present else ["No face detected"],
+            "note": "Active blink/motion liveness is verified client-side at capture time.",
+        }
+
+    def validate_face_image(self, image_path: str) -> bool:
+        face, _ = self._detect_primary_face(image_path)
+        return face is not None
+
+    # ------------------------------------------------------------------ #
+    # Enrollment
+    # ------------------------------------------------------------------ #
+    def train_user_face(self, user_id: str, image_paths: List[str], check_liveness: bool = True) -> Dict:
+        """
+        Enroll a user by extracting and storing ALL per-image ArcFace
+        embeddings (no averaging). Returns success status and statistics.
+        """
+        try:
+            logger.info(f"Enrolling user {user_id} from {len(image_paths)} images using {self.model_name}")
+
+            quality_reports = []
+            embeddings = []
+            per_face_quality = []
+
+            for image_path in image_paths:
+                quality = self.check_image_quality(image_path)
+                quality_reports.append({"image": os.path.basename(image_path), **quality})
+
+                if not quality["is_acceptable"]:
+                    logger.warning(f"Rejected (quality) {os.path.basename(image_path)}: {quality['issues']}")
+                    continue
+
+                emb = self.get_embedding(image_path)
+                if emb is None:
+                    logger.warning(f"No embedding extracted from {os.path.basename(image_path)}")
+                    continue
+
+                embeddings.append(emb)
+                per_face_quality.append({
+                    "image": os.path.basename(image_path),
+                    "overall_score": quality["overall_score"],
+                    "accepted": True,
+                    **quality.get("metrics", {}),
+                })
+
+            acceptable = len(embeddings)
+            if acceptable < self.min_required_encodings:
+                raise Exception(
+                    f"Only {acceptable} usable face image(s); need at least "
+                    f"{self.min_required_encodings}. Retake with clear, well-lit, front-facing photos."
+                )
+
+            embeddings_arr = np.vstack(embeddings).astype(np.float32)
+
+            user_dir = os.path.join(DATASET_DIR, user_id)
+            os.makedirs(user_dir, exist_ok=True)
+
+            payload = {
+                "user_id": user_id,
+                "embeddings": embeddings_arr,        # (N, 512) L2-normalized
+                "count": int(embeddings_arr.shape[0]),
+                "model": self.model_name,
+                "dim": int(embeddings_arr.shape[1]),
+                "created_at": datetime.utcnow().isoformat(),
+            }
+            with open(os.path.join(user_dir, "encoding.pkl"), "wb") as f:
+                pickle.dump(payload, f)
+
+            # Lightweight JSON sidecar (no raw embeddings) for debugging/inspection.
+            with open(os.path.join(user_dir, "encoding.json"), "w") as f:
+                json.dump({
+                    "user_id": user_id,
+                    "count": payload["count"],
+                    "model": self.model_name,
+                    "dim": payload["dim"],
+                    "created_at": payload["created_at"],
+                }, f, indent=2)
+
+            # Per-face quality scores for the "View Faces" UI.
+            with open(os.path.join(user_dir, "quality_scores.json"), "w") as f:
+                json.dump({"faces": [
+                    {"image": q["image"], "overall_score": q["overall_score"], "accepted": True}
+                    for q in per_face_quality
+                ]}, f, indent=2)
+
+            avg_quality = float(np.mean([q["overall_score"] for q in per_face_quality])) if per_face_quality else 0.0
+            logger.info(f"Enrolled {user_id} with {payload['count']} embeddings (avg quality {avg_quality:.1f})")
+
+            return {
+                "success": True,
+                "message": f"Enrolled with {payload['count']} high-quality face embeddings",
+                "statistics": {
+                    "total_images": len(image_paths),
+                    "acceptable_images": acceptable,
+                    "successfully_encoded": payload["count"],
+                    "rejected_images": len(image_paths) - acceptable,
+                    "average_quality_score": avg_quality,
+                    "liveness_checked": False,
+                    "average_liveness_confidence": None,
+                    "model": self.model_name,
+                },
+                "quality_reports": quality_reports,
+                "liveness_reports": None,
+            }
+        except Exception as e:
+            logger.error(f"Enrollment failed for {user_id}: {str(e)}")
+            raise Exception(f"Face enrollment failed: {str(e)}")
+
+    # ------------------------------------------------------------------ #
+    # Embedding cache
+    # ------------------------------------------------------------------ #
     def _refresh_cache(self):
-        """
-        Refresh the in-memory encoding cache.
-
-        Uses encoding.pkl modification times to only reload users whose data
-        changed (registered/updated) and drops users whose data was removed.
-        This keeps recognition fast while staying correct across registrations
-        and deletions without manual invalidation.
-        """
-        dataset_dir = "dataset"
-        if not os.path.exists(dataset_dir):
-            self._cache = {}
-            self._cache_mtimes = {}
-            self._cache_ids = []
-            self._cache_matrix = None
+        """Reload only changed users' embeddings, drop removed users, rebuild matrix."""
+        if not os.path.exists(DATASET_DIR):
+            self._cache_embeddings, self._cache_labels, self._cache_mtimes = None, [], {}
             return
 
+        per_user = {}   # user_id -> np.ndarray (N,512)
         changed = False
         current_ids = set()
+        # Reconstruct existing per-user view from cached matrix for reuse
+        if self._cache_embeddings is not None:
+            for uid in set(self._cache_labels):
+                rows = self._cache_embeddings[[i for i, l in enumerate(self._cache_labels) if l == uid]]
+                per_user[uid] = rows
 
-        for user_dir in os.listdir(dataset_dir):
-            user_path = os.path.join(dataset_dir, user_dir)
-            if not os.path.isdir(user_path):
+        for user_id in os.listdir(DATASET_DIR):
+            enc = os.path.join(DATASET_DIR, user_id, "encoding.pkl")
+            if not os.path.isfile(enc):
                 continue
-
-            encoding_file = os.path.join(user_path, "encoding.pkl")
-            if not os.path.exists(encoding_file):
-                continue
-
-            current_ids.add(user_dir)
-
+            current_ids.add(user_id)
             try:
-                mtime = os.path.getmtime(encoding_file)
+                mtime = os.path.getmtime(enc)
             except OSError:
                 continue
-
-            if self._cache_mtimes.get(user_dir) == mtime and user_dir in self._cache:
-                continue  # unchanged, keep cached encoding
-
+            if self._cache_mtimes.get(user_id) == mtime and user_id in per_user:
+                continue
             try:
-                with open(encoding_file, 'rb') as f:
-                    user_data = pickle.load(f)
-                self._cache[user_dir] = np.asarray(user_data['encoding'], dtype=np.float64)
-                self._cache_mtimes[user_dir] = mtime
+                with open(enc, "rb") as f:
+                    data = pickle.load(f)
+                if "embeddings" not in data:
+                    logger.warning(f"Skipping legacy/incompatible encoding for {user_id} (re-enroll needed)")
+                    per_user.pop(user_id, None)
+                    continue
+                emb = np.asarray(data["embeddings"], dtype=np.float32)
+                if emb.ndim == 1:
+                    emb = emb.reshape(1, -1)
+                per_user[user_id] = emb
+                self._cache_mtimes[user_id] = mtime
                 changed = True
             except Exception as e:
-                logger.error(f"Failed to load encoding for {user_dir}: {str(e)}")
+                logger.error(f"Failed to load embeddings for {user_id}: {str(e)}")
 
-        # Drop users whose encoding files were removed
-        for uid in list(self._cache.keys()):
+        for uid in list(per_user.keys()):
             if uid not in current_ids:
-                self._cache.pop(uid, None)
+                per_user.pop(uid, None)
                 self._cache_mtimes.pop(uid, None)
                 changed = True
 
-        if changed or self._cache_matrix is None:
-            self._cache_ids = list(self._cache.keys())
-            self._cache_matrix = (
-                np.stack([self._cache[uid] for uid in self._cache_ids])
-                if self._cache_ids else None
-            )
-    
-    def check_image_quality(self, image_path: str) -> Dict:
+        if changed or self._cache_embeddings is None:
+            labels, mats = [], []
+            for uid, emb in per_user.items():
+                mats.append(emb)
+                labels.extend([uid] * emb.shape[0])
+            self._cache_embeddings = np.vstack(mats).astype(np.float32) if mats else None
+            self._cache_labels = labels
+
+    # ------------------------------------------------------------------ #
+    # Recognition
+    # ------------------------------------------------------------------ #
+    def recognize(self, image_path: str) -> Optional[Dict]:
         """
-        Check quality of a single image before processing
-        
-        Returns:
-            Dictionary with quality metrics and acceptance status
+        Recognize the primary face. Returns dict with user_id, confidence and
+        similarity, or None if no confident match.
         """
         try:
-            # Load image
-            image = cv2.imread(image_path)
-            if image is None:
-                return {
-                    'is_acceptable': False,
-                    'overall_score': 0,
-                    'issues': ['Could not load image'],
-                    'recommendations': ['Ensure image file is valid']
-                }
-            
-            # Check quality
-            quality_result = check_face_quality(image)
-            
-            logger.info(f"Image quality check for {os.path.basename(image_path)}: "
-                       f"Score={quality_result['overall_score']:.1f}%, "
-                       f"Acceptable={quality_result['is_acceptable']}")
-            
-            return quality_result
-            
-        except Exception as e:
-            logger.error(f"Quality check failed for {image_path}: {str(e)}")
-            return {
-                'is_acceptable': False,
-                'overall_score': 0,
-                'issues': [f'Quality check error: {str(e)}'],
-                'recommendations': ['Try capturing image again']
-            }
-    
-    def check_image_liveness(self, image_path: str) -> Dict:
-        """
-        Check if image contains a live person (anti-spoofing)
-        
-        Returns:
-            Dictionary with liveness detection results
-        """
-        try:
-            # Load image
-            image = cv2.imread(image_path)
-            if image is None:
-                return {
-                    'is_live': False,
-                    'confidence': 0,
-                    'spoof_probability': 100,
-                    'checks_passed': {},
-                    'recommendations': ['Could not load image']
-                }
-            
-            # Check liveness
-            liveness_result = check_liveness(image, mode='comprehensive')
-            
-            logger.info(f"Liveness check for {os.path.basename(image_path)}: "
-                       f"Live={liveness_result['is_live']}, "
-                       f"Confidence={liveness_result['confidence']:.1f}%, "
-                       f"SpoofProb={liveness_result['spoof_probability']:.1f}%")
-            
-            return liveness_result
-            
-        except Exception as e:
-            logger.error(f"Liveness check failed for {image_path}: {str(e)}")
-            return {
-                'is_live': False,
-                'confidence': 0,
-                'spoof_probability': 100,
-                'checks_passed': {},
-                'details': {'error': str(e)},
-                'recommendations': ['Liveness check error - try again']
-            }
-    
-    def train_user_face(self, user_id: str, image_paths: List[str], check_liveness: bool = True) -> Dict:
-        """
-        Train face recognition model for a specific user with quality and liveness checks
-        
-        Args:
-            user_id: Unique identifier for the user
-            image_paths: List of paths to face images
-            check_liveness: Whether to perform liveness detection (default: True)
-        
-        Returns:
-            Dictionary with success status, quality reports, liveness reports, and statistics
-        """
-        try:
-            logger.info(f"Training face recognition for user: {user_id} with quality and liveness checks")
-            
-            # First pass: Check quality of all images
-            quality_reports = []
-            acceptable_images = []
-            
-            for image_path in image_paths:
-                quality_result = self.check_image_quality(image_path)
-                quality_reports.append({
-                    'image': os.path.basename(image_path),
-                    'path': image_path,
-                    **quality_result
-                })
-                
-                if quality_result['is_acceptable']:
-                    acceptable_images.append(image_path)
-                else:
-                    logger.warning(f"Image rejected due to low quality: {os.path.basename(image_path)}")
-                    logger.warning(f"  Issues: {', '.join(quality_result['issues'])}")
-            
-            # Check if we have enough high-quality images (reduced to 1 for easier registration)
-            if len(acceptable_images) < 1:  # Minimum 1 high-quality image
-                raise Exception(
-                    f"No high-quality images found. "
-                    f"Need at least 1 image with quality score > {self.min_quality_score}%. "
-                    f"Please retake images with better quality."
-                )
-            
-            # Second pass: Check liveness (anti-spoofing) if enabled
-            liveness_reports = []
-            live_images = []
-            
-            if check_liveness and self.enable_liveness_check:
-                logger.info(f"Performing liveness detection on {len(acceptable_images)} acceptable images")
-                
-                for image_path in acceptable_images:
-                    liveness_result = self.check_image_liveness(image_path)
-                    liveness_reports.append({
-                        'image': os.path.basename(image_path),
-                        'path': image_path,
-                        **liveness_result
-                    })
-                    
-                    if liveness_result['is_live'] and liveness_result['confidence'] >= self.min_liveness_confidence:
-                        live_images.append(image_path)
-                    else:
-                        logger.warning(f"Image rejected due to liveness check: {os.path.basename(image_path)}")
-                        logger.warning(f"  Confidence: {liveness_result['confidence']:.1f}%, "
-                                     f"Spoof Probability: {liveness_result['spoof_probability']:.1f}%")
-                
-                # Check if we have enough live images (reduced to 1 for easier registration)
-                if len(live_images) < 1:  # Minimum 1 live image
-                    raise Exception(
-                        f"No images passed liveness detection. "
-                        f"Need at least 1 live image with confidence > {self.min_liveness_confidence}%. "
-                        f"Please ensure you're using a live camera feed, not photos or screens."
-                    )
-                
-                # Use live images for training
-                images_for_training = live_images
-            else:
-                # Skip liveness check if disabled
-                images_for_training = acceptable_images
-                logger.info("Liveness check skipped (disabled or not required)")
-            
-            # Third pass: Extract face encodings from verified images
-            face_encodings = []
-            processed_count = 0
-            
-            for image_path in images_for_training:
-                try:
-                    # Load image
-                    image = face_recognition.load_image_file(image_path)
-                    
-                    # Find face locations
-                    face_locations = face_recognition.face_locations(image, model=self.model)
-                    
-                    if len(face_locations) == 0:
-                        logger.warning(f"No face found in {os.path.basename(image_path)}")
-                        continue
-                    
-                    if len(face_locations) > 1:
-                        logger.warning(f"Multiple faces found in {os.path.basename(image_path)}, using the first one")
-                    
-                    # Get face encoding for the first face found
-                    face_encodings_in_image = face_recognition.face_encodings(
-                        image, 
-                        face_locations, 
-                        num_jitters=self.num_jitters
-                    )
-                    
-                    if face_encodings_in_image:
-                        face_encodings.append(face_encodings_in_image[0])
-                        processed_count += 1
-                        logger.info(f"Successfully encoded image {processed_count}: {os.path.basename(image_path)}")
-                
-                except Exception as e:
-                    logger.warning(f"Failed to process image {image_path}: {str(e)}")
-                    continue
-            
-            if processed_count < 3:
-                raise Exception(f"Only {processed_count} images successfully encoded. Need at least 3.")
-            
-            # Calculate average encoding
-            if face_encodings:
-                avg_encoding = np.mean(face_encodings, axis=0)
-                
-                # Save the averaged encoding
-                encoding_path = f"dataset/{user_id}/encoding.pkl"
-                os.makedirs(f"dataset/{user_id}", exist_ok=True)
-                
-                with open(encoding_path, 'wb') as f:
-                    pickle.dump({
-                        'user_id': user_id,
-                        'encoding': avg_encoding,
-                        'model': self.model,
-                        'valid_images': processed_count,
-                        'tolerance': self.tolerance,
-                        'quality_checked': True,
-                        'min_quality_score': self.min_quality_score,
-                        'liveness_checked': check_liveness and self.enable_liveness_check,
-                        'min_liveness_confidence': self.min_liveness_confidence
-                    }, f)
-                
-                # Also save as JSON for debugging
-                json_path = f"dataset/{user_id}/encoding.json"
-                with open(json_path, 'w') as f:
-                    json.dump({
-                        'user_id': user_id,
-                        'encoding': avg_encoding.tolist(),
-                        'model': self.model,
-                        'valid_images': processed_count,
-                        'tolerance': self.tolerance,
-                        'quality_checked': True,
-                        'min_quality_score': self.min_quality_score,
-                        'liveness_checked': check_liveness and self.enable_liveness_check,
-                        'min_liveness_confidence': self.min_liveness_confidence
-                    }, f)
-                
-                logger.info(f"Face training completed for user {user_id} with {processed_count} high-quality images")
-                
-                # Calculate statistics
-                liveness_checked = check_liveness and self.enable_liveness_check
-                
-                # Return detailed results
-                return {
-                    'success': True,
-                    'message': f'Successfully trained with {processed_count} verified images',
-                    'statistics': {
-                        'total_images': len(image_paths),
-                        'acceptable_images': len(acceptable_images),
-                        'live_images': len(live_images) if liveness_checked else len(acceptable_images),
-                        'rejected_images': len(image_paths) - processed_count,
-                        'successfully_encoded': processed_count,
-                        'average_quality_score': np.mean([r['overall_score'] for r in quality_reports]),
-                        'average_liveness_confidence': np.mean([r['confidence'] for r in liveness_reports]) if liveness_reports else None,
-                        'liveness_checked': liveness_checked
-                    },
-                    'quality_reports': quality_reports,
-                    'liveness_reports': liveness_reports if liveness_checked else None
-                }
-            
-            return {
-                'success': False,
-                'message': 'Failed to generate face encoding',
-                'quality_reports': quality_reports,
-                'liveness_reports': liveness_reports if check_liveness and self.enable_liveness_check else None
-            }
-            
-        except Exception as e:
-            logger.error(f"Face training failed for user {user_id}: {str(e)}")
-            raise Exception(f"Face training failed: {str(e)}")
-    
-    def recognize_face(self, image_path: str) -> Optional[str]:
-        """
-        Recognize face from input image against all trained users.
-
-        Uses a downscaled frame for faster detection and an in-memory,
-        vectorized comparison against all cached encodings.
-        """
-        try:
-            logger.info(f"Recognizing face from: {image_path}")
-
-            # Load and downscale the input image for faster detection
-            image = face_recognition.load_image_file(image_path)
-            image = self._downscale_image(image)
-
-            # Find face locations in the input image
-            face_locations = face_recognition.face_locations(image, model=self.model)
-
-            if len(face_locations) == 0:
-                logger.warning("No face detected in input image")
+            q = self.get_embedding(image_path)
+            if q is None:
+                logger.info("No face detected for recognition")
                 return None
 
-            # Get face encoding for the first face found
-            face_encodings = face_recognition.face_encodings(
-                image,
-                face_locations,
-                num_jitters=self.num_jitters
-            )
-
-            if not face_encodings:
-                logger.warning("Could not encode face in input image")
-                return None
-
-            input_encoding = face_encodings[0]
-
-            # Refresh cache (only reloads changed users) and compare in one shot
             self._refresh_cache()
-
-            if self._cache_matrix is None or not self._cache_ids:
-                logger.warning("No trained encodings available")
+            if self._cache_embeddings is None or not self._cache_labels:
+                logger.info("No enrolled embeddings available")
                 return None
 
-            # Vectorized euclidean distance against all users at once
-            distances = np.linalg.norm(self._cache_matrix - input_encoding, axis=1)
-            best_idx = int(np.argmin(distances))
-            best_distance = float(distances[best_idx])
-            best_match = self._cache_ids[best_idx]
+            sims = self._cache_embeddings @ q  # cosine similarity (all L2-normalized)
+            labels = self._cache_labels
 
-            if best_distance <= self.tolerance:
-                confidence = (1 - best_distance) * 100
-                logger.info(f"Face recognized: {best_match} (confidence: {confidence:.1f}%)")
-                return best_match
-            else:
-                confidence = (1 - best_distance) * 100
-                logger.info(f"No matching face found. Best confidence: {confidence:.1f}%")
-                return None
+            # Per-user best similarity
+            best_per_user: Dict[str, float] = {}
+            for sim, lbl in zip(sims, labels):
+                s = float(sim)
+                if lbl not in best_per_user or s > best_per_user[lbl]:
+                    best_per_user[lbl] = s
 
-        except Exception as e:
-            logger.error(f"Face recognition failed: {str(e)}")
-            return None
-    
-    def find_duplicate_face(self, image_path: str, db, current_user_id: str) -> Optional[Dict]:
-        """
-        Check if the face in the image already exists in the database
-        
-        Args:
-            image_path: Path to the face image to check
-            db: Database session
-            current_user_id: ID of the current user (to exclude from search)
-            
-        Returns:
-            Dictionary with user info if duplicate found, None otherwise
-        """
-        try:
-            # Load and process the input image
-            image = face_recognition.load_image_file(image_path)
-            face_locations = face_recognition.face_locations(image, model=self.model)
-            
-            if len(face_locations) == 0:
-                logger.warning("No face detected in duplicate check image")
-                return None
-            
-            # Get face encoding
-            face_encodings = face_recognition.face_encodings(
-                image, 
-                face_locations,
-                num_jitters=self.num_jitters
+            top_user = max(best_per_user, key=best_per_user.get)
+            top_sim = best_per_user[top_user]
+
+            # k-NN consistency vote among the nearest embeddings
+            k = min(self.knn_k, len(labels))
+            top_idx = np.argsort(-sims)[:k]
+            knn_labels = [labels[i] for i in top_idx]
+            vote_winner = max(set(knn_labels), key=knn_labels.count)
+
+            confidence = round(max(0.0, min(1.0, top_sim)) * 100, 1)
+
+            if top_sim >= self.match_threshold and vote_winner == top_user:
+                logger.info(f"Recognized {top_user} (sim={top_sim:.3f}, conf={confidence}%)")
+                return {"user_id": top_user, "confidence": confidence, "similarity": round(top_sim, 4)}
+
+            logger.info(
+                f"No confident match (best={top_user} sim={top_sim:.3f}, "
+                f"vote={vote_winner}, threshold={self.match_threshold})"
             )
-            
-            if not face_encodings:
-                logger.warning("Could not encode face for duplicate check")
-                return None
-            
-            input_encoding = face_encodings[0]
-            
-            # Compare against all registered users (except current user)
-            dataset_dir = "dataset"
-            if not os.path.exists(dataset_dir):
-                return None
-            
-            from models import User
-            
-            for user_dir in os.listdir(dataset_dir):
-                # Skip current user's directory
-                if user_dir == current_user_id:
-                    continue
-                    
-                user_path = os.path.join(dataset_dir, user_dir)
-                if not os.path.isdir(user_path):
-                    continue
-                
-                encoding_file = os.path.join(user_path, "encoding.pkl")
-                if not os.path.exists(encoding_file):
-                    continue
-                
-                try:
-                    with open(encoding_file, 'rb') as f:
-                        user_data = pickle.load(f)
-                    
-                    stored_encoding = user_data['encoding']
-                    
-                    # Calculate face distance
-                    distance = face_recognition.face_distance([stored_encoding], input_encoding)[0]
-                    
-                    logger.info(f"Duplicate check - Distance to user {user_data['user_id']}: {distance:.3f}")
-                    
-                    # If face matches (distance < tolerance), it's a duplicate
-                    if distance < self.tolerance:
-                        # Get user details from database
-                        user = db.query(User).filter(User.unique_id == user_data['user_id']).first()
-                        if user:
-                            logger.warning(f"Duplicate face detected! Already registered to: {user.full_name} ({user.unique_id})")
-                            return {
-                                'unique_id': user.unique_id,
-                                'full_name': user.full_name,
-                                'email': user.email,
-                                'distance': float(distance)
-                            }
-                
-                except Exception as e:
-                    logger.error(f"Error checking user {user_dir} for duplicates: {str(e)}")
-                    continue
-            
-            # No duplicate found
-            logger.info("No duplicate face found - registration can proceed")
             return None
-            
         except Exception as e:
-            logger.error(f"Duplicate face detection failed: {str(e)}")
+            logger.error(f"Recognition failed: {str(e)}")
             return None
-    
-    def validate_face_image(self, image_path: str) -> bool:
-        """
-        Validate if image contains a detectable face
-        """
+
+    def recognize_face(self, image_path: str) -> Optional[str]:
+        """Backward-compatible helper returning just the matched user_id."""
+        result = self.recognize(image_path)
+        return result["user_id"] if result else None
+
+    # ------------------------------------------------------------------ #
+    # Duplicate detection (enrollment guard)
+    # ------------------------------------------------------------------ #
+    def find_duplicate_face(self, image_path: str, db, current_user_id: str) -> Optional[Dict]:
+        """Return user info if this face is already enrolled under a different user."""
         try:
-            # Load image and check for faces
-            image = face_recognition.load_image_file(image_path)
-            face_locations = face_recognition.face_locations(image, model=self.model)
-            return len(face_locations) > 0
+            q = self.get_embedding(image_path)
+            if q is None:
+                logger.warning("No face detected during duplicate check")
+                return None
+
+            self._refresh_cache()
+            if self._cache_embeddings is None or not self._cache_labels:
+                return None
+
+            sims = self._cache_embeddings @ q
+            labels = self._cache_labels
+
+            best_per_user: Dict[str, float] = {}
+            for sim, lbl in zip(sims, labels):
+                if lbl == current_user_id:
+                    continue
+                s = float(sim)
+                if lbl not in best_per_user or s > best_per_user[lbl]:
+                    best_per_user[lbl] = s
+
+            if not best_per_user:
+                return None
+
+            top_user = max(best_per_user, key=best_per_user.get)
+            top_sim = best_per_user[top_user]
+
+            if top_sim >= self.duplicate_threshold:
+                from models import User
+                user = db.query(User).filter(User.unique_id == top_user).first()
+                if user:
+                    logger.warning(f"Duplicate face: matches {user.full_name} ({user.unique_id}) sim={top_sim:.3f}")
+                    return {
+                        "unique_id": user.unique_id,
+                        "full_name": user.full_name,
+                        "email": user.email,
+                        "similarity": round(top_sim, 4),
+                    }
+            return None
         except Exception as e:
-            logger.warning(f"Face validation failed: {str(e)}")
-            return False
-    
-    def preprocess_image(self, image_path: str) -> str:
-        """
-        Preprocess image for better face detection
-        """
-        try:
-            # Read image
-            img = cv2.imread(image_path)
-            if img is None:
-                raise Exception("Could not read image")
-            
-            # Convert BGR to RGB (face_recognition uses RGB)
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            
-            # Resize if too large (face_recognition works better with smaller images)
-            height, width = img_rgb.shape[:2]
-            if width > 1000 or height > 1000:
-                scale = min(1000/width, 1000/height)
-                new_width = int(width * scale)
-                new_height = int(height * scale)
-                img_rgb = cv2.resize(img_rgb, (new_width, new_height))
-            
-            # Convert back to BGR for saving
-            img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
-            
-            # Save preprocessed image
-            processed_path = image_path.replace('.jpg', '_processed.jpg')
-            cv2.imwrite(processed_path, img_bgr)
-            
-            return processed_path
-        
-        except Exception as e:
-            logger.error(f"Image preprocessing failed: {str(e)}")
-            return image_path
-    
-    def get_face_locations(self, image_path: str) -> List[tuple]:
-        """
-        Get face locations in an image (useful for debugging)
-        """
-        try:
-            image = face_recognition.load_image_file(image_path)
-            face_locations = face_recognition.face_locations(image, model=self.model)
-            return face_locations
-        except Exception as e:
-            logger.error(f"Failed to get face locations: {str(e)}")
-            return []
-    
-    def set_accuracy_mode(self, high_accuracy: bool = False):
-        """
-        Switch between HOG (fast) and CNN (accurate) models
-        """
-        if high_accuracy:
-            self.model = "cnn"
-            self.num_jitters = 2
-            logger.info("Switched to high accuracy mode (CNN)")
-        else:
-            self.model = "hog"
-            self.num_jitters = 1
-            logger.info("Switched to fast mode (HOG)") 
+            logger.error(f"Duplicate detection failed: {str(e)}")
+            return None

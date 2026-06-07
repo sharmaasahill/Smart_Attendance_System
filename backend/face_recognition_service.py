@@ -22,6 +22,93 @@ class FaceRecognitionService:
         self.min_quality_score = 30  # Minimum acceptable quality score (very lenient)
         self.min_liveness_confidence = 20  # Minimum liveness confidence (very lenient for webcam)
         self.enable_liveness_check = True  # Feature flag for liveness detection
+        self.recognition_max_dim = 800  # Downscale recognition frames to this max dimension for speed
+
+        # In-memory encoding cache for fast recognition.
+        # Avoids reading every user's encoding.pkl from disk on each request.
+        self._cache = {}            # user_id -> np.ndarray encoding
+        self._cache_mtimes = {}     # user_id -> last seen mtime of encoding.pkl
+        self._cache_ids = []        # ordered list of user_ids matching the matrix rows
+        self._cache_matrix = None   # stacked encodings (N, 128) for vectorized distance
+
+    def _downscale_image(self, image: np.ndarray) -> np.ndarray:
+        """Downscale an RGB image so its largest side is at most recognition_max_dim."""
+        try:
+            height, width = image.shape[:2]
+            longest = max(height, width)
+            if longest > self.recognition_max_dim:
+                scale = self.recognition_max_dim / longest
+                image = cv2.resize(
+                    image,
+                    (int(width * scale), int(height * scale)),
+                    interpolation=cv2.INTER_AREA,
+                )
+            return image
+        except Exception as e:
+            logger.warning(f"Image downscale failed, using original: {str(e)}")
+            return image
+
+    def _refresh_cache(self):
+        """
+        Refresh the in-memory encoding cache.
+
+        Uses encoding.pkl modification times to only reload users whose data
+        changed (registered/updated) and drops users whose data was removed.
+        This keeps recognition fast while staying correct across registrations
+        and deletions without manual invalidation.
+        """
+        dataset_dir = "dataset"
+        if not os.path.exists(dataset_dir):
+            self._cache = {}
+            self._cache_mtimes = {}
+            self._cache_ids = []
+            self._cache_matrix = None
+            return
+
+        changed = False
+        current_ids = set()
+
+        for user_dir in os.listdir(dataset_dir):
+            user_path = os.path.join(dataset_dir, user_dir)
+            if not os.path.isdir(user_path):
+                continue
+
+            encoding_file = os.path.join(user_path, "encoding.pkl")
+            if not os.path.exists(encoding_file):
+                continue
+
+            current_ids.add(user_dir)
+
+            try:
+                mtime = os.path.getmtime(encoding_file)
+            except OSError:
+                continue
+
+            if self._cache_mtimes.get(user_dir) == mtime and user_dir in self._cache:
+                continue  # unchanged, keep cached encoding
+
+            try:
+                with open(encoding_file, 'rb') as f:
+                    user_data = pickle.load(f)
+                self._cache[user_dir] = np.asarray(user_data['encoding'], dtype=np.float64)
+                self._cache_mtimes[user_dir] = mtime
+                changed = True
+            except Exception as e:
+                logger.error(f"Failed to load encoding for {user_dir}: {str(e)}")
+
+        # Drop users whose encoding files were removed
+        for uid in list(self._cache.keys()):
+            if uid not in current_ids:
+                self._cache.pop(uid, None)
+                self._cache_mtimes.pop(uid, None)
+                changed = True
+
+        if changed or self._cache_matrix is None:
+            self._cache_ids = list(self._cache.keys())
+            self._cache_matrix = (
+                np.stack([self._cache[uid] for uid in self._cache_ids])
+                if self._cache_ids else None
+            )
     
     def check_image_quality(self, image_path: str) -> Dict:
         """
@@ -287,81 +374,60 @@ class FaceRecognitionService:
     
     def recognize_face(self, image_path: str) -> Optional[str]:
         """
-        Recognize face from input image against all trained users
+        Recognize face from input image against all trained users.
+
+        Uses a downscaled frame for faster detection and an in-memory,
+        vectorized comparison against all cached encodings.
         """
         try:
             logger.info(f"Recognizing face from: {image_path}")
-            
-            # Load the input image
+
+            # Load and downscale the input image for faster detection
             image = face_recognition.load_image_file(image_path)
-            
+            image = self._downscale_image(image)
+
             # Find face locations in the input image
             face_locations = face_recognition.face_locations(image, model=self.model)
-            
+
             if len(face_locations) == 0:
                 logger.warning("No face detected in input image")
                 return None
-            
+
             # Get face encoding for the first face found
             face_encodings = face_recognition.face_encodings(
-                image, 
-                face_locations, 
+                image,
+                face_locations,
                 num_jitters=self.num_jitters
             )
-            
+
             if not face_encodings:
                 logger.warning("Could not encode face in input image")
                 return None
-            
+
             input_encoding = face_encodings[0]
-            
-            # Compare against all trained users
-            best_match = None
-            best_distance = float('inf')
-            
-            dataset_dir = "dataset"
-            if not os.path.exists(dataset_dir):
-                logger.warning("No dataset directory found")
+
+            # Refresh cache (only reloads changed users) and compare in one shot
+            self._refresh_cache()
+
+            if self._cache_matrix is None or not self._cache_ids:
+                logger.warning("No trained encodings available")
                 return None
-            
-            for user_dir in os.listdir(dataset_dir):
-                user_path = os.path.join(dataset_dir, user_dir)
-                if not os.path.isdir(user_path):
-                    continue
-                
-                encoding_file = os.path.join(user_path, "encoding.pkl")
-                if not os.path.exists(encoding_file):
-                    continue
-                
-                try:
-                    with open(encoding_file, 'rb') as f:
-                        user_data = pickle.load(f)
-                    
-                    stored_encoding = user_data['encoding']
-                    
-                    # Calculate face distance
-                    distance = face_recognition.face_distance([stored_encoding], input_encoding)[0]
-                    
-                    logger.info(f"Distance to user {user_data['user_id']}: {distance}")
-                    
-                    if distance < best_distance:
-                        best_distance = distance
-                        best_match = user_data['user_id']
-                
-                except Exception as e:
-                    logger.error(f"Error comparing with user {user_dir}: {str(e)}")
-                    continue
-            
-            # Check if best match is within tolerance
-            if best_match and best_distance <= self.tolerance:
+
+            # Vectorized euclidean distance against all users at once
+            distances = np.linalg.norm(self._cache_matrix - input_encoding, axis=1)
+            best_idx = int(np.argmin(distances))
+            best_distance = float(distances[best_idx])
+            best_match = self._cache_ids[best_idx]
+
+            if best_distance <= self.tolerance:
                 confidence = (1 - best_distance) * 100
                 logger.info(f"Face recognized: {best_match} (confidence: {confidence:.1f}%)")
                 return best_match
             else:
-                confidence = (1 - best_distance) * 100 if best_distance != float('inf') else 0
+                confidence = (1 - best_distance) * 100
                 logger.info(f"No matching face found. Best confidence: {confidence:.1f}%")
                 return None
-        
+
         except Exception as e:
             logger.error(f"Face recognition failed: {str(e)}")
             return None

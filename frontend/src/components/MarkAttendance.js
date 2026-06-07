@@ -1,26 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Container,
   Typography,
-  Button,
   Box,
-  CircularProgress,
   Card,
   CardContent,
   Chip,
   Grid,
   Fade,
   LinearProgress,
-  Avatar,
   useTheme,
   useMediaQuery,
   Stack,
-  Paper,
 } from '@mui/material';
-import {
-  CameraAlt,
-  Refresh,
-} from '@mui/icons-material';
 import { attendanceAPI, webcamCaptureToFile } from '../services/api';
 import { format } from 'date-fns';
 import SimpleWebcamWithFaceDetection from './SimpleWebcamWithFaceDetection';
@@ -35,6 +27,43 @@ const pulseAnimation = `
   50% {
     opacity: 0.5;
     transform: scale(1.2);
+  }
+}
+
+@keyframes scanLine {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes scanRing {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+
+@keyframes cornerGlow {
+  0%, 100% {
+    border-color: rgba(249,115,22,0.4);
+  }
+  50% {
+    border-color: rgba(249,115,22,1);
   }
 }
 `;
@@ -52,21 +81,54 @@ const MarkAttendance = () => {
   const [attendanceStatus, setAttendanceStatus] = useState('ready');
   const [faceDetected, setFaceDetected] = useState(false);
 
+  // --- Auto-capture control ---
+  // How long a face must stay steady before we capture (avoids blurry frames)
+  const STABILITY_MS = 700;
+  // How long result overlays stay before auto-resetting for the next person
+  const RESULT_DISPLAY_MS = 4000;
+  // Cooldown before auto-retrying after a failed (not recognized) attempt
+  const ERROR_RETRY_MS = 3000;
+
+  const isCapturingRef = useRef(false);      // prevents overlapping requests
+  const stabilityTimerRef = useRef(null);    // pending steady-face timer
+  const resetTimerRef = useRef(null);        // pending auto-reset timer
+  const requireFaceClearRef = useRef(false); // require face to leave before re-arming
+
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Clean up any pending timers on unmount
+  useEffect(() => {
+    return () => {
+      if (stabilityTimerRef.current) clearTimeout(stabilityTimerRef.current);
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    };
   }, []);
 
   const handleFaceDetectionChange = (detected) => {
     setFaceDetected(detected);
   };
 
-  const markAttendance = async () => {
-    if (!webcamRef.current) {
-      setError('Camera not ready. Please refresh the page.');
+  const scheduleReset = useCallback((delay) => {
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = setTimeout(() => {
+      resetTimerRef.current = null;
+      setSuccess(null);
+      setError('');
+      setAlreadyMarked(null);
+      setAttendanceStatus('ready');
+    }, delay);
+  }, []);
+
+  const captureAndMark = useCallback(async () => {
+    if (isCapturingRef.current) return;
+    if (!webcamRef.current || !webcamRef.current.getScreenshot) {
       return;
     }
 
+    isCapturingRef.current = true;
     setLoading(true);
     setError('');
     setSuccess(null);
@@ -74,50 +136,71 @@ const MarkAttendance = () => {
     setAttendanceStatus('scanning');
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setAttendanceStatus('processing');
-      await new Promise(resolve => setTimeout(resolve, 1200));
-
-      let imageSrc;
-      if (webcamRef.current && webcamRef.current.getScreenshot) {
-        imageSrc = webcamRef.current.getScreenshot();
-      }
-
+      const imageSrc = webcamRef.current.getScreenshot();
       if (!imageSrc) {
         throw new Error('Failed to capture image.');
       }
+
+      setAttendanceStatus('processing');
 
       const imageFile = await webcamCaptureToFile(imageSrc, 'attendance.jpg');
       const response = await attendanceAPI.markAttendance(imageFile);
 
       setSuccess(response.data);
       setAttendanceStatus('success');
+      // Require the person to step away before the next auto-capture
+      requireFaceClearRef.current = true;
+      scheduleReset(RESULT_DISPLAY_MS);
     } catch (error) {
       const errorMessage = error.response?.data?.detail || error.message || 'Failed';
-      
-      // Check if attendance already marked
+
       if (errorMessage.toLowerCase().includes('already marked')) {
         setAlreadyMarked({
           message: errorMessage,
           user: error.response?.data?.user || null,
         });
         setAttendanceStatus('already-marked');
+        requireFaceClearRef.current = true;
+        scheduleReset(RESULT_DISPLAY_MS);
       } else {
+        // Not recognized / transient error: auto-retry after a short cooldown
         setError(errorMessage);
         setAttendanceStatus('error');
+        requireFaceClearRef.current = false;
+        scheduleReset(ERROR_RETRY_MS);
       }
     } finally {
       setLoading(false);
+      isCapturingRef.current = false;
     }
-  };
+  }, [scheduleReset]);
 
-  const resetAttendance = () => {
-    setSuccess(null);
-    setError('');
-    setAlreadyMarked(null);
-    setAttendanceStatus('ready');
-    setFaceDetected(false);
-  };
+  // Automatic capture: trigger when a face is held steady in the target zone
+  useEffect(() => {
+    // Re-arm once the previous person has stepped away
+    if (requireFaceClearRef.current && !faceDetected) {
+      requireFaceClearRef.current = false;
+    }
+
+    const canCapture =
+      faceDetected &&
+      !isCapturingRef.current &&
+      attendanceStatus === 'ready' &&
+      !requireFaceClearRef.current;
+
+    if (canCapture) {
+      if (!stabilityTimerRef.current) {
+        stabilityTimerRef.current = setTimeout(() => {
+          stabilityTimerRef.current = null;
+          captureAndMark();
+        }, STABILITY_MS);
+      }
+    } else if (stabilityTimerRef.current) {
+      // Face left or state changed before it was steady enough — cancel
+      clearTimeout(stabilityTimerRef.current);
+      stabilityTimerRef.current = null;
+    }
+  }, [faceDetected, attendanceStatus, captureAndMark]);
 
   return (
     <>
@@ -182,6 +265,43 @@ const MarkAttendance = () => {
                   onFaceDetectionChange={handleFaceDetectionChange} 
                   style={{ width: '100%', objectFit: 'cover' }} 
                 />
+
+                {/* Scanning Overlay (while recognizing) */}
+                {loading && !success && !error && !alreadyMarked && (
+                  <Fade in timeout={300}>
+                    <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', overflow: 'hidden' }}>
+                      {/* Dark vignette */}
+                      <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.45) 100%)' }} />
+
+                      {/* Sweeping scan line */}
+                      <Box sx={{ position: 'absolute', left: 0, right: 0, height: '3px', background: 'linear-gradient(90deg, transparent 0%, #f97316 50%, transparent 100%)', boxShadow: '0 0 16px 3px rgba(249,115,22,0.7)', animation: 'scanLine 1.6s ease-in-out infinite' }} />
+
+                      {/* Face framing box with glowing corners */}
+                      <Box sx={{ position: 'relative', width: isMobile ? 200 : 240, height: isMobile ? 240 : 290, borderRadius: '16px' }}>
+                        {/* Pulsing rings */}
+                        <Box sx={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(249,115,22,0.6)', animation: 'scanRing 1.8s ease-out infinite' }} />
+                        <Box sx={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '2px solid rgba(249,115,22,0.6)', animation: 'scanRing 1.8s ease-out infinite', animationDelay: '0.9s' }} />
+
+                        {/* Corner brackets */}
+                        {[
+                          { top: 0, left: 0, borderTop: '3px solid', borderLeft: '3px solid', borderTopLeftRadius: '12px' },
+                          { top: 0, right: 0, borderTop: '3px solid', borderRight: '3px solid', borderTopRightRadius: '12px' },
+                          { bottom: 0, left: 0, borderBottom: '3px solid', borderLeft: '3px solid', borderBottomLeftRadius: '12px' },
+                          { bottom: 0, right: 0, borderBottom: '3px solid', borderRight: '3px solid', borderBottomRightRadius: '12px' },
+                        ].map((pos, i) => (
+                          <Box key={i} sx={{ position: 'absolute', width: 32, height: 32, animation: 'cornerGlow 1.2s ease-in-out infinite', ...pos }} />
+                        ))}
+                      </Box>
+
+                      {/* Status text */}
+                      <Box sx={{ position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center' }}>
+                        <Typography variant="body2" fontWeight="700" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', letterSpacing: '0.08em', textShadow: '0 2px 8px rgba(0,0,0,0.6)' }}>
+                          {attendanceStatus === 'processing' ? 'RECOGNIZING FACE...' : 'SCANNING...'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Fade>
+                )}
                 
                 {/* Success Overlay */}
                 {success && (
@@ -236,64 +356,46 @@ const MarkAttendance = () => {
                 )}
               </Box>
 
-              {/* Action Buttons */}
+              {/* Auto-capture status footer */}
               <Box sx={{ p: 3, background: '#ffffff' }}>
                 {loading && <LinearProgress sx={{ mb: 2, height: 6, borderRadius: 3, background: '#e7e5e4', '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg, #f97316 0%, #fb923c 100%)', borderRadius: 3 } }} />}
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={(success || error || alreadyMarked) ? 6 : 12}>
-                    <Button 
-                      variant="contained" 
-                      size="large" 
-                      fullWidth 
-                      startIcon={loading ? <CircularProgress size={20} sx={{ color: '#ffffff' }} /> : <CameraAlt />} 
-                      onClick={markAttendance} 
-                      disabled={loading || success || alreadyMarked || !faceDetected}
-                      sx={{ 
-                        py: 2.5, 
-                        fontSize: '1rem', 
-                        fontWeight: '700', 
-                        borderRadius: '12px', 
-                        background: faceDetected && !success && !alreadyMarked ? 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)' : 'linear-gradient(135deg, #9ca3af 0%, #6b7280 100%)', 
-                        textTransform: 'none', 
-                        fontFamily: '"Inter", sans-serif', 
-                        boxShadow: faceDetected ? '0 8px 24px rgba(249,115,22,0.3)' : 'none',
-                        '&:disabled': {
-                          background: 'linear-gradient(135deg, #e7e5e4 0%, #d6d3d1 100%)',
-                          color: '#9ca3af'
-                        }
-                      }}
-                    >
-                      {loading ? 'Verifying...' : success ? 'Marked' : alreadyMarked ? 'Already Done' : faceDetected ? 'Mark Attendance' : 'Waiting'}
-                    </Button>
-                  </Grid>
-                  {(success || error || alreadyMarked) && (
-                    <Grid item xs={12} sm={6}>
-                      <Button 
-                        variant="outlined" 
-                        size="large" 
-                        fullWidth 
-                        startIcon={<Refresh />} 
-                        onClick={resetAttendance} 
-                        sx={{ 
-                          py: 2.5, 
-                          fontSize: '1rem', 
-                          fontWeight: '700', 
-                          borderRadius: '12px', 
-                          border: '2px solid #e7e5e4', 
-                          color: '#78716c', 
-                          textTransform: 'none', 
-                          fontFamily: '"Inter", sans-serif',
-                          '&:hover': {
-                            border: '2px solid #d6d3d1',
-                            background: '#fafaf9'
-                          }
-                        }}
-                      >
-                        Try Again
-                      </Button>
-                    </Grid>
-                  )}
-                </Grid>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 1.5,
+                    py: 2,
+                    px: 3,
+                    borderRadius: '12px',
+                    background: success ? '#dcfce7' : alreadyMarked ? '#ffedd5' : (error && attendanceStatus === 'error') ? '#fee2e2' : faceDetected ? '#ffedd5' : '#fafaf9',
+                    border: `1px solid ${success ? '#86efac' : alreadyMarked ? '#fed7aa' : (error && attendanceStatus === 'error') ? '#fecaca' : faceDetected ? '#fed7aa' : '#e7e5e4'}`,
+                    transition: 'all 0.3s ease',
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      background: success ? '#16a34a' : alreadyMarked ? '#f97316' : (error && attendanceStatus === 'error') ? '#dc2626' : faceDetected ? '#f97316' : '#9ca3af',
+                      animation: (loading || faceDetected) && !success && !alreadyMarked ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                    }}
+                  />
+                  <Typography variant="body2" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif', textAlign: 'center' }}>
+                    {loading
+                      ? 'Verifying your identity...'
+                      : success
+                        ? `Welcome, ${success.user?.full_name || ''}`
+                        : alreadyMarked
+                          ? 'Attendance already marked today'
+                          : (error && attendanceStatus === 'error')
+                            ? 'Face not recognized — retrying shortly'
+                            : faceDetected
+                              ? 'Hold still — capturing automatically'
+                              : 'Position your face in the frame to mark attendance'}
+                  </Typography>
+                </Box>
               </Box>
             </Card>
           </Grid>

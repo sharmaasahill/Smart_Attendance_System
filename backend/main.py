@@ -227,6 +227,17 @@ async def register_face(
             logger.warning(f"Duplicate detection failed: {str(e)}")
             # Continue with registration if duplicate check fails
         
+        # Remove any previously registered face images so re-registration
+        # always reflects the latest capture (avoids stale/older faces lingering)
+        for old_file in os.listdir(user_dir):
+            if old_file.startswith('face_') and old_file.endswith(('.jpg', '.jpeg', '.png')):
+                old_path = os.path.join(user_dir, old_file)
+                if old_path not in temp_image_paths:
+                    try:
+                        os.remove(old_path)
+                    except OSError:
+                        pass
+
         # Rename temp files to final names
         for i, temp_file in enumerate(temp_image_paths):
             final_file = f"{user_dir}/face_{i+1}.jpg"
@@ -795,72 +806,6 @@ async def admin_register_user_face(
             import shutil
             shutil.rmtree(user_dir)
         raise HTTPException(status_code=500, detail=f"Face registration failed: {str(e)}")
-
-@app.get("/user/face/images")
-async def get_user_registered_faces(
-    current_user: User = Depends(lambda cred=Depends(security), db=Depends(get_db): get_current_user(cred, db)),
-    db: Session = Depends(get_db)
-):
-    """Get current user's registered face images"""
-    
-    user_dir = f"dataset/{current_user.unique_id}"
-    
-    if not os.path.exists(user_dir):
-        raise HTTPException(status_code=404, detail="No face data found. Please register your face first.")
-    
-    # Get face images
-    face_images = []
-    for filename in os.listdir(user_dir):
-        if filename.startswith('face_') and filename.endswith('.jpg'):
-            file_path = os.path.join(user_dir, filename)
-            
-            # Read image and convert to base64
-            try:
-                with open(file_path, 'rb') as img_file:
-                    import base64
-                    img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                    face_images.append({
-                        'filename': filename,
-                        'data': f"data:image/jpeg;base64,{img_data}",
-                        'registered_date': datetime.fromtimestamp(os.path.getctime(file_path)).isoformat()
-                    })
-            except Exception as e:
-                print(f"Error reading image {filename}: {str(e)}")
-                continue
-    
-    # Get registration details
-    encoding_file = f"{user_dir}/encoding.pkl"
-    registration_details = None
-    
-    if os.path.exists(encoding_file):
-        try:
-            import pickle
-            with open(encoding_file, 'rb') as f:
-                data = pickle.load(f)
-                registration_details = {
-                    'registered_date': datetime.fromtimestamp(os.path.getctime(encoding_file)).isoformat(),
-                    'valid_images': data.get('valid_images', 0),
-                    'model': data.get('model', 'unknown'),
-                    'quality_checked': data.get('quality_checked', False),
-                    'liveness_checked': data.get('liveness_checked', False),
-                    'min_quality_score': data.get('min_quality_score', 0),
-                    'min_liveness_confidence': data.get('min_liveness_confidence', 0),
-                }
-        except Exception as e:
-            print(f"Error reading registration details: {str(e)}")
-    
-    if not face_images:
-        raise HTTPException(status_code=404, detail="No face images found")
-    
-    return {
-        'user_id': current_user.unique_id,
-        'user_name': current_user.full_name,
-        'face_registered': current_user.face_registered,
-        'total_images': len(face_images),
-        'images': face_images,
-        'registration_details': registration_details
-    }
-
 
 @app.get("/admin/user/{user_id}/face/images")
 async def get_user_face_images_admin(

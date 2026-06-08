@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Container,
-  Paper,
   Typography,
   Box,
   Grid,
@@ -20,13 +19,6 @@ import {
   CircularProgress,
   LinearProgress,
 } from '@mui/material';
-import {
-  CalendarToday as CalendarIcon,
-  TrendingUp as TrendingUpIcon,
-  FilterList as FilterIcon,
-  Assessment as AssessmentIcon,
-  Download as DownloadIcon,
-} from '@mui/icons-material';
 import { userAPI } from '../services/api';
 
 const UserAttendance = () => {
@@ -83,10 +75,6 @@ const UserAttendance = () => {
     fetchAttendanceStats(selectedMonth, selectedYear);
   };
 
-  const getStatusColor = (status) => {
-    return status === 'present' ? 'success' : 'error';
-  };
-
   if (loading && !attendanceRecords.length) {
     return (
       <Container maxWidth="lg" sx={{ mt: 4 }}>
@@ -103,7 +91,6 @@ const UserAttendance = () => {
         {/* Header */}
         <Card elevation={0} sx={{ p: 4, mb: 4, borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
           <Box display="flex" alignItems="center" mb={2}>
-            <AssessmentIcon sx={{ mr: 2, fontSize: 32, color: '#f97316' }} />
             <Typography variant="h5" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
               My Attendance
             </Typography>
@@ -129,9 +116,6 @@ const UserAttendance = () => {
             <Card elevation={0} sx={{ borderRadius: '18px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.08)' } }}>
               <CardContent sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <CalendarIcon sx={{ color: '#212E46', fontSize: 24 }} />
-                  </Box>
                   <Box>
                     <Typography variant="h5" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
                       {stats.total_days}
@@ -189,9 +173,6 @@ const UserAttendance = () => {
             <Card elevation={0} sx={{ borderRadius: '18px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.08)' } }}>
               <CardContent sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center" gap={2} mb={1}>
-                  <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: '#ffedd5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <TrendingUpIcon sx={{ color: '#f97316', fontSize: 24 }} />
-                  </Box>
                   <Box>
                     <Typography variant="h5" fontWeight="700" sx={{ color: '#f97316', fontFamily: '"Inter", sans-serif' }}>
                       {stats.attendance_percentage}%
@@ -211,7 +192,6 @@ const UserAttendance = () => {
       {/* Filters */}
       <Card elevation={0} sx={{ p: 4, mb: 4, borderRadius: '20px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3, fontFamily: '"Inter", sans-serif', fontWeight: '700', color: '#212E46' }}>
-          <FilterIcon sx={{ color: '#f97316' }} />
           Filters
         </Typography>
         
@@ -313,7 +293,6 @@ const UserAttendance = () => {
             {attendanceRecords.length > 0 && (
               <Button
                 variant="contained"
-                startIcon={<DownloadIcon />}
                 onClick={() => {
                   const csv = [
                     ['Date', 'Time In', 'Status', 'Recorded At'],

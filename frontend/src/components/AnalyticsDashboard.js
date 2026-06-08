@@ -22,11 +22,8 @@ import {
 } from '@mui/material';
 import {
   TrendingUp,
-  People,
   Assessment,
-  Download,
   Analytics,
-  Speed,
   Refresh,
 } from '@mui/icons-material';
 import {
@@ -41,7 +38,7 @@ import {
   Area,
   AreaChart,
 } from 'recharts';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { analyticsAPI } from '../services/api';
 
 const AnalyticsDashboard = () => {
@@ -267,7 +264,6 @@ const AnalyticsDashboard = () => {
           
           <Button
             variant="outlined"
-            startIcon={<Download />}
             onClick={() => exportData('pdf')}
             sx={{ mr: 1, borderRadius: '12px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9' } }}
           >
@@ -275,7 +271,6 @@ const AnalyticsDashboard = () => {
           </Button>
           <Button
             variant="outlined"
-            startIcon={<Download />}
             onClick={() => exportData('excel')}
             sx={{ mr: 1, borderRadius: '12px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9' } }}
           >
@@ -283,7 +278,6 @@ const AnalyticsDashboard = () => {
           </Button>
           <Button
             variant="contained"
-            startIcon={<Download />}
             onClick={() => exportData('csv')}
             sx={{ borderRadius: '12px', background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', boxShadow: 'none', '&:hover': { background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)', boxShadow: 'none' } }}
           >
@@ -311,9 +305,6 @@ const AnalyticsDashboard = () => {
                     {Math.round(((analytics.liveStats?.currentlyPresent || 0) / (analytics.liveStats?.totalEmployees || 1)) * 100)}% attendance rate
                   </Typography>
                 </Box>
-                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', color: '#212E46' }}>
-                  <People sx={{ fontSize: 28 }} />
-                </Avatar>
               </Box>
             </CardContent>
           </Card>
@@ -334,9 +325,6 @@ const AnalyticsDashboard = () => {
                     Avg arrival: {analytics.liveStats?.averageArrival || 'N/A'}
                   </Typography>
                 </Box>
-                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)', color: '#16a34a' }}>
-                  <TrendingUp sx={{ fontSize: 28 }} />
-                </Avatar>
               </Box>
             </CardContent>
           </Card>
@@ -357,9 +345,6 @@ const AnalyticsDashboard = () => {
                     {analytics.productivity?.trend || '+0%'} from last week
                   </Typography>
                 </Box>
-                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)', color: '#f97316' }}>
-                  <Speed sx={{ fontSize: 28 }} />
-                </Avatar>
               </Box>
             </CardContent>
           </Card>
@@ -380,9 +365,6 @@ const AnalyticsDashboard = () => {
                     Requires attention
                   </Typography>
                 </Box>
-                <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)', color: '#dc2626' }}>
-                  <Assessment sx={{ fontSize: 28 }} />
-                </Avatar>
               </Box>
             </CardContent>
           </Card>

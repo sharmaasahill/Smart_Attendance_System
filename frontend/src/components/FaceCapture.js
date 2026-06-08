@@ -18,9 +18,6 @@ import {
   CardContent,
 } from '@mui/material';
 import { 
-  CameraAlt, 
-  Face, 
-  Refresh, 
   Close,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -184,22 +181,6 @@ const FaceCapture = () => {
           >
             {/* Header */}
             <Box sx={{ p: 6, textAlign: 'center', background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)', color: '#ffffff' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
-                <Box
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    borderRadius: '20px',
-                    background: 'rgba(249,115,22,0.15)',
-                    display: 'flex',
-                    alignments: 'center',
-                    justifyContent: 'center',
-                    color: '#f97316',
-                  }}
-                >
-                  <Face sx={{ fontSize: 40 }} />
-                </Box>
-              </Box>
               <Typography variant="h5" fontWeight="700" sx={{ mb: 2, fontFamily: '"Inter", sans-serif' }}>
                 Face Registration
               </Typography>
@@ -319,7 +300,6 @@ const FaceCapture = () => {
                         <Button
                           variant="contained"
                           size="large"
-                          startIcon={<CameraAlt />}
                           onClick={startCapturing}
                           sx={{
                             py: 2.5,
@@ -371,7 +351,7 @@ const FaceCapture = () => {
                           <Button
                             variant="contained"
                             size="large"
-                            startIcon={loading ? <CircularProgress size={20} sx={{ color: '#ffffff' }} /> : <CameraAlt />}
+                            startIcon={loading ? <CircularProgress size={20} sx={{ color: '#ffffff' }} /> : null}
                             onClick={uploadImages}
                             disabled={loading}
                             sx={{
@@ -394,7 +374,6 @@ const FaceCapture = () => {
                           </Button>
                           <Button
                             variant="outlined"
-                            startIcon={<Refresh />}
                             onClick={resetCapture}
                             disabled={loading}
                             sx={{
@@ -459,7 +438,6 @@ const FaceCapture = () => {
                             gridColumn="1 / -1"
                             sx={{ color: '#78716c' }}
                           >
-                            <Face sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
                             <Typography variant="body1" fontWeight="700" sx={{ fontFamily: '"Inter", sans-serif' }}>
                               Captured face images will appear here
                             </Typography>

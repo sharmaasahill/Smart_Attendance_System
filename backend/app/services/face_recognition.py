@@ -22,30 +22,29 @@ from typing import List, Optional, Dict
 import cv2
 import numpy as np
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from app.core.config import settings
 
-DATASET_DIR = "dataset"
+logger = logging.getLogger("smart_attendance.face")
+
+DATASET_DIR = settings.DATASET_DIR
 
 
 class FaceRecognitionService:
     def __init__(self):
-        # Model pack: buffalo_l = SCRFD det_10g + ArcFace w600k_r50 (512-d).
-        self.model_name = os.getenv("FACE_MODEL_PACK", "buffalo_l")
+        self.model_name = settings.FACE_MODEL_PACK
         self.det_size = (640, 640)
 
         # Cosine-similarity thresholds for ArcFace L2-normalized embeddings.
-        # Same person typically scores > ~0.45; different people < ~0.3.
-        self.match_threshold = float(os.getenv("FACE_MATCH_THRESHOLD", "0.42"))
-        self.duplicate_threshold = float(os.getenv("FACE_DUPLICATE_THRESHOLD", "0.50"))
-        self.knn_k = int(os.getenv("FACE_KNN_K", "5"))
+        self.match_threshold = settings.FACE_MATCH_THRESHOLD
+        self.duplicate_threshold = settings.FACE_DUPLICATE_THRESHOLD
+        self.knn_k = settings.FACE_KNN_K
 
         # Real quality gates (used at enrollment).
-        self.min_det_score = float(os.getenv("FACE_MIN_DET_SCORE", "0.55"))
-        self.min_face_size = int(os.getenv("FACE_MIN_FACE_SIZE", "50"))      # px (shorter side of face box)
-        self.min_blur_var = float(os.getenv("FACE_MIN_BLUR_VAR", "40.0"))    # Laplacian variance
-        self.min_quality_score = int(os.getenv("FACE_MIN_QUALITY_SCORE", "45"))
-        self.min_required_encodings = int(os.getenv("FACE_MIN_ENCODINGS", "3"))
+        self.min_det_score = settings.FACE_MIN_DET_SCORE
+        self.min_face_size = settings.FACE_MIN_FACE_SIZE
+        self.min_blur_var = settings.FACE_MIN_BLUR_VAR
+        self.min_quality_score = settings.FACE_MIN_QUALITY_SCORE
+        self.min_required_encodings = settings.FACE_MIN_ENCODINGS
 
         # Liveness is enforced on the attendance path via the client-side
         # active blink/motion check (MediaPipe). Kept for API compatibility.
@@ -107,8 +106,7 @@ class FaceRecognitionService:
         face, _ = self._detect_primary_face(image_path)
         if face is None:
             return None
-        emb = np.asarray(face.normed_embedding, dtype=np.float32)
-        return emb
+        return np.asarray(face.normed_embedding, dtype=np.float32)
 
     # ------------------------------------------------------------------ #
     # Quality (real, InsightFace + OpenCV based)
@@ -141,11 +139,9 @@ class FaceRecognitionService:
 
             det_score = float(face.det_score)
 
-            # Component scores (0-100)
             det_component = min(100.0, det_score * 100.0)
             size_component = min(100.0, (face_size / max(1, self.min_face_size)) * 60.0)
             sharp_component = min(100.0, (blur_var / max(1.0, self.min_blur_var)) * 60.0)
-            # Brightness best around 110-170
             if brightness <= 0:
                 bright_component = 0.0
             elif brightness < 60:
@@ -289,7 +285,6 @@ class FaceRecognitionService:
             with open(os.path.join(user_dir, "encoding.pkl"), "wb") as f:
                 pickle.dump(payload, f)
 
-            # Lightweight JSON sidecar (no raw embeddings) for debugging/inspection.
             with open(os.path.join(user_dir, "encoding.json"), "w") as f:
                 json.dump({
                     "user_id": user_id,
@@ -299,7 +294,6 @@ class FaceRecognitionService:
                     "created_at": payload["created_at"],
                 }, f, indent=2)
 
-            # Per-face quality scores for the "View Faces" UI.
             with open(os.path.join(user_dir, "quality_scores.json"), "w") as f:
                 json.dump({"faces": [
                     {"image": q["image"], "overall_score": q["overall_score"], "accepted": True}
@@ -338,10 +332,9 @@ class FaceRecognitionService:
             self._cache_embeddings, self._cache_labels, self._cache_mtimes = None, [], {}
             return
 
-        per_user = {}   # user_id -> np.ndarray (N,512)
+        per_user = {}
         changed = False
         current_ids = set()
-        # Reconstruct existing per-user view from cached matrix for reuse
         if self._cache_embeddings is not None:
             for uid in set(self._cache_labels):
                 rows = self._cache_embeddings[[i for i, l in enumerate(self._cache_labels) if l == uid]]
@@ -410,7 +403,6 @@ class FaceRecognitionService:
             sims = self._cache_embeddings @ q  # cosine similarity (all L2-normalized)
             labels = self._cache_labels
 
-            # Per-user best similarity
             best_per_user: Dict[str, float] = {}
             for sim, lbl in zip(sims, labels):
                 s = float(sim)
@@ -420,7 +412,6 @@ class FaceRecognitionService:
             top_user = max(best_per_user, key=best_per_user.get)
             top_sim = best_per_user[top_user]
 
-            # k-NN consistency vote among the nearest embeddings
             k = min(self.knn_k, len(labels))
             top_idx = np.argsort(-sims)[:k]
             knn_labels = [labels[i] for i in top_idx]
@@ -479,7 +470,7 @@ class FaceRecognitionService:
             top_sim = best_per_user[top_user]
 
             if top_sim >= self.duplicate_threshold:
-                from models import User
+                from app.models import User
                 user = db.query(User).filter(User.unique_id == top_user).first()
                 if user:
                     logger.warning(f"Duplicate face: matches {user.full_name} ({user.unique_id}) sim={top_sim:.3f}")
@@ -493,3 +484,7 @@ class FaceRecognitionService:
         except Exception as e:
             logger.error(f"Duplicate detection failed: {str(e)}")
             return None
+
+
+# Module-level singleton used across the API.
+face_service = FaceRecognitionService()

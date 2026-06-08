@@ -1,0 +1,49 @@
+# Smart Attendance System - full stack (PostgreSQL + FastAPI + React/nginx)
+#
+# Usage:
+#   docker compose up --build
+# Then open http://localhost:3000 (API at http://localhost:8000/docs)
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: attendance
+      POSTGRES_PASSWORD: attendance
+      POSTGRES_DB: attendance
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U attendance"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg2://attendance:attendance@db:5432/attendance
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      BACKEND_CORS_ORIGINS: http://localhost:3000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - dataset:/app/dataset   # persist enrolled biometric data
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_URL: http://localhost:8000
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  dataset:

@@ -19,7 +19,6 @@ ENV/
 node_modules/
 /node_modules/
 frontend/node_modules/
-package-lock.json
 
 # Production builds
 build/

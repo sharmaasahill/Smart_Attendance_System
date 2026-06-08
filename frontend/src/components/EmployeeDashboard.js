@@ -10,24 +10,13 @@ import {
   Chip,
   Avatar,
   CircularProgress,
-  LinearProgress,
   Fade,
-  IconButton,
-  Tooltip,
   Paper,
   Divider,
   Stack,
 } from '@mui/material';
 import {
-  CalendarToday,
-  TrendingUp,
-  CameraAlt,
-  Download,
   ArrowForward,
-  Bolt,
-  EmojiEvents,
-  Timeline,
-  NotificationsActive,
 } from '@mui/icons-material';
 import { userAPI } from '../services/api';
 import { useAuth } from '../App';
@@ -37,7 +26,6 @@ const EmployeeDashboard = () => {
   const { user } = useAuth();
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [weeklyData, setWeeklyData] = useState([]);
   const [monthlyCalendar, setMonthlyCalendar] = useState([]);
   const [stats, setStats] = useState({
     todayStatus: null,
@@ -88,8 +76,7 @@ const EmployeeDashboard = () => {
       });
       
       setMonthlyCalendar(calendarData);
-      setWeeklyData(thisWeekRecords);
-      
+
       const presentThisWeek = thisWeekRecords.filter(r => r.status === 'present').length;
       const presentThisMonth = thisMonthRecords.filter(r => r.status === 'present').length;
       const attendanceRate = thisMonthRecords.length > 0 ? (presentThisMonth / thisMonthRecords.length) * 100 : 0;
@@ -213,13 +200,13 @@ const EmployeeDashboard = () => {
                 {/* Action Buttons */}
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
-                    <Button fullWidth variant="contained" size="large" startIcon={<CameraAlt />} onClick={() => window.location.href = '/mark-attendance'}
+                    <Button fullWidth variant="contained" size="large" onClick={() => window.location.href = '/mark-attendance'}
                       sx={{ py: 3, borderRadius: '16px', background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', textTransform: 'none', fontWeight: '700', fontSize: '1rem', fontFamily: '"Inter", sans-serif', boxShadow: '0 8px 24px rgba(249,115,22,0.3)', '&:hover': { background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)', transform: 'translateY(-2px)', boxShadow: '0 12px 32px rgba(249,115,22,0.4)' }, transition: 'all 0.3s ease' }}>
                       Mark Attendance
                     </Button>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Button fullWidth variant="outlined" size="large" startIcon={<Download />}
+                    <Button fullWidth variant="outlined" size="large"
                       sx={{ py: 3, borderRadius: '16px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontSize: '1rem', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9', transform: 'translateY(-2px)' }, transition: 'all 0.3s ease' }}>
                       Download Report
                     </Button>
@@ -229,21 +216,14 @@ const EmployeeDashboard = () => {
                 {/* Mini Stats Cards */}
                 <Grid container spacing={2}>
                   {[
-                    { icon: <Bolt sx={{ fontSize: 24 }} />, label: 'Streak Days', value: stats.streak, color: '#f59e0b', bg: '#fef3c7' },
-                    { icon: <EmojiEvents sx={{ fontSize: 24 }} />, label: 'Attendance Rate', value: `${stats.attendanceRate}%`, color: '#10b981', bg: '#dcfce7' },
-                    { icon: <TrendingUp sx={{ fontSize: 24 }} />, label: 'This Month', value: stats.thisMonthPresent, color: '#3b82f6', bg: '#dbeafe' },
+                    { label: 'Streak Days', value: stats.streak, color: '#f59e0b', bg: '#fef3c7' },
+                    { label: 'Attendance Rate', value: `${stats.attendanceRate}%`, color: '#10b981', bg: '#dcfce7' },
+                    { label: 'This Month', value: stats.thisMonthPresent, color: '#3b82f6', bg: '#dbeafe' },
                   ].map((stat, i) => (
                     <Grid item xs={12} sm={4} key={i}>
                       <Card elevation={0} sx={{ borderRadius: '16px', background: stat.bg, border: 'none', p: 2.5 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                          <Box sx={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.color }}>
-                            {stat.icon}
-                          </Box>
-                          <Box>
-                            <Typography variant="h6" fontWeight="700" sx={{ color: stat.color, fontFamily: '"Inter", sans-serif' }}>{stat.value}</Typography>
-                            <Typography variant="caption" sx={{ color: stat.color, fontWeight: '600', opacity: 0.8, fontFamily: '"Inter", sans-serif' }}>{stat.label}</Typography>
-                          </Box>
-                        </Box>
+                        <Typography variant="h5" fontWeight="700" sx={{ color: stat.color, fontFamily: '"Inter", sans-serif', lineHeight: 1.2 }}>{stat.value}</Typography>
+                        <Typography variant="caption" sx={{ color: stat.color, fontWeight: '600', opacity: 0.8, fontFamily: '"Inter", sans-serif' }}>{stat.label}</Typography>
                       </Card>
                     </Grid>
                   ))}
@@ -302,12 +282,9 @@ const EmployeeDashboard = () => {
               {/* Recent Activity Card */}
               <Card elevation={0} sx={{ borderRadius: '24px', background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
                 <Box sx={{ p: 4, borderBottom: '1px solid #f3f4f6' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Timeline sx={{ color: '#f97316' }} />
-                    <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
-                      Recent Activity
-                    </Typography>
-                  </Box>
+                  <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
+                    Recent Activity
+                  </Typography>
                 </Box>
                 <Box sx={{ p: 4, maxHeight: 400, overflow: 'auto' }}>
                   <Stack spacing={3}>
@@ -344,12 +321,9 @@ const EmployeeDashboard = () => {
               {/* Notifications */}
               <Card elevation={0} sx={{ borderRadius: '20px', background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%)', border: '1px solid #fed7aa' }}>
                 <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                    <NotificationsActive sx={{ color: '#f97316', fontSize: 28 }} />
-                    <Typography variant="h6" fontWeight="800" sx={{ color: '#ea580c', fontFamily: '"Inter", sans-serif' }}>
-                      Quick Tip
-                    </Typography>
-                  </Box>
+                  <Typography variant="h6" fontWeight="800" sx={{ color: '#ea580c', fontFamily: '"Inter", sans-serif', mb: 2 }}>
+                    Quick Tip
+                  </Typography>
                   <Typography variant="body2" sx={{ color: '#9a3412', fontFamily: '"Inter", sans-serif', lineHeight: 1.6 }}>
                     Maintain a streak of 7 days to unlock achievement badges! You're currently at {stats.streak} {stats.streak === 1 ? 'day' : 'days'}.
                   </Typography>

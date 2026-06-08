@@ -30,14 +30,12 @@ import {
 import {
   Delete,
   CameraAlt,
-  Refresh,
   CheckCircle,
   Cancel,
   Info,
   Search,
-  FilterList,
 } from '@mui/icons-material';
-import { adminAPI, faceAPI, webcamCaptureToFile } from '../services/api';
+import { adminAPI, webcamCaptureToFile } from '../services/api';
 import FaceCamera from './FaceCamera';
 
 const AdminFaceManagement = () => {
@@ -194,8 +192,8 @@ const AdminFaceManagement = () => {
         })
       );
 
-      const response = await adminAPI.registerUserFace(selectedUser.user.unique_id, files);
-      
+      await adminAPI.registerUserFace(selectedUser.user.unique_id, files);
+
       setSuccess(`Face registered successfully for ${selectedUser.user.full_name}`);
       closeRegisterDialog();
       fetchUsers();
@@ -417,10 +415,10 @@ const AdminFaceManagement = () => {
                             Model: {user.registration_details.model}
                           </Typography>
                           {user.registration_details.quality_checked && (
-                            <Chip label="Quality ✓" size="small" sx={{ height: '20px', fontSize: '0.65rem' }} />
+                            <Chip icon={<CheckCircle />} label="Quality" size="small" sx={{ height: '22px', fontSize: '0.65rem' }} />
                           )}
                           {user.registration_details.liveness_checked && (
-                            <Chip label="Liveness ✓" size="small" sx={{ height: '20px', fontSize: '0.65rem' }} />
+                            <Chip icon={<CheckCircle />} label="Liveness" size="small" sx={{ height: '22px', fontSize: '0.65rem' }} />
                           )}
                         </Stack>
                       )}
@@ -506,7 +504,6 @@ const AdminFaceManagement = () => {
                     <Button
                       fullWidth
                       variant="contained"
-                      startIcon={<CameraAlt />}
                       onClick={startCapturing}
                       sx={{
                         py: 2,

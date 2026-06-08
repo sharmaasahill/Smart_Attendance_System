@@ -12,14 +12,7 @@ import {
   Fade,
   Card,
   CardContent,
-  Avatar,
-  Divider,
   Stack,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Link as MuiLink,
   Grid,
 } from '@mui/material';
 import {
@@ -27,8 +20,6 @@ import {
   Lock,
   Visibility,
   VisibilityOff,
-  Login as LoginIcon,
-  Security,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
@@ -414,7 +405,7 @@ const Login = () => {
                     variant="contained"
                     size="medium"
                     disabled={loading}
-                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <LoginIcon sx={{ fontSize: '1rem' }} />}
+                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
                     sx={{
                       py: 1.3,
                       fontSize: '0.8rem',

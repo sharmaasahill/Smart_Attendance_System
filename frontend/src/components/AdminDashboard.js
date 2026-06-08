@@ -28,37 +28,18 @@ import {
   Typography,
   Paper,
   Stack,
-  Badge,
-  LinearProgress,
 } from '@mui/material';
 import {
-  AccessTime,
-  Analytics,
-  Close,
-  Dashboard,
   Delete,
-  Group,
-  ManageAccounts,
   MoreVert,
-  Refresh,
-  Save,
-  Schedule as ScheduleIcon,
   Search,
-  TrendingUp,
-  PersonAdd,
-  CalendarMonth,
-  Insights,
-  Speed,
-  Face,
 } from '@mui/icons-material';
 import { adminAPI, attendanceAPI } from '../services/api';
-import { useAuth } from '../App';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import AdminFaceManagement from './AdminFaceManagement';
 import { format, parseISO } from 'date-fns';
 
 const AdminDashboard = () => {
-  const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -89,6 +70,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.date]);
 
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -206,18 +188,13 @@ const AdminDashboard = () => {
               <Box sx={{ p: 4, position: 'relative', zIndex: 1 }}>
                 <Grid container spacing={3} alignItems="center">
                   <Grid item xs={12} md={6}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ width: 64, height: 64, background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', boxShadow: '0 8px 24px rgba(249,115,22,0.3)' }}>
-                        <Dashboard sx={{ fontSize: 32 }} />
-                      </Avatar>
-                      <Box>
-                        <Typography variant="h4" fontWeight="800" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', letterSpacing: '-0.02em', mb: 0.5 }}>
-                          Admin Dashboard
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', fontFamily: '"Inter", sans-serif' }}>
-                          Complete system oversight • {format(new Date(), 'EEEE, MMMM dd, yyyy')}
-                        </Typography>
-                      </Box>
+                    <Box>
+                      <Typography variant="h4" fontWeight="800" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', letterSpacing: '-0.02em', mb: 0.5 }}>
+                        Admin Dashboard
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', fontFamily: '"Inter", sans-serif' }}>
+                        Complete system oversight • {format(new Date(), 'EEEE, MMMM dd, yyyy')}
+                      </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -226,7 +203,6 @@ const AdminDashboard = () => {
                         <Button 
                           onClick={fetchData} 
                           variant="contained" 
-                          startIcon={<Refresh />}
                           sx={{ 
                             borderRadius: '12px', 
                             background: 'rgba(255,255,255,0.15)', 
@@ -242,9 +218,6 @@ const AdminDashboard = () => {
                         </Button>
                       </Tooltip>
                       <Card elevation={0} sx={{ borderRadius: '14px', background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', px: 3, py: 1.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: 32, height: 32, borderRadius: '8px', background: 'linear-gradient(135deg, #16a34a 0%, #22c55e 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <TrendingUp sx={{ color: '#ffffff', fontSize: 18 }} />
-                        </Box>
                         <Box>
                           <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600', fontFamily: '"Inter", sans-serif' }}>Today's Rate</Typography>
                           <Typography variant="h6" fontWeight="700" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif' }}>{stats.attendanceRate}%</Typography>
@@ -266,7 +239,6 @@ const AdminDashboard = () => {
                 label: 'Total Users', 
                 value: stats.totalUsers, 
                 subtitle: `${stats.faceRegPercentage}% registered`,
-                icon: <Group sx={{ fontSize: 28 }} />,
                 bg: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)',
                 color: '#212E46',
                 borderColor: '#93c5fd'
@@ -275,7 +247,6 @@ const AdminDashboard = () => {
                 label: 'Present Today', 
                 value: stats.presentToday, 
                 subtitle: `${stats.attendanceRate}% attendance`,
-                icon: <TrendingUp sx={{ fontSize: 28 }} />,
                 bg: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
                 color: '#16a34a',
                 borderColor: '#86efac'
@@ -284,7 +255,6 @@ const AdminDashboard = () => {
                 label: 'Absent Today', 
                 value: stats.absentToday, 
                 subtitle: `${Math.round((stats.absentToday / (attendance.length || 1)) * 100)}% of records`,
-                icon: <CalendarMonth sx={{ fontSize: 28 }} />,
                 bg: 'linear-gradient(135deg, #fecaca 0%, #fca5a5 100%)',
                 color: '#dc2626',
                 borderColor: '#f87171'
@@ -293,7 +263,6 @@ const AdminDashboard = () => {
                 label: 'Face Registered', 
                 value: stats.registeredFaces, 
                 subtitle: `${stats.totalUsers - stats.registeredFaces} pending`,
-                icon: <ManageAccounts sx={{ fontSize: 28 }} />,
                 bg: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)',
                 color: '#f97316',
                 borderColor: '#fdba74'
@@ -302,18 +271,13 @@ const AdminDashboard = () => {
               <Grid item xs={12} sm={6} md={3} key={i}>
                 <Card elevation={0} sx={{ borderRadius: '20px', background: metric.bg, border: `1px solid ${metric.borderColor}`, overflow: 'hidden', position: 'relative', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 24px rgba(0,0,0,0.1)' } }}>
                   <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Box>
-                        <Typography variant="body2" sx={{ color: metric.color, fontWeight: '700', mb: 1, fontFamily: '"Inter", sans-serif', opacity: 0.8 }}>
-                          {metric.label}
-                        </Typography>
-                        <Typography variant="h3" fontWeight="800" sx={{ color: metric.color, fontFamily: '"Inter", sans-serif', letterSpacing: '-0.02em' }}>
-                          {metric.value}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ width: 56, height: 56, borderRadius: '14px', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {metric.icon}
-                      </Box>
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" sx={{ color: metric.color, fontWeight: '700', mb: 1, fontFamily: '"Inter", sans-serif', opacity: 0.8 }}>
+                        {metric.label}
+                      </Typography>
+                      <Typography variant="h3" fontWeight="800" sx={{ color: metric.color, fontFamily: '"Inter", sans-serif', letterSpacing: '-0.02em' }}>
+                        {metric.value}
+                      </Typography>
                     </Box>
                     <Typography variant="caption" sx={{ color: metric.color, fontWeight: '600', fontFamily: '"Inter", sans-serif', opacity: 0.9 }}>
                       {metric.subtitle}
@@ -355,9 +319,9 @@ const AdminDashboard = () => {
                   '& .MuiTabs-indicator': { display: 'none' } 
                 }}
               >
-                <Tab icon={<ManageAccounts sx={{ fontSize: 24 }} />} label="User Management" iconPosition="start" />
-                <Tab icon={<Analytics sx={{ fontSize: 24 }} />} label="Analytics & Reports" iconPosition="start" />
-                <Tab icon={<Face sx={{ fontSize: 24 }} />} label="Face Management" iconPosition="start" />
+                <Tab label="User Management" />
+                <Tab label="Analytics & Reports" />
+                <Tab label="Face Management" />
               </Tabs>
             </Box>
           </Card>
@@ -372,20 +336,10 @@ const AdminDashboard = () => {
                 <Card elevation={0} sx={{ borderRadius: '24px', background: '#ffffff', boxShadow: '0 8px 32px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)' }}>
                   <Box sx={{ p: 4, borderBottom: '2px solid #f3f4f6' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Group sx={{ fontSize: 24, color: '#212E46' }} />
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>User Directory</Typography>
-                          <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>{filteredUsers.length} total users</Typography>
-                        </Box>
+                      <Box>
+                        <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>User Directory</Typography>
+                        <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>{filteredUsers.length} total users</Typography>
                       </Box>
-                      <Tooltip title="Add User">
-                        <IconButton sx={{ width: 40, height: 40, background: 'linear-gradient(135deg, #f97316 0%, #fb923c 100%)', color: '#ffffff', '&:hover': { background: 'linear-gradient(135deg, #ea580c 0%, #f97316 100%)' } }}>
-                          <PersonAdd sx={{ fontSize: 20 }} />
-                        </IconButton>
-                      </Tooltip>
                     </Box>
                     <TextField 
                       fullWidth 
@@ -507,14 +461,9 @@ const AdminDashboard = () => {
                 <Stack spacing={3}>
                   {/* Compact Date Selector */}
                   <Card elevation={0} sx={{ borderRadius: '20px', background: 'linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)', border: '1px solid #93c5fd', p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <Box sx={{ width: 40, height: 40, borderRadius: '10px', background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <CalendarMonth sx={{ color: '#3b82f6', fontSize: 22 }} />
-                      </Box>
-                      <Typography variant="h6" fontWeight="800" sx={{ color: '#1e40af', fontFamily: '"Inter", sans-serif' }}>
-                        Select Date
-                      </Typography>
-                    </Box>
+                    <Typography variant="h6" fontWeight="800" sx={{ color: '#1e40af', fontFamily: '"Inter", sans-serif', mb: 2 }}>
+                      Select Date
+                    </Typography>
                     <TextField 
                       type="date" 
                       fullWidth 
@@ -536,18 +485,13 @@ const AdminDashboard = () => {
                   {/* Enhanced Attendance Records */}
                   <Card elevation={0} sx={{ borderRadius: '24px', background: '#ffffff', boxShadow: '0 8px 32px rgba(0,0,0,0.06)', border: '1px solid rgba(0,0,0,0.08)' }}>
                     <Box sx={{ p: 4, borderBottom: '2px solid #f3f4f6' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                        <Box sx={{ width: 48, height: 48, borderRadius: '12px', background: 'linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Insights sx={{ color: '#f97316', fontSize: 24 }} />
-                        </Box>
-                        <Box>
-                          <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
-                            Attendance Log
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
-                            {filteredAttendance.length} records for {format(parseISO(filters.date), 'MMM dd')}
-                          </Typography>
-                        </Box>
+                      <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" fontWeight="800" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
+                          Attendance Log
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
+                          {filteredAttendance.length} records for {format(parseISO(filters.date), 'MMM dd')}
+                        </Typography>
                       </Box>
                       <TextField 
                         fullWidth 
@@ -687,7 +631,7 @@ const AdminDashboard = () => {
         <Dialog open={editAttendanceDialog.open} onClose={() => setEditAttendanceDialog({ open: false, record: null })} maxWidth="sm" fullWidth
           PaperProps={{ sx: { borderRadius: '20px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' } }}>
           <DialogTitle sx={{ fontWeight: '800', fontFamily: '"Inter", sans-serif', color: '#212E46' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}><ScheduleIcon sx={{ color: '#f97316' }} />Edit Attendance</Box>
+            Edit Attendance
           </DialogTitle>
           <DialogContent>
             {editAttendanceDialog.record && (
@@ -712,7 +656,7 @@ const AdminDashboard = () => {
           </DialogContent>
           <DialogActions sx={{ p: 3, gap: 2 }}>
             <Button onClick={() => setEditAttendanceDialog({ open: false, record: null })} sx={{ borderRadius: '10px', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif' }}>Cancel</Button>
-            <Button onClick={handleSaveAttendanceEdit} variant="contained" disabled={editAttendanceLoading} startIcon={editAttendanceLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : <Save />}
+            <Button onClick={handleSaveAttendanceEdit} variant="contained" disabled={editAttendanceLoading} startIcon={editAttendanceLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : null}
               sx={{ borderRadius: '10px', background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)', textTransform: 'none', fontWeight: '700', fontFamily: '"Inter", sans-serif', boxShadow: '0 4px 12px rgba(33,46,70,0.2)' }}>
               {editAttendanceLoading ? 'Saving...' : 'Save'}
             </Button>

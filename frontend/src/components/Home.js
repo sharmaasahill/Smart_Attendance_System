@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   Box,
   Container,
@@ -10,13 +10,6 @@ import {
   useMediaQuery,
 } from '@mui/material';
 import {
-  ArrowForward,
-  Speed,
-  Shield,
-  Visibility,
-  Face,
-  Fingerprint,
-  VerifiedUser,
   Business,
   School,
   Factory,
@@ -25,19 +18,15 @@ import {
   TrendingUp,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../App';
 import {
   motion,
-  useScroll,
   useInView,
 } from 'framer-motion';
 import RadialOrbitalTimeline from './RadialOrbitalTimeline';
 
 const MotionBox = motion(Box);
 
-// ═══════════════════════════════════════════════════════════════
 // FACE LANDMARKS — dots + connecting lines over the face (for hero)
-// ═══════════════════════════════════════════════════════════════
 const FaceLandmarksOverlay = () => {
   // Landmarks properly aligned to face
   const points = [
@@ -172,9 +161,7 @@ const FaceLandmarksOverlay = () => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════════
 // SCROLL UTILITIES
-// ═══════════════════════════════════════════════════════════════
 const ScrollReveal = ({ children, delay = 0, direction = 'up', distance = 50 }) => {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-60px' });
@@ -203,9 +190,7 @@ const StaggerChild = ({ children }) => (
   }}>{children}</MotionBox>
 );
 
-// ═══════════════════════════════════════════════════════════════
 // MAIN HOME
-// ═══════════════════════════════════════════════════════════════
 const Home = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -214,10 +199,10 @@ const Home = () => {
   return (
     <Box sx={{ background: '#f5f3f0', overflow: 'hidden' }}>
 
-      {/* ════════════════════════════════════════════════════════════
+      {/*
           HERO SECTION — Static full-screen hero with face background
           Text on LEFT, face recognition overlay (ZOOMED OUT)
-      ════════════════════════════════════════════════════════════ */}
+       */}
       <Box sx={{ position: 'relative', height: { xs: '100svh', md: '100vh' }, overflow: 'hidden', background: '#f5f3f0' }}>
         
         {/* Face Background Image - Custom landing image */}
@@ -387,9 +372,9 @@ const Home = () => {
         </MotionBox>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           TRUSTED BY SECTION
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box id="features" sx={{ py: { xs: 6, md: 8 }, background: 'linear-gradient(180deg, #f5f3f0 0%, #ffffff 100%)' }}>
         <Container maxWidth="lg">
           <Typography sx={{ textAlign: 'center', color: '#78716c', fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 4 }}>
@@ -405,9 +390,9 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           PROBLEM/SOLUTION SECTION - Split Image + Content
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box sx={{ py: { xs: 8, md: 16 }, background: '#ffffff' }}>
         <Container maxWidth="lg">
           <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
@@ -512,9 +497,9 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           SOLUTION SECTION - Reversed Layout
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box sx={{ py: { xs: 8, md: 16 }, background: '#fafaf9' }}>
         <Container maxWidth="lg">
           <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center" direction={{ xs: 'column-reverse', md: 'row' }}>
@@ -555,9 +540,9 @@ const Home = () => {
 
                   <Stack spacing={{ xs: 2, md: 2.5 }}>
                     {[
-                      { icon: <Speed />, label: 'Real-time Processing', value: '< 2 sec', color: '#6366f1', desc: 'Instant face detection and verification' },
-                      { icon: <Shield />, label: 'High Accuracy', value: '99%+', color: '#10b981', desc: 'Deep learning facial recognition' },
-                      { icon: <Face />, label: 'Contactless', value: '100%', color: '#f97316', desc: 'No physical touch required' },
+                      { label: 'Real-time Processing', value: '< 2 sec', color: '#6366f1', desc: 'Instant face detection and verification' },
+                      { label: 'High Accuracy', value: '99%+', color: '#10b981', desc: 'Deep learning facial recognition' },
+                      { label: 'Contactless', value: '100%', color: '#f97316', desc: 'No physical touch required' },
                     ].map((item, i) => (
                       <Box key={i} sx={{
                         display: 'flex',
@@ -568,20 +553,6 @@ const Home = () => {
                         borderRadius: { xs: '12px', md: '16px' },
                         border: '1px solid #f5f5f4',
                       }}>
-                        <Box sx={{
-                          width: { xs: 40, md: 48 },
-                          height: { xs: 40, md: 48 },
-                          borderRadius: { xs: '10px', md: '12px' },
-                          background: item.color + '15',
-                          color: item.color,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          fontSize: { xs: '1.25rem', md: '1.5rem' },
-                        }}>
-                          {item.icon}
-                        </Box>
                         <Box sx={{ flex: 1 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.3 }}>
                             <Typography sx={{ color: '#78716c', fontSize: { xs: '0.75rem', md: '0.8rem' } }}>
@@ -635,7 +606,6 @@ const Home = () => {
                       gap: { xs: 1, md: 1.5 },
                     }}
                   >
-                    <VerifiedUser sx={{ color: '#10b981', fontSize: { xs: 24, md: 32 } }} />
                     <Box>
                       <Typography sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' }, color: '#78716c', lineHeight: 1 }}>
                         Verified
@@ -652,9 +622,9 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           TECHNOLOGY FEATURES - 3 Column Cards
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box sx={{ py: { xs: 8, md: 18 }, background: '#ffffff' }}>
         <Container maxWidth="lg">
           <ScrollReveal>
@@ -685,21 +655,18 @@ const Home = () => {
             <Grid container spacing={{ xs: 3, md: 4 }}>
               {[
                 {
-                  icon: <Fingerprint />,
                   title: '128-Dimensional Encoding',
                   desc: 'Deep neural networks map every face to a unique 128-dimensional vector. Encrypted and stored locally.',
                   image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=600&h=400&fit=crop&q=80',
                   color: '#6366f1',
                 },
                 {
-                  icon: <Shield />,
                   title: 'Anti-Spoofing Protection',
                   desc: 'Liveness detection blocks photos, videos, masks, and deepfakes. Only real humans pass.',
                   image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=600&h=400&fit=crop&q=80',
                   color: '#10b981',
                 },
                 {
-                  icon: <Visibility />,
                   title: 'Multi-Environment Optimization',
                   desc: 'Auto-adjusts to any lighting—from bright sunlight to dim offices. Works everywhere.',
                   image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=600&h=400&fit=crop&q=80',
@@ -743,24 +710,6 @@ const Home = () => {
                           inset: 0,
                           background: `linear-gradient(to bottom, transparent 40%, ${feature.color}20)`,
                         }} />
-                        {/* Icon badge */}
-                        <Box sx={{
-                          position: 'absolute',
-                          bottom: { xs: 12, md: 16 },
-                          left: { xs: 12, md: 16 },
-                          width: { xs: 48, md: 56 },
-                          height: { xs: 48, md: 56 },
-                          borderRadius: { xs: '12px', md: '16px' },
-                          background: '#fff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: feature.color,
-                          boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
-                          fontSize: { xs: '1.25rem', md: '1.5rem' },
-                        }}>
-                          {feature.icon}
-                        </Box>
                       </Box>
 
                       {/* Content */}
@@ -791,9 +740,9 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           HOW IT WORKS - Visual Timeline
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box id="how-it-works" sx={{ py: { xs: 8, md: 18 }, background: '#ffffff', position: 'relative', overflow: 'hidden' }}>
         {/* Decorative gradient */}
         <Box sx={{
@@ -976,9 +925,9 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           RADIAL ORBITAL TIMELINE - Built for every industry
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box id="industries" sx={{ py: { xs: 12, md: 16 }, background: '#fafaf9' }}>
         <Container maxWidth="lg">
           <ScrollReveal>
@@ -1060,9 +1009,9 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           FINAL CTA SECTION
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box sx={{ py: { xs: 8, md: 18 }, background: '#ffffff', position: 'relative', overflow: 'hidden' }}>
         {/* Background decoration image */}
         <Box
@@ -1142,7 +1091,7 @@ const Home = () => {
                     Works with standard webcams—no special hardware needed.
                   </Typography>
                   <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                    <Button variant="contained" size="large" endIcon={<ArrowForward />}
+                    <Button variant="contained" size="large"
                       onClick={() => navigate('/register')}
                       sx={{
                         py: { xs: 1.5, md: 2 }, 
@@ -1185,9 +1134,9 @@ const Home = () => {
         </Container>
       </Box>
 
-      {/* ════════════════════════════════════════════════════════
+      {/*
           FOOTER
-      ════════════════════════════════════════════════════════ */}
+       */}
       <Box sx={{ py: 5, borderTop: '1px solid #e7e5e4', background: '#ffffff' }}>
         <Container maxWidth="lg">
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexDirection: { xs: 'column', md: 'row' }, gap: 2 }}>

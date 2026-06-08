@@ -15,12 +15,6 @@ import {
   Divider,
 } from '@mui/material';
 import {
-  ExitToApp,
-  Dashboard,
-  Settings,
-  AdminPanelSettings,
-  CameraAlt,
-  Logout,
   MoreVert,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -82,9 +76,9 @@ const Navbar = () => {
   const shouldShowSolid = scrolled || needsSolidNavbar;
 
   const navigationItems = [
-    { path: '/mark-attendance', label: 'Mark Attendance', icon: <CameraAlt /> },
-    { path: '/dashboard', label: 'Dashboard', icon: <Dashboard /> },
-    ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin', icon: <AdminPanelSettings /> }] : []),
+    { path: '/mark-attendance', label: 'Mark Attendance' },
+    { path: '/dashboard', label: 'Dashboard' },
+    ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin' }] : []),
   ];
 
   const publicNavigationItems = [
@@ -149,7 +143,6 @@ const Navbar = () => {
               <Button
                 key={item.path}
                 onClick={() => navigateToPage(item.path)}
-                startIcon={item.icon}
                 sx={{
                   px: 3,
                   py: 1.5,
@@ -279,11 +272,9 @@ const Navbar = () => {
             </Box>
           </Box>
           <MenuItem onClick={() => navigateToPage('/settings')}>
-            <Settings sx={{ mr: 2, fontSize: 20, color: '#94a3b8' }} />
             <Typography fontWeight="500">Settings</Typography>
           </MenuItem>
           <MenuItem onClick={handleLogout} sx={{ color: '#ef4444' }}>
-            <Logout sx={{ mr: 2, fontSize: 20 }} />
             <Typography fontWeight="500">Sign out</Typography>
           </MenuItem>
         </Menu>
@@ -326,13 +317,11 @@ const Navbar = () => {
                 <MenuItem key={item.path} onClick={() => navigateToPage(item.path)}
                   sx={{ background: isActivePage(item.path) ? '#f8fafc' : 'transparent' }}
                 >
-                  {React.cloneElement(item.icon, { sx: { mr: 2, fontSize: 20, color: '#94a3b8' } })}
                   <Typography fontWeight={isActivePage(item.path) ? 600 : 500}>{item.label}</Typography>
                 </MenuItem>
               ))}
               <Divider sx={{ mx: 1, my: 1 }} />
               <MenuItem onClick={handleLogout} sx={{ color: '#ef4444' }}>
-                <ExitToApp sx={{ mr: 2, fontSize: 20 }} />
                 <Typography fontWeight="500">Sign out</Typography>
               </MenuItem>
             </>

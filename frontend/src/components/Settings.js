@@ -6,7 +6,6 @@ import {
   Grid,
   Card,
   CardContent,
-  Switch,
   Button,
   Divider,
   Alert,
@@ -15,22 +14,15 @@ import {
   IconButton,
   Stack,
   Chip,
-  Select,
-  MenuItem,
-  FormControl,
 } from '@mui/material';
 import {
-  Settings as SettingsIcon,
-  Person,
-  Storage,
-  Edit,
   Close,
 } from '@mui/icons-material';
 import { useAuth } from '../App';
 
 const Settings = () => {
   const { user } = useAuth();
-  const [settings, setSettings] = useState({
+  const [settings] = useState({
     // Face Recognition - this is always enabled (no toggle functionality implemented)
     faceRecognitionEnabled: true,
   });
@@ -38,21 +30,10 @@ const Settings = () => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
-  const handleSettingChange = (category, setting, value) => {
-    // Settings are read-only (no backend API implemented)
-    setError('Settings management is not yet implemented in the backend.');
-  };
-
-  const handleSaveSettings = async () => {
-    // Note: Settings API not implemented in backend
-    setError('Settings functionality is not yet implemented. Profile management is available in Profile page.');
-  };
-
   const settingsCategories = [
     {
       id: 'system',
       title: 'System Information',
-      icon: <Storage />,
       description: 'View system information and preferences',
       settings: [
         {
@@ -73,18 +54,6 @@ const Settings = () => {
         <Fade in timeout={800}>
           <Box sx={{ mb: 6 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, mb: 4 }}>
-              <Avatar
-                sx={{
-                  width: 64,
-                  height: 64,
-                  background: 'linear-gradient(135deg, #212E46 0%, #2c3e5a 100%)',
-                  color: '#ffffff',
-                  fontSize: '1.75rem',
-                  fontWeight: 'bold',
-                }}
-              >
-                <SettingsIcon sx={{ fontSize: 32 }} />
-              </Avatar>
               <Box>
                 <Typography variant="h5" fontWeight="700" sx={{ color: '#212E46', letterSpacing: '-0.025em', mb: 1, fontFamily: '"Inter", sans-serif' }}>
                   Settings
@@ -142,7 +111,6 @@ const Settings = () => {
                   </Box>
                   <Button
                     variant="outlined"
-                    startIcon={<Edit />}
                     onClick={() => window.location.href = '/profile'}
                     sx={{
                       borderRadius: '12px',
@@ -237,20 +205,6 @@ const Settings = () => {
                   <CardContent sx={{ p: 4 }}>
                     {/* Category Header */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                      <Box
-                        sx={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: '12px',
-                          background: '#dbeafe',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#212E46',
-                        }}
-                      >
-                        {category.icon}
-                      </Box>
                       <Box>
                         <Typography variant="h6" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
                           {category.title}
@@ -309,7 +263,6 @@ const Settings = () => {
             <Button
               variant="contained"
               size="large"
-              startIcon={<Person />}
               onClick={() => window.location.href = '/profile'}
               sx={{
                 py: 2.5,

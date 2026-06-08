@@ -12,15 +12,12 @@ import {
   Fade,
   Card,
   CardContent,
-  Avatar,
-  Divider,
   Stack,
   Grid,
   Chip,
   LinearProgress,
 } from '@mui/material';
 import {
-  PersonAdd,
   Email,
   Phone,
   Business,
@@ -624,7 +621,7 @@ const Register = () => {
                     variant="contained"
                     size="medium"
                     disabled={loading}
-                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <PersonAdd sx={{ fontSize: '1rem' }} />}
+                    startIcon={loading ? <CircularProgress size={16} color="inherit" /> : null}
                     sx={{
                       py: 1.3,
                       fontSize: '0.8rem',

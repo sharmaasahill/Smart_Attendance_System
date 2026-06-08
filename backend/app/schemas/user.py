@@ -1,6 +1,8 @@
-from pydantic import BaseModel, EmailStr
-from datetime import datetime, date, time
+from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel, EmailStr
+
 
 class UserCreate(BaseModel):
     email: EmailStr
@@ -8,6 +10,7 @@ class UserCreate(BaseModel):
     full_name: str
     phone_number: Optional[str] = None
     department: Optional[str] = None
+
 
 class UserResponse(BaseModel):
     id: int
@@ -20,9 +23,10 @@ class UserResponse(BaseModel):
     is_active: bool
     face_registered: bool
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -33,18 +37,8 @@ class UserUpdateProfile(BaseModel):
     full_name: Optional[str] = None
     phone_number: Optional[str] = None
     department: Optional[str] = None
-    
+
+
 class UserChangePassword(BaseModel):
     current_password: str
     new_password: str
-
-class AttendanceResponse(BaseModel):
-    id: int
-    user_id: int
-    date: date
-    time_in: Optional[time]
-    status: str
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True

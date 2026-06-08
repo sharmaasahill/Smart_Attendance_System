@@ -1,11 +1,14 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Time, ForeignKey
-from sqlalchemy.orm import relationship
 from datetime import datetime
-from database import Base
+
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy.orm import relationship
+
+from app.db.base import Base
+
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)
@@ -18,19 +21,5 @@ class User(Base):
     face_registered = Column(Boolean, default=False)
     face_encoding_path = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationship
-    attendances = relationship("Attendance", back_populates="user")
 
-class Attendance(Base):
-    __tablename__ = "attendance"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    date = Column(Date, nullable=False)
-    time_in = Column(Time, nullable=True)
-    status = Column(String, nullable=False)  # "present" or "absent"
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    # Relationship
-    user = relationship("User", back_populates="attendances") 
+    attendances = relationship("Attendance", back_populates="user")

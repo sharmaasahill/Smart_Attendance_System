@@ -22,18 +22,7 @@ import {
   Paper,
 } from '@mui/material';
 import {
-  Person as PersonIcon,
-  Edit as EditIcon,
-  Lock as LockIcon,
-  Save as SaveIcon,
-  Cancel as CancelIcon,
-  Email as EmailIcon,
-  Phone as PhoneIcon,
-  Business as BusinessIcon,
-  Badge as BadgeIcon,
   Close as CloseIcon,
-  Visibility as VisibilityIcon,
-  Face as FaceIcon,
 } from '@mui/icons-material';
 import { userAPI } from '../services/api';
 
@@ -265,7 +254,6 @@ const UserProfile = () => {
                   {!editMode ? (
                     <Button
                       variant="outlined"
-                      startIcon={<EditIcon />}
                       onClick={() => setEditMode(true)}
                       sx={{
                         borderRadius: '8px',
@@ -286,7 +274,7 @@ const UserProfile = () => {
                       <Button
                         variant="contained"
                         disabled={updateLoading}
-                        startIcon={updateLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : <SaveIcon />}
+                        startIcon={updateLoading ? <CircularProgress size={16} sx={{ color: '#ffffff' }} /> : null}
                         onClick={handleProfileUpdate}
                         sx={{
                           borderRadius: '12px',
@@ -309,7 +297,6 @@ const UserProfile = () => {
                       </Button>
                       <Button
                         variant="outlined"
-                        startIcon={<CancelIcon />}
                         onClick={handleCancelEdit}
                         sx={{
                           borderRadius: '12px',
@@ -330,7 +317,6 @@ const UserProfile = () => {
                   )}
                   <Button
                     variant="outlined"
-                    startIcon={<LockIcon />}
                     onClick={() => setPasswordDialogOpen(true)}
                     sx={{
                       borderRadius: '12px',
@@ -410,7 +396,6 @@ const UserProfile = () => {
                     
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <PersonIcon sx={{ color: '#6b7280', fontSize: 20 }} />
                         {editMode ? (
                           <TextField
                             fullWidth
@@ -448,14 +433,12 @@ const UserProfile = () => {
                       </Box>
 
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <EmailIcon sx={{ color: '#6b7280', fontSize: 20 }} />
                         <Typography variant="body1" sx={{ color: '#1f2937' }}>
                           {user?.email}
                         </Typography>
                       </Box>
 
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <PhoneIcon sx={{ color: '#6b7280', fontSize: 20 }} />
                         {editMode ? (
                           <TextField
                             fullWidth
@@ -493,7 +476,6 @@ const UserProfile = () => {
                       </Box>
 
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <BusinessIcon sx={{ color: '#6b7280', fontSize: 20 }} />
                         {editMode ? (
                           <TextField
                             fullWidth
@@ -542,7 +524,6 @@ const UserProfile = () => {
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                          <BadgeIcon sx={{ color: '#6b7280', fontSize: 20 }} />
                           <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
                             User ID
                           </Typography>
@@ -571,7 +552,6 @@ const UserProfile = () => {
                             <Button
                               size="small"
                               variant="outlined"
-                              startIcon={<VisibilityIcon />}
                               onClick={handleViewRegisteredFaces}
                               sx={{
                                 borderRadius: '8px',
@@ -593,7 +573,6 @@ const UserProfile = () => {
                             <Button
                               size="small"
                               variant="contained"
-                              startIcon={<FaceIcon />}
                               onClick={() => window.location.href = '/face-capture'}
                               sx={{
                                 borderRadius: '8px',
@@ -816,7 +795,6 @@ const UserProfile = () => {
             justifyContent: 'space-between',
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FaceIcon sx={{ color: '#f97316', fontSize: 28 }} />
               Registered Face Images
             </Box>
             <IconButton
@@ -1027,7 +1005,6 @@ const UserProfile = () => {
                     minHeight="200px"
                     gap={2}
                   >
-                    <FaceIcon sx={{ fontSize: 48, color: '#d1d5db' }} />
                     <Typography variant="body1" sx={{ color: '#6b7280', textAlign: 'center' }}>
                       No face images found
                     </Typography>

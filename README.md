@@ -1,228 +1,141 @@
 # Smart Attendance System
 
-A production-grade web-based attendance management system using advanced face recognition technology.
+A production-grade attendance platform that marks attendance through **real-time
+face recognition** with **active liveness detection**, plus role-based access,
+admin management, and analytics.
 
-[![Python](https://img.shields.io/badge/Python-3.8+-3776ab?style=flat-square&logo=python&logoColor=white)](https://python.org/)
-[![React](https://img.shields.io/badge/React-18.0+-61dafb?style=flat-square&logo=react&logoColor=white)](https://reactjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+Recognition is powered by **InsightFace (ArcFace, 512-d ONNX embeddings)** on the
+backend and **MediaPipe FaceLandmarker** in the browser for genuine face
+detection and a blink-based anti-spoofing challenge.
+
+---
 
 ## Features
 
-### Core Functionality
-- JWT-based authentication with role-based access control
-- Advanced face recognition using dlib and OpenCV
-- Real-time attendance marking via facial recognition
-- User and admin dashboards with analytics
-- Attendance history tracking and reporting
-- Data export in PDF, Excel, CSV, and JSON formats
+- **Automatic face attendance** — captures the moment a real, centered face passes a live blink check (no button press).
+- **Advanced recognition** — ArcFace embeddings, all-image-per-user enrollment, cosine k-NN matching with a tuned threshold and real confidence scores.
+- **Active liveness / anti-spoofing** — in-browser blink challenge (MediaPipe blendshapes) enforced on the attendance path.
+- **Quality-gated enrollment** — detection score, face size, sharpness, and brightness checks.
+- **Duplicate-face prevention** — a face can only be enrolled to one account.
+- **Role-based access** — admin vs. user, JWT-authenticated.
+- **Admin tools** — user/attendance management, face management, registered-face gallery.
+- **Analytics** — trends, punctuality, anomalies, automated reports, CSV export.
 
-### Advanced Face Recognition
-- **Face Quality Assessment** - ISO/IEC 19794-5 compliant quality checks (size, brightness, sharpness, pose, eye visibility)
-- **Liveness Detection** - Anti-spoofing protection against photo and screen attacks using texture, color, and frequency analysis
-- **Duplicate Prevention** - Prevents same person from registering multiple accounts
-- **Quality Scoring** - Real-time feedback with detailed quality metrics
-- **Face Gallery** - View registered face images with quality scores
+## Tech stack
 
-## Technology Stack
+| Layer    | Technology |
+|----------|------------|
+| Frontend | React, Material UI, MediaPipe Tasks Vision |
+| Backend  | FastAPI, SQLAlchemy, Pydantic Settings |
+| ML       | InsightFace (SCRFD + ArcFace), onnxruntime, OpenCV |
+| Database | PostgreSQL (production) / SQLite (local) |
+| Auth     | JWT (python-jose), bcrypt |
+| Ops      | Docker, docker-compose, Alembic |
 
-**Backend:** FastAPI, SQLite, SQLAlchemy, face_recognition, OpenCV, NumPy, SciPy  
-**Frontend:** React 18, Material-UI, Axios, Recharts, React Webcam  
-**Authentication:** JWT tokens with bcrypt password hashing
+## Project structure
 
-## Prerequisites
+```
+backend/
+  app/
+    main.py                 # app factory, lifespan, router registration
+    core/                   # config, security, logging
+    db/                     # engine/session, declarative base
+    models/                 # SQLAlchemy models
+    schemas/                # Pydantic schemas
+    services/               # face_recognition, analytics
+    api/
+      deps.py               # auth dependencies
+      routers/              # auth, face, attendance, users, admin, analytics
+  alembic/                  # database migrations
+  scripts/                  # reencode_faces.py
+  Dockerfile, requirements.txt
+frontend/
+  src/components/           # React components (FaceCamera, MarkAttendance, ...)
+  src/services/api.js       # API client (env-driven base URL)
+  public/models/, public/mediapipe/   # vendored MediaPipe model + WASM
+  Dockerfile, nginx.conf
+docker-compose.yml
+```
 
-- Python 3.8+
-- Node.js 16+
-- Webcam
-- CMake (for dlib installation)
+---
 
-## Installation
+## Quick start (Docker — recommended)
 
-### Backend Setup
+```bash
+# from the repo root
+docker compose up --build
+```
+
+- Frontend: <http://localhost:3000>
+- API docs: <http://localhost:8000/docs>
+
+Set secrets via environment (or a root `.env`): `SECRET_KEY`, `ADMIN_EMAIL`.
+
+## Local development
+
+### Backend
 
 ```bash
 cd backend
-python -m venv venv
-
-# Windows
-venv\Scripts\activate
-
-# macOS/Linux
-source venv/bin/activate
-
+python -m venv .venv && .venv\Scripts\activate      # Windows
+# source .venv/bin/activate                          # macOS/Linux
 pip install -r requirements.txt
-python -m uvicorn main:app --reload --host localhost --port 8000
+cp .env.example .env          # edit values
+
+uvicorn app.main:app --reload --port 8000
 ```
 
-Backend runs at `http://localhost:8000`  
-API docs available at `http://localhost:8000/docs`
+The InsightFace model pack (`buffalo_l`) downloads automatically on first use.
 
-### Frontend Setup
+### Frontend
 
 ```bash
 cd frontend
 npm install
+cp .env.example .env          # REACT_APP_API_URL
 npm start
 ```
 
-Frontend runs at `http://localhost:3000`
-
-## Quick Start
-
-1. Start backend and frontend servers
-2. Register a new account at `http://localhost:3000`
-3. Set admin role: `python backend/migrate_add_role.py`
-4. Login and navigate to face registration
-5. Capture 5-6 face images for enrollment
-6. Mark attendance using face recognition
+---
 
 ## Configuration
 
-### Backend Environment Variables
+Backend settings are environment-driven (`backend/.env`, see `.env.example`):
 
-Create `backend/.env`:
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | local SQLite | e.g. `postgresql+psycopg2://user:pass@host:5432/db` |
+| `SECRET_KEY` | dev value | JWT signing key (set a strong value in production) |
+| `ADMIN_EMAIL` | — | email auto-assigned the admin role at registration |
+| `BACKEND_CORS_ORIGINS` | `http://localhost:3000` | comma-separated allowed origins |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | JWT lifetime |
 
-```env
-SECRET_KEY=your-secret-key-here
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-ADMIN_EMAIL=admin@example.com
-```
+Frontend uses `REACT_APP_API_URL` to locate the backend.
 
-### Frontend Environment Variables
+## Database migrations
 
-Create `frontend/.env`:
-
-```env
-REACT_APP_API_URL=http://localhost:8000
-```
-
-### Face Recognition Settings
-
-Edit `backend/face_recognition_service.py`:
-
-```python
-MIN_FACE_SIZE = 50              # Minimum face width (pixels)
-MIN_OVERALL_SCORE = 30          # Minimum quality score (%)
-MIN_LIVENESS_CONFIDENCE = 20    # Minimum liveness confidence (%)
-tolerance = 0.6                  # Face matching tolerance
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /auth/register` - User registration
-- `POST /auth/login` - User login
-
-### Face Recognition
-- `POST /face/register` - Register face with quality and liveness checks
-- `POST /face/check-quality` - Check face image quality
-- `POST /face/check-liveness` - Check image liveness
-
-### Attendance
-- `POST /attendance/mark` - Mark attendance via face recognition
-- `GET /user/attendance` - Get attendance history
-- `GET /user/attendance/stats` - Get attendance statistics
-
-### User Management
-- `GET /user/profile` - Get user profile
-- `PUT /user/profile` - Update user profile
-- `POST /user/change-password` - Change password
-- `GET /user/face/images` - Get registered face images with quality scores
-
-### Admin Operations
-- `GET /admin/users` - Get all users
-- `GET /admin/attendance` - Get all attendance records
-- `PUT /admin/attendance/{id}` - Update attendance record
-- `POST /admin/mark-absent` - Mark users as absent
-- `DELETE /admin/user/{user_id}/face` - Delete user face data
-
-Full API documentation: Visit `/docs` when backend is running
-
-## Project Structure
-
-```
-Smart_Attendance_System/
-├── backend/
-│   ├── main.py                       # FastAPI application
-│   ├── models.py                     # Database models
-│   ├── auth.py                       # Authentication
-│   ├── face_recognition_service.py   # Face recognition
-│   ├── face_quality_checker.py       # Quality assessment
-│   ├── liveness_detector.py          # Anti-spoofing
-│   ├── requirements.txt              # Dependencies
-│   └── dataset/                      # Face encodings (gitignored)
-│
-├── frontend/
-│   ├── src/
-│   │   ├── components/               # React components
-│   │   └── services/api.js           # API integration
-│   └── package.json
-│
-└── README.md
-```
-
-## Database Schema
-
-**Users Table**
-- id, email, password (hashed), full_name, unique_id
-- phone_number, department, role, is_active
-- face_registered, face_encoding_path, created_at
-
-**Attendance Table**
-- id, user_id (FK), date, time_in, status, created_at
-
-## Security Features
-
-- Password hashing with bcrypt
-- JWT token authentication
-- Role-based access control
-- SQL injection protection via SQLAlchemy ORM
-- Face data isolation in user-specific folders
-- Liveness detection for anti-spoofing
-- Duplicate face prevention
-
-**Installation Issues:**
-```bash
-# dlib installation on Windows
-pip install cmake
-pip install dlib
-
-# face_recognition installation
-pip install face-recognition --no-cache-dir
-```
-
-**Camera Access:**
-- Allow camera permissions in browser
-- HTTPS required for production
-- Ensure no other app is using camera
-
-**Database Reset:**
 ```bash
 cd backend
-rm attendance_system.db
-# Restart backend - will create new DB
+alembic upgrade head                              # apply
+alembic revision --autogenerate -m "message"      # create after model changes
 ```
 
-## Production Deployment
+## Maintenance scripts
 
-### Backend
 ```bash
-pip install gunicorn
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+cd backend
+python -m scripts.reencode_faces   # rebuild embeddings from stored face images
 ```
 
-### Frontend
-```bash
-npm run build
-# Serve build/ folder with nginx or any static server
-```
+---
+
+## Security notes
+
+- Face/biometric data (`backend/dataset/`) and the local DB are git-ignored.
+- Always set a strong `SECRET_KEY` and restrict `BACKEND_CORS_ORIGINS` in production.
+- Liveness is verified client-side; for hardened deployments consider adding a
+  server-side passive anti-spoofing model.
 
 ## License
 
-MIT License
-
-## Authors
-
-Sahil Kumar Sharma
-
----
+[MIT](LICENSE)

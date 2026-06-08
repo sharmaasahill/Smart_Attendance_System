@@ -15,6 +15,11 @@ import {
 } from '@mui/material';
 import { attendanceAPI, webcamCaptureToFile } from '../services/api';
 import { format } from 'date-fns';
+import {
+  CheckCircleRounded,
+  InfoRounded,
+  ErrorRounded,
+} from '@mui/icons-material';
 import FaceCamera from './FaceCamera';
 
 // Add pulse animation
@@ -329,7 +334,7 @@ const MarkAttendance = () => {
                   <Fade in timeout={500}>
                     <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(135deg, rgba(16,185,129,0.97) 0%, rgba(5,150,105,0.97) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
                       <Box sx={{ width: 120, height: 120, borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-                        <Box sx={{ width: 60, height: 60, borderRadius: '50%', background: '#16a34a' }} />
+                        <CheckCircleRounded sx={{ fontSize: 72, color: '#16a34a' }} />
                       </Box>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h4" fontWeight="800" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', mb: 1 }}>Success</Typography>
@@ -349,7 +354,7 @@ const MarkAttendance = () => {
                   <Fade in timeout={500}>
                     <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(135deg, rgba(249,115,22,0.97) 0%, rgba(234,88,12,0.97) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, p: 4 }}>
                       <Box sx={{ width: 120, height: 120, borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-                        <Typography variant="h1" fontWeight="900" sx={{ color: '#f97316', fontFamily: '"Inter", sans-serif' }}>i</Typography>
+                        <InfoRounded sx={{ fontSize: 72, color: '#f97316' }} />
                       </Box>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h4" fontWeight="800" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', mb: 1 }}>Already Marked</Typography>
@@ -366,7 +371,7 @@ const MarkAttendance = () => {
                   <Fade in timeout={500}>
                     <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(135deg, rgba(239,68,68,0.97) 0%, rgba(220,38,38,0.97) 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, p: 4 }}>
                       <Box sx={{ width: 120, height: 120, borderRadius: '50%', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
-                        <Typography variant="h1" fontWeight="900" sx={{ color: '#dc2626', fontFamily: '"Inter", sans-serif' }}>✕</Typography>
+                        <ErrorRounded sx={{ fontSize: 72, color: '#dc2626' }} />
                       </Box>
                       <Box sx={{ textAlign: 'center' }}>
                         <Typography variant="h4" fontWeight="800" sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', mb: 1 }}>Not Recognized</Typography>

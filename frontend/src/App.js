@@ -12,7 +12,6 @@ import AdminDashboard from './components/AdminDashboard';
 import EmployeeDashboard from './components/EmployeeDashboard';
 import UserProfile from './components/UserProfile';
 import UserAttendance from './components/UserAttendance';
-import Settings from './components/Settings';
 import Navbar from './components/Navbar';
 
 // Create Auth Context
@@ -122,10 +121,6 @@ function App() {
           <Route 
             path="/profile" 
             element={user ? <UserProfile /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/settings" 
-            element={user ? <Settings /> : <Navigate to="/login" />} 
           />
           <Route 
             path="/attendance" 

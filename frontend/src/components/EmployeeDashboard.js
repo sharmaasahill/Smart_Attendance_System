@@ -99,6 +99,27 @@ const EmployeeDashboard = () => {
     fetchData();
   }, [user.unique_id]);
 
+  const downloadReport = () => {
+    const rows = [
+      ['Date', 'Status', 'Time In'],
+      ...attendance.map((r) => [
+        r.date,
+        r.status,
+        r.time_in || '',
+      ]),
+    ];
+    const csv = rows.map((row) => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `attendance-${user?.unique_id || 'report'}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" sx={{ background: 'linear-gradient(135deg, #f5f3f0 0%, #fafaf9 50%, #ffffff 100%)' }}>
@@ -206,7 +227,7 @@ const EmployeeDashboard = () => {
                     </Button>
                   </Grid>
                   <Grid item xs={12} sm={6}>
-                    <Button fullWidth variant="outlined" size="large"
+                    <Button fullWidth variant="outlined" size="large" onClick={downloadReport}
                       sx={{ py: 3, borderRadius: '16px', border: '2px solid #e7e5e4', color: '#78716c', textTransform: 'none', fontWeight: '700', fontSize: '1rem', fontFamily: '"Inter", sans-serif', '&:hover': { border: '2px solid #d6d3d1', background: '#fafaf9', transform: 'translateY(-2px)' }, transition: 'all 0.3s ease' }}>
                       Download Report
                     </Button>

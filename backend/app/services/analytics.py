@@ -1,223 +1,217 @@
-"""Analytics computation helpers for the admin analytics endpoints."""
+"""
+Attendance analytics computed strictly from real records.
 
-import random
-from collections import defaultdict
+Data model available: Attendance(user_id, date, time_in, status) and
+User(department). Every metric below is derived only from those facts — no
+simulated, random, or fabricated values.
+
+Definitions:
+  * "On time" means clocking in at or before WORK_START (09:00).
+  * Attendance rate (day) = distinct present users that day / total users.
+  * Streak = consecutive calendar days present, counting back from a user's
+    most recent present day.
+"""
+
+from collections import Counter, defaultdict
 from datetime import datetime, time, timedelta
 
-from sqlalchemy.orm import Session
+WORK_START = time(9, 0)
 
 
-def calculate_live_stats(db: Session, users: list, attendance_records: list):
-    """Calculate real-time statistics."""
+def _avg_arrival(times) -> str:
+    if not times:
+        return "N/A"
+    secs = sum(t.hour * 3600 + t.minute * 60 + t.second for t in times) / len(times)
+    return f"{int(secs // 3600):02d}:{int((secs % 3600) // 60):02d}"
+
+
+def _format_hour(hour: int) -> str:
+    h12 = hour % 12 or 12
+    return f"{h12} {'AM' if hour < 12 else 'PM'}"
+
+
+def live_stats(users: list, records: list) -> dict:
+    """Today's snapshot."""
     today = datetime.now().date()
-    today_records = [r for r in attendance_records if r.date == today and r.status == "present"]
+    today_present = [r for r in records if r.date == today and r.status == "present"]
+    present_ids = {r.user_id for r in today_present}
+    times = [r.time_in for r in today_present if r.time_in]
+    on_time = sum(1 for t in times if t <= WORK_START)
+    late = sum(1 for t in times if t > WORK_START)
 
-    present_users = set()
-    on_time_count = 0
-    late_count = 0
-    work_start_time = time(9, 0)
-
-    for record in today_records:
-        present_users.add(record.user_id)
-        if record.time_in:
-            if record.time_in <= work_start_time:
-                on_time_count += 1
-            else:
-                late_count += 1
-
-    total_employees = len(users)
-    currently_present = len(present_users)
-    absent_today = total_employees - currently_present
-
-    if today_records and any(r.time_in for r in today_records):
-        valid_times = [r for r in today_records if r.time_in]
-        avg_arrival_seconds = sum(
-            r.time_in.hour * 3600 + r.time_in.minute * 60 + r.time_in.second
-            for r in valid_times
-        ) / len(valid_times)
-        avg_hour = int(avg_arrival_seconds // 3600)
-        avg_minute = int((avg_arrival_seconds % 3600) // 60)
-        average_arrival = f"{avg_hour:02d}:{avg_minute:02d}"
-    else:
-        average_arrival = "N/A"
-
-    attendance_rate = (currently_present / total_employees * 100) if total_employees > 0 else 0
-    punctuality_rate = (on_time_count / max(len(today_records), 1) * 100)
-    productivity_score = round((attendance_rate * 0.7) + (punctuality_rate * 0.3))
+    total = len(users)
+    present = len(present_ids)
 
     return {
-        "totalEmployees": total_employees,
-        "currentlyPresent": currently_present,
-        "onTimeToday": on_time_count,
-        "lateToday": late_count,
-        "absentToday": absent_today,
-        "averageArrival": average_arrival,
-        "peakHour": "9:15 AM",
-        "productivityScore": productivity_score,
+        "totalEmployees": total,
+        "currentlyPresent": present,
+        "onTimeToday": on_time,
+        "lateToday": late,
+        "absentToday": max(0, total - present),
+        "attendanceRate": round(present / total * 100, 1) if total else 0,
+        "punctualityRate": round(on_time / present * 100, 1) if present else 0,
+        "averageArrival": _avg_arrival(times),
+        "peakHour": _format_hour(Counter(t.hour for t in times).most_common(1)[0][0]) if times else "N/A",
     }
 
 
-def calculate_daily_trends(attendance_records: list, start_date, end_date):
-    """Calculate daily attendance trends."""
-    daily_data = defaultdict(list)
-    for record in attendance_records:
-        daily_data[record.date].append(record)
+def department_breakdown(users: list, records: list) -> list:
+    """Per-department present/total for today."""
+    today = datetime.now().date()
+    present_ids = {r.user_id for r in records if r.date == today and r.status == "present"}
 
-    trends = []
-    current_date = start_date.date()
-    while current_date <= end_date.date():
-        day_records = daily_data.get(current_date, [])
-        present_records = [r for r in day_records if r.status == "present"]
-        total_records = len(present_records)
-        on_time = sum(
-            1 for r in present_records
-            if r.time_in and r.time_in <= datetime.strptime("09:00", "%H:%M").time()
-        )
-        trends.append({
-            "date": current_date.strftime("%b %d"),
-            "attendance": min(100, total_records * 20),
-            "onTime": round((on_time / max(1, total_records)) * 100, 1),
-            "productivity": min(100, 70 + total_records * 5),
+    totals = defaultdict(int)
+    present = defaultdict(int)
+    for u in users:
+        dept = u.department or "Unassigned"
+        totals[dept] += 1
+        if u.id in present_ids:
+            present[dept] += 1
+
+    return [
+        {
+            "name": dept,
+            "present": present[dept],
+            "total": totals[dept],
+            "attendanceRate": round(present[dept] / totals[dept] * 100, 1) if totals[dept] else 0,
+        }
+        for dept in sorted(totals)
+    ]
+
+
+def daily_trends(records: list, start_date, end_date, total_users: int) -> list:
+    """Per-day attendance % and on-time % across the period."""
+    by_date = defaultdict(list)
+    for r in records:
+        if r.status == "present":
+            by_date[r.date].append(r)
+
+    out = []
+    day = start_date
+    while day <= end_date:
+        recs = by_date.get(day, [])
+        present = len({r.user_id for r in recs})
+        on_time = sum(1 for r in recs if r.time_in and r.time_in <= WORK_START)
+        out.append({
+            "date": day.strftime("%b %d"),
+            "attendance": round(present / total_users * 100, 1) if total_users else 0,
+            "onTime": round(on_time / present * 100, 1) if present else 0,
         })
-        current_date += timedelta(days=1)
-    return trends
+        day += timedelta(days=1)
+    return out
 
 
-def calculate_weekly_patterns(attendance_records: list):
-    """Calculate weekly attendance patterns."""
-    weekday_data = defaultdict(list)
-    for record in attendance_records:
-        weekday_data[record.date.weekday()].append(record)
+def weekly_patterns(records: list, start_date, end_date, total_users: int) -> list:
+    """Average attendance % and late-arrival counts by weekday over the period."""
+    names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
-    weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    patterns = []
-    for i, day_name in enumerate(weekdays):
-        day_records = weekday_data.get(i, [])
-        present_records = [r for r in day_records if r.status == "present"]
-        patterns.append({
-            "name": day_name,
-            "attendance": min(100, len(present_records) * 15),
-            "productivity": min(100, 60 + len(present_records) * 8),
+    occurrences = [0] * 7
+    day = start_date
+    while day <= end_date:
+        occurrences[day.weekday()] += 1
+        day += timedelta(days=1)
+
+    present_pairs = defaultdict(set)  # weekday -> {(user_id, date)}
+    late_counts = [0] * 7
+    for r in records:
+        if r.status == "present":
+            wd = r.date.weekday()
+            present_pairs[wd].add((r.user_id, r.date))
+            if r.time_in and r.time_in > WORK_START:
+                late_counts[wd] += 1
+
+    out = []
+    for i, name in enumerate(names):
+        denom = total_users * occurrences[i]
+        present_count = len(present_pairs.get(i, set()))
+        out.append({
+            "name": name,
+            "attendance": round(present_count / denom * 100, 1) if denom else 0,
+            "lateArrivals": late_counts[i],
         })
-    return patterns
+    return out
 
 
-def calculate_user_performance(db: Session, users: list, attendance_records: list):
-    """Calculate individual user performance metrics."""
-    user_data = defaultdict(list)
-    for record in attendance_records:
-        user_data[record.user_id].append(record)
+def user_performance(users: list, records: list) -> list:
+    """Top users by attendance % over the period (with real current streak)."""
+    by_user = defaultdict(list)
+    for r in records:
+        by_user[r.user_id].append(r)
 
-    performance = []
-    for user in users[:5]:
-        user_records = user_data.get(user.id, [])
-        present_records = [r for r in user_records if r.status == "present"]
+    users_by_id = {u.id: u for u in users}
+    out = []
+    for uid, recs in by_user.items():
+        user = users_by_id.get(uid)
+        if not user:
+            continue
 
-        if present_records:
-            attendance_rate = min(100, len(present_records) * 10)
-            on_time = sum(
-                1 for r in present_records
-                if r.time_in and r.time_in <= datetime.strptime("09:00", "%H:%M").time()
-            )
-            punctuality_rate = (on_time / len(present_records)) * 100 if present_records else 0
-            productivity = (attendance_rate * 0.7) + (punctuality_rate * 0.3)
-            streak = len(present_records)
-        else:
-            attendance_rate = 0
-            productivity = 0
-            streak = 0
+        present_dates = sorted({r.date for r in recs if r.status == "present"})
+        total = len(recs)
+        present = len(present_dates)
 
-        performance.append({
+        streak = 0
+        if present_dates:
+            present_set = set(present_dates)
+            cursor = present_dates[-1]
+            while cursor in present_set:
+                streak += 1
+                cursor -= timedelta(days=1)
+
+        out.append({
             "name": user.full_name,
-            "department": user.department or "Unknown",
-            "attendance": round(attendance_rate),
-            "productivity": round(productivity),
+            "department": user.department or "Unassigned",
+            "attendance": round(present / total * 100, 1) if total else 0,
+            "presentDays": present,
             "streak": streak,
         })
 
-    performance.sort(key=lambda x: x["productivity"], reverse=True)
-    return performance
+    out.sort(key=lambda x: (x["attendance"], x["streak"]), reverse=True)
+    return out[:5]
 
 
-def detect_anomalies(attendance_records: list, users: list):
-    """Detect attendance anomalies."""
+def detect_anomalies(records: list, users: list) -> list:
+    """Flag users whose attendance rate over the period is below 60%."""
     anomalies = []
-    try:
-        user_data = defaultdict(list)
-        for record in attendance_records:
-            user_data[record.user_id].append(record)
+    by_user = defaultdict(list)
+    for r in records:
+        by_user[r.user_id].append(r)
 
-        for user_id, records in user_data.items():
-            user = next((u for u in users if u.id == user_id), None)
-            if not user:
-                continue
-            present_records = [r for r in records if r.status == "present"]
-            if len(records) > 5 and len(present_records) / len(records) < 0.6:
-                anomalies.append({
-                    "type": "low_attendance",
-                    "user": user.full_name,
-                    "description": f"Attendance rate below 60% ({len(present_records)}/{len(records)} days)",
-                    "severity": "high",
-                    "date": records[-1].date.strftime("%b %d") if records else "Unknown",
-                })
-    except Exception:
-        pass
+    users_by_id = {u.id: u for u in users}
+    for uid, recs in by_user.items():
+        user = users_by_id.get(uid)
+        if not user:
+            continue
+        present = [r for r in recs if r.status == "present"]
+        if len(recs) > 5 and len(present) / len(recs) < 0.6:
+            anomalies.append({
+                "type": "low_attendance",
+                "user": user.full_name,
+                "description": f"Attendance rate below 60% ({len(present)}/{len(recs)} days)",
+                "severity": "high",
+                "date": recs[-1].date.strftime("%b %d") if recs else "Unknown",
+            })
     return anomalies
 
 
-def calculate_productivity_metrics(attendance_records: list, users: list):
-    """Calculate productivity metrics by department."""
-    dept_data = defaultdict(list)
-    for record in attendance_records:
-        user = next((u for u in users if u.id == record.user_id), None)
-        if user and user.department:
-            dept_data[user.department].append(record)
+def recommendations(records: list, users: list) -> list:
+    """Actionable recommendations derived from real attendance/punctuality."""
+    out = []
+    present = [r for r in records if r.status == "present"]
+    rate = len({r.user_id for r in present}) / max(len(users), 1) * 100
+    if rate < 80:
+        out.append({
+            "type": "attendance",
+            "priority": "high",
+            "title": "Low Overall Attendance",
+            "description": f"Attendance rate is {rate:.1f}%. Consider attendance incentives.",
+        })
 
-    dept_metrics = []
-    departments = ["Engineering", "Marketing", "Sales", "HR", "Finance", "Operations"]
-    for dept in departments:
-        records = dept_data.get(dept, [])
-        present_records = [r for r in records if r.status == "present"]
-        if records:
-            attendance_rate = (len(present_records) / len(records)) * 100
-            base_score = min(100, max(60, attendance_rate))
-        else:
-            base_score = 85
-
-        trend_value = random.randint(-10, 15)
-        trend = f"+{trend_value}%" if trend_value > 0 else f"{trend_value}%"
-        dept_metrics.append({"name": dept, "score": round(base_score), "trend": trend})
-
-    overall_score = sum(d["score"] for d in dept_metrics) // len(dept_metrics) if dept_metrics else 85
-    return {"overall": overall_score, "trend": "+5%", "departments": dept_metrics}
-
-
-def generate_simple_recommendations(attendance_records: list, users: list):
-    """Generate simple recommendations."""
-    recommendations = []
-    try:
-        present_records = [r for r in attendance_records if r.status == "present"]
-        attendance_rate = len(set(r.user_id for r in present_records)) / max(len(users), 1) * 100
-
-        if attendance_rate < 80:
-            recommendations.append({
-                "type": "attendance",
-                "priority": "high",
-                "title": "Low Overall Attendance",
-                "description": f"Attendance rate is {attendance_rate:.1f}%. Consider implementing attendance incentives.",
-            })
-
-        late_records = [
-            r for r in present_records
-            if r.time_in and r.time_in > datetime.strptime("09:15", "%H:%M").time()
-        ]
-        if len(late_records) > len(present_records) * 0.3:
-            recommendations.append({
-                "type": "punctuality",
-                "priority": "medium",
-                "title": "Punctuality Issues",
-                "description": f"{len(late_records)} late arrivals detected. Consider flexible timing or punctuality training.",
-            })
-    except Exception:
-        pass
-    return recommendations
+    late = [r for r in present if r.time_in and r.time_in > time(9, 15)]
+    if present and len(late) > len(present) * 0.3:
+        out.append({
+            "type": "punctuality",
+            "priority": "medium",
+            "title": "Punctuality Issues",
+            "description": f"{len(late)} late arrivals detected. Consider flexible timing.",
+        })
+    return out

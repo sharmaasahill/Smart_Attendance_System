@@ -271,9 +271,6 @@ const Navbar = () => {
               </Box>
             </Box>
           </Box>
-          <MenuItem onClick={() => navigateToPage('/settings')}>
-            <Typography fontWeight="500">Settings</Typography>
-          </MenuItem>
           <MenuItem onClick={handleLogout} sx={{ color: '#ef4444' }}>
             <Typography fontWeight="500">Sign out</Typography>
           </MenuItem>

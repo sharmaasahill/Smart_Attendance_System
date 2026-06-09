@@ -39,7 +39,11 @@ def override_get_db():
 
 @pytest.fixture(scope="session", autouse=True)
 def create_tables():
-    """Create all tables once for the test session."""
+    """Create all tables and ensure storage directories exist for the test session."""
+    # The app lifespan creates these dirs at startup, but tests don't trigger lifespan.
+    from app.core.config import settings
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(settings.DATASET_DIR, exist_ok=True)
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)

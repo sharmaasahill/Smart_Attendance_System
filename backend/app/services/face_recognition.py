@@ -412,13 +412,25 @@ class FaceRecognitionService:
             top_user = max(best_per_user, key=best_per_user.get)
             top_sim = best_per_user[top_user]
 
+            # k-NN voting: when there are fewer embeddings than k, adjust k
             k = min(self.knn_k, len(labels))
-            top_idx = np.argsort(-sims)[:k]
-            knn_labels = [labels[i] for i in top_idx]
-            vote_winner = max(set(knn_labels), key=knn_labels.count)
+            if k > 0:
+                top_idx = np.argsort(-sims)[:k]
+                knn_labels = [labels[i] for i in top_idx]
+                # Count votes
+                from collections import Counter
+                vote_counts = Counter(knn_labels)
+                # Get the winner(s) with max count
+                max_count = max(vote_counts.values())
+                winners = [user for user, count in vote_counts.items() if count == max_count]
+                # If tie, prefer the top_user (highest similarity)
+                vote_winner = top_user if top_user in winners else winners[0]
+            else:
+                vote_winner = top_user
 
             confidence = round(max(0.0, min(1.0, top_sim)) * 100, 1)
 
+            # Match only if top similarity meets threshold AND voting agrees
             if top_sim >= self.match_threshold and vote_winner == top_user:
                 logger.info(f"Recognized {top_user} (sim={top_sim:.3f}, conf={confidence}%)")
                 return {"user_id": top_user, "confidence": confidence, "similarity": round(top_sim, 4)}

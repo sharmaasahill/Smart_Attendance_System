@@ -77,8 +77,8 @@ async def mark_attendance(
                 db.refresh(existing_attendance)
                 return {
                     "message": f"Attendance updated for {user.full_name} - status changed from absent to present",
-                    "user": UserResponse.from_orm(user),
-                    "attendance": AttendanceResponse.from_orm(existing_attendance),
+                    "user": UserResponse.model_validate(user),
+                    "attendance": AttendanceResponse.model_validate(existing_attendance),
                     "confidence": confidence,
                 }
             time_str = (
@@ -105,8 +105,8 @@ async def mark_attendance(
 
         return {
             "message": f"Attendance marked successfully for {user.full_name}",
-            "user": UserResponse.from_orm(user),
-            "attendance": AttendanceResponse.from_orm(attendance),
+            "user": UserResponse.model_validate(user),
+            "attendance": AttendanceResponse.model_validate(attendance),
             "confidence": confidence,
         }
     except HTTPException:

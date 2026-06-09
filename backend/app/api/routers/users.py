@@ -21,7 +21,7 @@ router = APIRouter(prefix="/user", tags=["user"])
 
 @router.get("/profile")
 async def get_user_profile(current_user: User = Depends(deps.get_current_user)):
-    return UserResponse.from_orm(current_user)
+    return UserResponse.model_validate(current_user)
 
 
 @router.put("/profile")
@@ -39,7 +39,7 @@ async def update_user_profile(
 
     db.commit()
     db.refresh(current_user)
-    return {"message": "Profile updated successfully", "user": UserResponse.from_orm(current_user)}
+    return {"message": "Profile updated successfully", "user": UserResponse.model_validate(current_user)}
 
 
 @router.post("/change-password")
@@ -80,7 +80,7 @@ async def get_user_attendance(
         for record in records
     ]
     return {
-        "user": UserResponse.from_orm(current_user),
+        "user": UserResponse.model_validate(current_user),
         "attendance_records": result,
         "total_records": len(result),
     }
@@ -105,7 +105,7 @@ async def get_user_attendance_stats(
     attendance_percentage = (present_days / total_days * 100) if total_days > 0 else 0
 
     return {
-        "user": UserResponse.from_orm(current_user),
+        "user": UserResponse.model_validate(current_user),
         "stats": {
             "total_days": total_days,
             "present_days": present_days,

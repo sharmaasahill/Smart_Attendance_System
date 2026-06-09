@@ -32,7 +32,7 @@ async def get_all_users(
     current_user: User = Depends(deps.get_current_admin_user),
 ):
     users = db.query(User).all()
-    return [UserResponse.from_orm(user) for user in users]
+    return [UserResponse.model_validate(user) for user in users]
 
 
 @router.get("/attendance")
@@ -56,7 +56,7 @@ async def get_attendance_records(
         user = db.query(User).filter(User.id == record.user_id).first()
         result.append({
             "id": record.id,
-            "user": UserResponse.from_orm(user),
+            "user": UserResponse.model_validate(user),
             "date": record.date.isoformat(),
             "time_in": record.time_in.isoformat() if record.time_in else None,
             "status": record.status,
@@ -112,7 +112,7 @@ async def update_attendance_record(
         "message": f"Updated attendance for {user.full_name}",
         "attendance": {
             "id": attendance.id,
-            "user": UserResponse.from_orm(user),
+            "user": UserResponse.model_validate(user),
             "date": attendance.date.isoformat(),
             "time_in": attendance.time_in.isoformat() if attendance.time_in else None,
             "status": attendance.status,
@@ -183,7 +183,7 @@ async def mark_user_present(
     db.refresh(attendance)
     return {
         "message": f"Marked {user.full_name} as present",
-        "attendance": AttendanceResponse.from_orm(attendance),
+        "attendance": AttendanceResponse.model_validate(attendance),
     }
 
 
@@ -241,7 +241,7 @@ async def get_users_face_status(
             )
 
         users_status.append({
-            "user": UserResponse.from_orm(user),
+            "user": UserResponse.model_validate(user),
             "face_registered": face_registered,
             "face_images_count": face_images_count,
             "registration_details": registration_details,
@@ -408,7 +408,7 @@ async def get_user_face_details(
     encoding_file = os.path.join(user_dir, "encoding.pkl")
     if not os.path.exists(encoding_file):
         return {
-            "user": UserResponse.from_orm(user),
+            "user": UserResponse.model_validate(user),
             "face_registered": False,
             "message": "No face data registered for this user",
         }
@@ -432,7 +432,7 @@ async def get_user_face_details(
                     })
 
         return {
-            "user": UserResponse.from_orm(user),
+            "user": UserResponse.model_validate(user),
             "face_registered": True,
             "registration_info": {
                 "registered_date": registration_date.isoformat(),

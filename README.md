@@ -1,5 +1,7 @@
 # Smart Attendance System
 
+![CI Status](https://github.com/sharmaasahill/Smart_Attendance_System/actions/workflows/ci.yml/badge.svg)
+
 A production-grade attendance platform that marks attendance through **real-time
 face recognition** with **active liveness detection**, plus role-based access,
 admin management, and analytics.

@@ -54,6 +54,11 @@
     ]
   },
   "proxy": "http://localhost:8000",
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!(axios|@mediapipe)/)"
+    ]
+  },
   "devDependencies": {
     "@craco/craco": "^7.1.0"
   }

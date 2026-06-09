@@ -1,5 +1,6 @@
 """Authentication endpoints."""
 
+import secrets
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,7 +22,10 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Email already registered")
 
     hashed_password = get_password_hash(user_data.password)
-    unique_id = f"USR{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    # Generate unique ID with timestamp + 4 random hex digits to avoid collisions
+    timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+    random_suffix = secrets.token_hex(2)  # 4 hex characters
+    unique_id = f"USR{timestamp}{random_suffix}"
 
     admin_email = settings.ADMIN_EMAIL
     user_role = "admin" if admin_email and user_data.email == admin_email else "user"
@@ -46,7 +50,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": UserResponse.from_orm(db_user),
+        "user": UserResponse.model_validate(db_user),
     }
 
 
@@ -65,5 +69,5 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "user": UserResponse.from_orm(user),
+        "user": UserResponse.model_validate(user),
     }

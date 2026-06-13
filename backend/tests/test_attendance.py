@@ -112,6 +112,21 @@ async def test_attendance_blocks_duplicate(client):
 
 
 @pytest.mark.asyncio
+async def test_attendance_low_confidence_retry(client):
+    """A match below the acceptance confidence prompts a retry (422), not a mark."""
+    reg = await register_user(client, "lowconf@test.com", "Pass123!", "Low Conf")
+    uid = reg["user"]["unique_id"]
+    with patch(
+        "app.services.face_recognition.face_service.recognize",
+        return_value={"user_id": uid, "confidence": 45.0, "similarity": 0.45},
+    ):
+        data = {"liveness_verified": "true"}
+        resp = await client.post("/attendance/mark", data=data, files=[_jpeg_file()])
+    assert resp.status_code == 422
+    assert "low confidence" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
 async def test_attendance_overrides_absent_to_present(client, admin_token):
     """
     If admin has marked a user absent, a subsequent face scan that day

@@ -151,16 +151,30 @@ const MarkAttendance = () => {
     setAttendanceStatus('scanning');
 
     try {
-      const imageSrc = webcamRef.current.getScreenshot();
-      if (!imageSrc) {
+      // Capture multiple frames for multi-frame voting (more robust recognition)
+      const FRAME_COUNT = 3;
+      const FRAME_GAP_MS = 120;
+      const frames = [];
+      for (let i = 0; i < FRAME_COUNT; i++) {
+        const src = webcamRef.current && webcamRef.current.getScreenshot
+          ? webcamRef.current.getScreenshot()
+          : null;
+        if (src) {
+          frames.push(await webcamCaptureToFile(src, `attendance_${i}.jpg`));
+        }
+        if (i < FRAME_COUNT - 1) {
+          await new Promise((r) => setTimeout(r, FRAME_GAP_MS));
+        }
+      }
+
+      if (frames.length === 0) {
         throw new Error('Failed to capture image.');
       }
 
       setAttendanceStatus('processing');
 
-      const imageFile = await webcamCaptureToFile(imageSrc, 'attendance.jpg');
       // Liveness was verified live (blink) before this capture was allowed
-      const response = await attendanceAPI.markAttendance(imageFile, true);
+      const response = await attendanceAPI.markAttendance(frames, true);
 
       setSuccess(response.data);
       setAttendanceStatus('success');

@@ -3,11 +3,13 @@
 import logging
 import os
 from datetime import datetime
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.models import Attendance, User
 from app.schemas import AttendanceResponse, UserResponse
@@ -19,20 +21,23 @@ router = APIRouter(prefix="/attendance", tags=["attendance"])
 
 
 @router.post("/mark")
+@limiter.limit(settings.RATE_LIMIT_ATTENDANCE)
 async def mark_attendance(
-    file: UploadFile = File(...),
+    request: Request,
+    file: Optional[UploadFile] = File(None),
+    files: List[UploadFile] = File(None),
     liveness_verified: bool = Form(False),
     db: Session = Depends(get_db),
 ):
     """
-    Mark attendance from a single captured frame.
+    Mark attendance from one or more captured frames.
 
-    Liveness/anti-spoofing is performed live on the client via an active
-    blink/motion challenge (MediaPipe). The client sends liveness_verified=true
-    only after a genuine blink is observed; the server rejects frames that were
-    not liveness-verified.
+    Multiple frames are recognized independently and must reach majority
+    agreement (multi-frame voting), which reduces false accepts/rejects from a
+    single bad frame. Liveness/anti-spoofing is performed live on the client via
+    an active blink challenge; the server rejects frames not liveness-verified.
     """
-    temp_path = None
+    temp_paths: List[str] = []
     try:
         if not liveness_verified:
             raise HTTPException(
@@ -40,23 +45,41 @@ async def mark_attendance(
                 detail="Liveness not verified. Please look at the camera and blink so we can confirm a live person.",
             )
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
-        temp_path = os.path.join(settings.UPLOAD_DIR, f"temp_{timestamp}.jpg")
-        with open(temp_path, "wb") as buffer:
-            content = await file.read()
-            buffer.write(content)
-        logger.info(f"Attendance frame received: {len(content)} bytes")
+        # Accept either a single `file` or a list of `files`.
+        uploads = [f for f in ([file] + (files or [])) if f is not None]
+        if not uploads:
+            raise HTTPException(status_code=422, detail="No image frame provided.")
 
-        recognition = face_service.recognize(temp_path)
+        for i, upload in enumerate(uploads):
+            timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+            path = os.path.join(settings.UPLOAD_DIR, f"temp_{timestamp}_{i}.jpg")
+            with open(path, "wb") as buffer:
+                buffer.write(await upload.read())
+            temp_paths.append(path)
+        logger.info(f"Attendance frames received: {len(temp_paths)}")
+
+        recognition = face_service.recognize_frames(temp_paths)
         if not recognition:
             raise HTTPException(
                 status_code=404,
                 detail="Face not recognized. Please ensure your face is clearly visible and that you have registered.",
             )
 
-        recognized_user_id = recognition["user_id"]
         confidence = recognition["confidence"]
-        logger.info(f"Recognition: {recognized_user_id} (confidence {confidence}%)")
+        recognized_user_id = recognition["user_id"]
+
+        # Confidence band: matched, but not confident enough → ask to retry.
+        if confidence < settings.FACE_ATTENDANCE_MIN_CONFIDENCE:
+            logger.info(f"Low-confidence match {recognized_user_id} ({confidence}%) — retry requested")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Low confidence ({confidence:.0f}%). Move closer, face the camera directly, and try again.",
+            )
+
+        logger.info(
+            f"Recognition: {recognized_user_id} (confidence {confidence}%, "
+            f"{recognition.get('frames_agreed')}/{recognition.get('frames_total')} frames)"
+        )
 
         user = db.query(User).filter(User.unique_id == recognized_user_id).first()
         if not user:
@@ -115,8 +138,9 @@ async def mark_attendance(
         logger.exception("Attendance marking failed")
         raise HTTPException(status_code=500, detail=f"Attendance marking failed: {str(e)}")
     finally:
-        if temp_path and os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except OSError:
-                pass
+        for path in temp_paths:
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass

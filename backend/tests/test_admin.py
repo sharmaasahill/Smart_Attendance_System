@@ -75,6 +75,22 @@ async def test_admin_delete_user(client, admin_token):
 
 
 @pytest.mark.asyncio
+async def test_admin_users_pagination(client, admin_token):
+    """limit/offset paginate users and X-Total-Count reports the full total."""
+    # admin_token already created 1 admin; add 3 more users
+    for i in range(3):
+        await register_user(client, f"p{i}@test.com", "Pass123!", f"User {i}")
+
+    resp = await client.get(
+        "/admin/users?limit=2&offset=0",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+    assert resp.headers.get("X-Total-Count") == "4"
+
+
+@pytest.mark.asyncio
 async def test_admin_update_attendance(client, admin_token):
     """Admin can change an attendance record status."""
     from datetime import date

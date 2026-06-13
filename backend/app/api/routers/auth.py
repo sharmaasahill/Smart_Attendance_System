@@ -3,11 +3,17 @@
 import secrets
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.security import create_access_token, get_password_hash, verify_password
+from app.core.limiter import limiter
+from app.core.security import (
+    create_access_token,
+    get_password_hash,
+    validate_password_strength,
+    verify_password,
+)
 from app.db.session import get_db
 from app.models import User
 from app.schemas import LoginRequest, UserCreate, UserResponse
@@ -16,11 +22,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register")
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_REGISTER)
+async def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     existing_user = db.query(User).filter(User.email == user_data.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    validate_password_strength(user_data.password)
     hashed_password = get_password_hash(user_data.password)
     # Generate unique ID with timestamp + 4 random hex digits to avoid collisions
     timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -55,7 +63,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login")
-async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit(settings.RATE_LIMIT_LOGIN)
+async def login(request: Request, login_data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == login_data.email).first()
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")

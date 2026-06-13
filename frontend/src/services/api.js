@@ -62,9 +62,11 @@ export const faceAPI = {
 
 // Attendance APIs
 export const attendanceAPI = {
-  markAttendance: (imageFile, livenessVerified = false) => {
+  markAttendance: (imageFiles, livenessVerified = false) => {
     const formData = new FormData();
-    formData.append('file', imageFile);
+    // Accept a single File or an array of Files (multi-frame voting).
+    const frames = Array.isArray(imageFiles) ? imageFiles : [imageFiles];
+    frames.forEach((f) => formData.append('files', f));
     formData.append('liveness_verified', livenessVerified ? 'true' : 'false');
     return api.post('/attendance/mark', formData, {
       headers: {

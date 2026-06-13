@@ -16,8 +16,9 @@ from sqlalchemy.orm import sessionmaker
 # Point at a temporary database before any app code runs.
 TEST_DB_URL = "sqlite:///./test_attendance.db"
 os.environ.setdefault("DATABASE_URL", TEST_DB_URL)
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-which-is-long-enough-32+chars-xyz")
 os.environ.setdefault("ADMIN_EMAIL", "admin@test.com")
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402

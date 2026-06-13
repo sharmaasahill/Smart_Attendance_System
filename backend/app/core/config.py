@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ADMIN_EMAIL: str = ""
+    MIN_PASSWORD_LENGTH: int = 8
+
+    # ----- Rate limiting -----
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_LOGIN: str = "5/minute"
+    RATE_LIMIT_REGISTER: str = "10/hour"
+    RATE_LIMIT_ATTENDANCE: str = "20/minute"
 
     # ----- CORS (comma-separated origins) -----
     BACKEND_CORS_ORIGINS: str = "http://localhost:3000"
@@ -52,6 +59,7 @@ class Settings(BaseSettings):
 
     # ----- Face recognition -----
     FACE_MODEL_PACK: str = "buffalo_l"
+    FACE_USE_GPU: bool = False
     FACE_MATCH_THRESHOLD: float = 0.42
     FACE_DUPLICATE_THRESHOLD: float = 0.50
     FACE_KNN_K: int = 5
@@ -60,6 +68,9 @@ class Settings(BaseSettings):
     FACE_MIN_BLUR_VAR: float = 40.0
     FACE_MIN_QUALITY_SCORE: int = 45
     FACE_MIN_ENCODINGS: int = 3
+    # Minimum confidence (%) required to accept an attendance mark.
+    # Matches below this (but above the match threshold) prompt a retry.
+    FACE_ATTENDANCE_MIN_CONFIDENCE: float = 50.0
 
     @property
     def cors_origins(self) -> List[str]:
@@ -76,3 +87,28 @@ def get_settings() -> "Settings":
 
 
 settings = get_settings()
+
+
+# ── Security validation ──────────────────────────────────────────────────────
+
+KNOWN_WEAK_SECRETS = {
+    "",
+    "change-me-in-production",
+    "your-secret-key-here-make-it-secure-in-production",
+}
+
+
+def is_weak_secret(key: str) -> bool:
+    """A secret is weak if it's a known placeholder or shorter than 32 chars."""
+    return key in KNOWN_WEAK_SECRETS or len(key) < 32
+
+
+def validate_security(s: "Settings") -> None:
+    """Fail fast on insecure configuration in production (non-DEBUG)."""
+    if not s.DEBUG and is_weak_secret(s.SECRET_KEY):
+        raise RuntimeError(
+            "SECRET_KEY is weak or unset. Set a strong (>=32 char) SECRET_KEY "
+            "environment variable in production, e.g. "
+            "`python -c \"import secrets; print(secrets.token_urlsafe(48))\"`. "
+            "For local development set DEBUG=true to bypass this check."
+        )

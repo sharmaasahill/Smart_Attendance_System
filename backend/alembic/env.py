@@ -11,7 +11,9 @@ import app.models  # noqa: F401  register models on Base.metadata
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False so running migrations programmatically at
+    # app startup doesn't silence the application's own loggers.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # Inject the database URL from application settings.
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

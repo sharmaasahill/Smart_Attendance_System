@@ -29,6 +29,9 @@ numpy>=1.26.0
 scipy>=1.11.0
 scikit-image>=0.22.0
 
+# ===== Security / rate limiting =====
+slowapi>=0.1.9
+
 # ===== Testing =====
 pytest>=8.3.0
 pytest-asyncio>=0.24.0

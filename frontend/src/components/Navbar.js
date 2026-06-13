@@ -271,6 +271,10 @@ const Navbar = () => {
               </Box>
             </Box>
           </Box>
+          <MenuItem onClick={() => navigateToPage('/profile')}>
+            <Typography fontWeight="500">My Profile</Typography>
+          </MenuItem>
+          <Divider sx={{ mx: 1, my: 0.5 }} />
           <MenuItem onClick={handleLogout} sx={{ color: '#ef4444' }}>
             <Typography fontWeight="500">Sign out</Typography>
           </MenuItem>
@@ -317,6 +321,11 @@ const Navbar = () => {
                   <Typography fontWeight={isActivePage(item.path) ? 600 : 500}>{item.label}</Typography>
                 </MenuItem>
               ))}
+              <MenuItem onClick={() => navigateToPage('/profile')}
+                sx={{ background: isActivePage('/profile') ? '#f8fafc' : 'transparent' }}
+              >
+                <Typography fontWeight={isActivePage('/profile') ? 600 : 500}>My Profile</Typography>
+              </MenuItem>
               <Divider sx={{ mx: 1, my: 1 }} />
               <MenuItem onClick={handleLogout} sx={{ color: '#ef4444' }}>
                 <Typography fontWeight="500">Sign out</Typography>

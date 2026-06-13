@@ -7,7 +7,7 @@ import shutil
 import base64
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -28,20 +28,38 @@ def _user_dir(unique_id: str) -> str:
 
 @router.get("/users")
 async def get_all_users(
+    response: Response,
+    limit: int = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
-    users = db.query(User).all()
+    """List users. Supports optional pagination via limit/offset; the total
+    count is returned in the X-Total-Count header."""
+    query = db.query(User)
+    total = query.count()
+    query = query.order_by(User.id)
+    if limit is not None:
+        query = query.offset(offset).limit(limit)
+    elif offset:
+        query = query.offset(offset)
+    users = query.all()
+    response.headers["X-Total-Count"] = str(total)
     return [UserResponse.model_validate(user) for user in users]
 
 
 @router.get("/attendance")
 async def get_attendance_records(
+    response: Response,
     date: str = None,
     user_id: str = None,
+    limit: int = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
+    """List attendance records with optional date/user filters and pagination.
+    Total count is returned in the X-Total-Count header."""
     query = db.query(Attendance).join(User)
     if date:
         query = query.filter(Attendance.date == datetime.strptime(date, "%Y-%m-%d").date())
@@ -50,10 +68,18 @@ async def get_attendance_records(
         if user:
             query = query.filter(Attendance.user_id == user.id)
 
+    total = query.count()
+    query = query.order_by(Attendance.id.desc())
+    if limit is not None:
+        query = query.offset(offset).limit(limit)
+    elif offset:
+        query = query.offset(offset)
+
     records = query.all()
+    users_by_id = {u.id: u for u in db.query(User).all()}
     result = []
     for record in records:
-        user = db.query(User).filter(User.id == record.user_id).first()
+        user = users_by_id.get(record.user_id)
         result.append({
             "id": record.id,
             "user": UserResponse.model_validate(user),
@@ -62,6 +88,7 @@ async def get_attendance_records(
             "status": record.status,
             "created_at": record.created_at.isoformat(),
         })
+    response.headers["X-Total-Count"] = str(total)
     return result
 
 

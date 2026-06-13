@@ -68,9 +68,15 @@ class FaceRecognitionService:
         """Lazily load the InsightFace model pack (first use only)."""
         if self._app is None:
             from insightface.app import FaceAnalysis
-            logger.info(f"Loading InsightFace model pack '{self.model_name}' (CPU)...")
-            app = FaceAnalysis(name=self.model_name, providers=["CPUExecutionProvider"])
-            app.prepare(ctx_id=-1, det_size=self.det_size)
+            if settings.FACE_USE_GPU:
+                providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                ctx_id = 0
+            else:
+                providers = ["CPUExecutionProvider"]
+                ctx_id = -1
+            logger.info(f"Loading InsightFace model pack '{self.model_name}' (GPU={settings.FACE_USE_GPU})...")
+            app = FaceAnalysis(name=self.model_name, providers=providers)
+            app.prepare(ctx_id=ctx_id, det_size=self.det_size)
             self._app = app
             logger.info("InsightFace model loaded.")
         return self._app
@@ -448,6 +454,43 @@ class FaceRecognitionService:
         """Backward-compatible helper returning just the matched user_id."""
         result = self.recognize(image_path)
         return result["user_id"] if result else None
+
+    def recognize_frames(self, image_paths: List[str]) -> Optional[Dict]:
+        """
+        Recognize across multiple frames and require majority agreement.
+
+        Reduces false accepts/rejects from a single bad frame: each frame is
+        recognized independently, the most-voted user must win a strict
+        majority, and the returned confidence is the best among agreeing frames.
+        """
+        from collections import Counter
+
+        results = [self.recognize(p) for p in image_paths]
+        results = [r for r in results if r]
+        if not results:
+            return None
+
+        counts = Counter(r["user_id"] for r in results)
+        top_user, top_count = counts.most_common(1)[0]
+
+        # Strict majority of the submitted frames must agree.
+        majority = len(image_paths) // 2 + 1
+        if top_count < majority:
+            logger.info(
+                f"No frame agreement (top={top_user} {top_count}/{len(image_paths)}, "
+                f"need {majority})"
+            )
+            return None
+
+        agreeing = [r for r in results if r["user_id"] == top_user]
+        best = max(agreeing, key=lambda r: r["confidence"])
+        return {
+            "user_id": top_user,
+            "confidence": best["confidence"],
+            "similarity": best["similarity"],
+            "frames_agreed": top_count,
+            "frames_total": len(image_paths),
+        }
 
     # ------------------------------------------------------------------ #
     # Duplicate detection (enrollment guard)

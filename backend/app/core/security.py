@@ -1,5 +1,6 @@
 """Password hashing and JWT token utilities."""
 
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -8,6 +9,24 @@ from fastapi import HTTPException
 from jose import JWTError, jwt
 
 from app.core.config import settings
+
+
+def validate_password_strength(password: str) -> None:
+    """
+    Enforce a baseline password policy. Raises HTTP 400 if the password is
+    too weak. Policy: at least MIN_PASSWORD_LENGTH chars, with a letter and a digit.
+    """
+    min_len = settings.MIN_PASSWORD_LENGTH
+    if len(password) < min_len:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Password must be at least {min_len} characters long.",
+        )
+    if not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        raise HTTPException(
+            status_code=400,
+            detail="Password must contain at least one letter and one number.",
+        )
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:

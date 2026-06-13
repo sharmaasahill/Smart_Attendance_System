@@ -28,8 +28,9 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: "sqlite:///./test.db"
-          SECRET_KEY: "ci-test-secret"
+          SECRET_KEY: "ci-test-secret-key-which-is-sufficiently-long-32"
           ADMIN_EMAIL: "admin@test.com"
+          RATE_LIMIT_ENABLED: "false"
         run: python -m pytest tests/ -v --tb=short
 
   frontend-build:

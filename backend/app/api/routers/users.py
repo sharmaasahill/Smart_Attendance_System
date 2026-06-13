@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.core.config import settings
-from app.core.security import get_password_hash, verify_password
+from app.core.security import get_password_hash, validate_password_strength, verify_password
 from app.db.session import get_db
 from app.models import Attendance, User
 from app.schemas import UserChangePassword, UserResponse, UserUpdateProfile
@@ -50,6 +50,7 @@ async def change_password(
 ):
     if not verify_password(password_data.current_password, current_user.password):
         raise HTTPException(status_code=400, detail="Invalid current password")
+    validate_password_strength(password_data.new_password)
     current_user.password = get_password_hash(password_data.new_password)
     db.commit()
     return {"message": "Password changed successfully"}

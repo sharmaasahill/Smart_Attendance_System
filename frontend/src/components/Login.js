@@ -213,7 +213,7 @@ const Login = () => {
               md={6}
               sx={{
                 background: '#ffffff',
-                height: '500px',
+                height: { xs: 'auto', md: '500px' },
                 display: 'flex',
                 flexDirection: 'column',
               }}

@@ -285,7 +285,7 @@ const Register = () => {
               sx={{
                 background: '#ffffff',
                 order: { xs: 1, md: 1 },
-                height: '550px',
+                height: { xs: 'auto', md: '550px' },
                 display: 'flex',
                 flexDirection: 'column',
               }}

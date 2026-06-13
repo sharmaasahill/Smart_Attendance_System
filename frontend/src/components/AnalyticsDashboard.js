@@ -134,7 +134,7 @@ const AnalyticsDashboard = () => {
             </Typography>
           </Box>
 
-          <Box display="flex" gap={2} alignItems="center">
+          <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
             <FormControl size="small" sx={{ minWidth: 120 }}>
               <InputLabel sx={{ '&.Mui-focused': { color: '#f97316' } }}>Timeframe</InputLabel>
               <Select

@@ -22,6 +22,9 @@ RUN python -c "from insightface.app import FaceAnalysis; a = FaceAnalysis(name='
 
 COPY . .
 
+# Hugging Face Spaces (and most PaaS) provide the listen port via $PORT.
+# Default to 8000 for local `docker run`.
+ENV PORT=8000
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

@@ -1,32 +1,27 @@
 """
-Advanced face recognition service.
+Advanced, DB-backed face recognition service.
 
 Uses InsightFace (SCRFD detector + ArcFace w600k_r50 512-d embeddings, ONNX /
 onnxruntime, CPU-capable) for detection and recognition.
 
-Design highlights (production-oriented):
-  * Stores ALL per-image embeddings per user (not a single averaged vector).
-  * Matching uses cosine similarity with per-user best-match + k-NN voting and
-    a tuned threshold, returning a real confidence score.
-  * In-memory embedding matrix cache, refreshed by file mtime, for fast
-    vectorized comparison against every enrolled embedding at once.
+Persistence: embeddings and face images live in the database (FaceEmbedding /
+FaceImage), not on disk — so the backend is stateless and recognition data
+survives restarts and redeploys. Matching stores ALL per-image embeddings per
+user (no averaging) and uses cosine similarity with per-user best-match plus
+k-NN voting and a tuned threshold, returning a real confidence score.
 """
 
-import os
-import json
-import pickle
 import logging
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 import cv2
 import numpy as np
+from sqlalchemy import func
 
 from app.core.config import settings
 
 logger = logging.getLogger("smart_attendance.face")
-
-DATASET_DIR = settings.DATASET_DIR
 
 
 class FaceRecognitionService:
@@ -34,38 +29,32 @@ class FaceRecognitionService:
         self.model_name = settings.FACE_MODEL_PACK
         self.det_size = (640, 640)
 
-        # Cosine-similarity thresholds for ArcFace L2-normalized embeddings.
         self.match_threshold = settings.FACE_MATCH_THRESHOLD
         self.duplicate_threshold = settings.FACE_DUPLICATE_THRESHOLD
         self.knn_k = settings.FACE_KNN_K
 
-        # Real quality gates (used at enrollment).
         self.min_det_score = settings.FACE_MIN_DET_SCORE
         self.min_face_size = settings.FACE_MIN_FACE_SIZE
         self.min_blur_var = settings.FACE_MIN_BLUR_VAR
         self.min_quality_score = settings.FACE_MIN_QUALITY_SCORE
         self.min_required_encodings = settings.FACE_MIN_ENCODINGS
 
-        # Liveness is enforced on the attendance path via the client-side
-        # active blink/motion check (MediaPipe). Kept for API compatibility.
         self.enable_liveness_check = True
         self.min_liveness_confidence = 20
-
-        self.recognition_max_dim = 1024  # downscale very large frames before detection
+        self.recognition_max_dim = 1024
 
         self._app = None  # lazily initialized FaceAnalysis
 
-        # In-memory embedding cache (flattened across all users).
-        self._cache_embeddings = None   # np.ndarray (M, 512) float32, L2-normalized
-        self._cache_labels = []         # length M; user_id for each row
-        self._cache_mtimes = {}         # user_id -> encoding.pkl mtime
+        # In-memory cache of all embeddings, rebuilt when the DB signature changes.
+        self._cache_embeddings = None     # np.ndarray (M, 512) float32
+        self._cache_labels: List[str] = []  # user unique_id per row
+        self._cache_signature = None      # (row_count, max_updated_at)
 
     # ------------------------------------------------------------------ #
     # Model
     # ------------------------------------------------------------------ #
     @property
     def app(self):
-        """Lazily load the InsightFace model pack (first use only)."""
         if self._app is None:
             from insightface.app import FaceAnalysis
             if settings.FACE_USE_GPU:
@@ -95,7 +84,6 @@ class FaceRecognitionService:
 
     @staticmethod
     def _largest_face(faces):
-        """Return the face with the biggest bounding box (closest to camera)."""
         if not faces:
             return None
         return max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
@@ -108,20 +96,15 @@ class FaceRecognitionService:
         return self._largest_face(faces), img
 
     def get_embedding(self, image_path: str) -> Optional[np.ndarray]:
-        """Return the L2-normalized 512-d ArcFace embedding for the primary face."""
         face, _ = self._detect_primary_face(image_path)
         if face is None:
             return None
         return np.asarray(face.normed_embedding, dtype=np.float32)
 
     # ------------------------------------------------------------------ #
-    # Quality (real, InsightFace + OpenCV based)
+    # Quality
     # ------------------------------------------------------------------ #
     def check_image_quality(self, image_path: str) -> Dict:
-        """
-        Assess real face quality using detection score, face size, sharpness
-        (Laplacian variance) and brightness. Returns a 0-100 overall score.
-        """
         try:
             img = self._read_image(image_path)
             if img is None:
@@ -135,14 +118,12 @@ class FaceRecognitionService:
             x1, y1, x2, y2 = [int(v) for v in face.bbox]
             x1, y1 = max(0, x1), max(0, y1)
             x2, y2 = min(img.shape[1], x2), min(img.shape[0], y2)
-            face_w, face_h = x2 - x1, y2 - y1
-            face_size = min(face_w, face_h)
+            face_size = min(x2 - x1, y2 - y1)
 
             crop = img[y1:y2, x1:x2]
             gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY) if crop.size else None
             blur_var = float(cv2.Laplacian(gray, cv2.CV_64F).var()) if gray is not None and gray.size else 0.0
             brightness = float(np.mean(gray)) if gray is not None and gray.size else 0.0
-
             det_score = float(face.det_score)
 
             det_component = min(100.0, det_score * 100.0)
@@ -158,10 +139,7 @@ class FaceRecognitionService:
                 bright_component = 100.0
 
             overall = round(
-                det_component * 0.35
-                + size_component * 0.25
-                + sharp_component * 0.25
-                + bright_component * 0.15,
+                det_component * 0.35 + size_component * 0.25 + sharp_component * 0.25 + bright_component * 0.15,
                 1,
             )
 
@@ -211,12 +189,6 @@ class FaceRecognitionService:
         }
 
     def check_image_liveness(self, image_path: str) -> Dict:
-        """
-        Passive single-frame liveness cannot be done reliably without a
-        dedicated anti-spoofing model. Real liveness is enforced on the
-        attendance path via the client-side active blink/motion challenge.
-        This returns a face-presence based response for API compatibility.
-        """
         face, _ = self._detect_primary_face(image_path)
         present = face is not None
         return {
@@ -233,180 +205,120 @@ class FaceRecognitionService:
         return face is not None
 
     # ------------------------------------------------------------------ #
-    # Enrollment
+    # Enrollment (writes embeddings + images to the database)
     # ------------------------------------------------------------------ #
-    def train_user_face(self, user_id: str, image_paths: List[str], check_liveness: bool = True) -> Dict:
-        """
-        Enroll a user by extracting and storing ALL per-image ArcFace
-        embeddings (no averaging). Returns success status and statistics.
-        """
-        try:
-            logger.info(f"Enrolling user {user_id} from {len(image_paths)} images using {self.model_name}")
+    def enroll_user(self, db, user, image_paths: List[str]) -> Dict:
+        from app.models import FaceEmbedding, FaceImage
 
-            quality_reports = []
-            embeddings = []
-            per_face_quality = []
+        logger.info(f"Enrolling {user.unique_id} from {len(image_paths)} images using {self.model_name}")
 
-            for image_path in image_paths:
-                quality = self.check_image_quality(image_path)
-                quality_reports.append({"image": os.path.basename(image_path), **quality})
+        embeddings, image_blobs, qualities = [], [], []
+        for path in image_paths:
+            quality = self.check_image_quality(path)
+            if not quality["is_acceptable"]:
+                logger.warning(f"Rejected (quality) {path}: {quality['issues']}")
+                continue
+            emb = self.get_embedding(path)
+            if emb is None:
+                continue
+            with open(path, "rb") as f:
+                image_blobs.append(f.read())
+            embeddings.append(emb)
+            qualities.append(quality["overall_score"])
 
-                if not quality["is_acceptable"]:
-                    logger.warning(f"Rejected (quality) {os.path.basename(image_path)}: {quality['issues']}")
-                    continue
+        acceptable = len(embeddings)
+        if acceptable < self.min_required_encodings:
+            raise Exception(
+                f"Only {acceptable} usable face image(s); need at least "
+                f"{self.min_required_encodings}. Retake with clear, well-lit, front-facing photos."
+            )
 
-                emb = self.get_embedding(image_path)
-                if emb is None:
-                    logger.warning(f"No embedding extracted from {os.path.basename(image_path)}")
-                    continue
+        arr = np.vstack(embeddings).astype(np.float32)
 
-                embeddings.append(emb)
-                per_face_quality.append({
-                    "image": os.path.basename(image_path),
-                    "overall_score": quality["overall_score"],
-                    "accepted": True,
-                    **quality.get("metrics", {}),
-                })
+        # Replace any existing enrollment for this user.
+        db.query(FaceImage).filter(FaceImage.user_id == user.id).delete()
+        db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).delete()
 
-            acceptable = len(embeddings)
-            if acceptable < self.min_required_encodings:
-                raise Exception(
-                    f"Only {acceptable} usable face image(s); need at least "
-                    f"{self.min_required_encodings}. Retake with clear, well-lit, front-facing photos."
-                )
+        db.add(FaceEmbedding(
+            user_id=user.id,
+            embeddings=arr.tobytes(),
+            count=int(arr.shape[0]),
+            dim=int(arr.shape[1]),
+            model=self.model_name,
+        ))
+        for i, (blob, qs) in enumerate(zip(image_blobs, qualities), start=1):
+            db.add(FaceImage(user_id=user.id, position=i, image_data=blob, quality_score=qs))
 
-            embeddings_arr = np.vstack(embeddings).astype(np.float32)
+        user.face_registered = True
+        db.commit()
 
-            user_dir = os.path.join(DATASET_DIR, user_id)
-            os.makedirs(user_dir, exist_ok=True)
+        avg_quality = float(np.mean(qualities)) if qualities else 0.0
+        logger.info(f"Enrolled {user.unique_id} with {acceptable} embeddings (avg quality {avg_quality:.1f})")
 
-            payload = {
-                "user_id": user_id,
-                "embeddings": embeddings_arr,        # (N, 512) L2-normalized
-                "count": int(embeddings_arr.shape[0]),
+        return {
+            "success": True,
+            "message": f"Enrolled with {acceptable} high-quality face embeddings",
+            "statistics": {
+                "total_images": len(image_paths),
+                "acceptable_images": acceptable,
+                "successfully_encoded": acceptable,
+                "rejected_images": len(image_paths) - acceptable,
+                "average_quality_score": avg_quality,
+                "liveness_checked": False,
+                "average_liveness_confidence": None,
                 "model": self.model_name,
-                "dim": int(embeddings_arr.shape[1]),
-                "created_at": datetime.utcnow().isoformat(),
-            }
-            with open(os.path.join(user_dir, "encoding.pkl"), "wb") as f:
-                pickle.dump(payload, f)
-
-            with open(os.path.join(user_dir, "encoding.json"), "w") as f:
-                json.dump({
-                    "user_id": user_id,
-                    "count": payload["count"],
-                    "model": self.model_name,
-                    "dim": payload["dim"],
-                    "created_at": payload["created_at"],
-                }, f, indent=2)
-
-            with open(os.path.join(user_dir, "quality_scores.json"), "w") as f:
-                json.dump({"faces": [
-                    {"image": q["image"], "overall_score": q["overall_score"], "accepted": True}
-                    for q in per_face_quality
-                ]}, f, indent=2)
-
-            avg_quality = float(np.mean([q["overall_score"] for q in per_face_quality])) if per_face_quality else 0.0
-            logger.info(f"Enrolled {user_id} with {payload['count']} embeddings (avg quality {avg_quality:.1f})")
-
-            return {
-                "success": True,
-                "message": f"Enrolled with {payload['count']} high-quality face embeddings",
-                "statistics": {
-                    "total_images": len(image_paths),
-                    "acceptable_images": acceptable,
-                    "successfully_encoded": payload["count"],
-                    "rejected_images": len(image_paths) - acceptable,
-                    "average_quality_score": avg_quality,
-                    "liveness_checked": False,
-                    "average_liveness_confidence": None,
-                    "model": self.model_name,
-                },
-                "quality_reports": quality_reports,
-                "liveness_reports": None,
-            }
-        except Exception as e:
-            logger.error(f"Enrollment failed for {user_id}: {str(e)}")
-            raise Exception(f"Face enrollment failed: {str(e)}")
+            },
+        }
 
     # ------------------------------------------------------------------ #
-    # Embedding cache
+    # Embedding cache (rebuilt from DB when signature changes)
     # ------------------------------------------------------------------ #
-    def _refresh_cache(self):
-        """Reload only changed users' embeddings, drop removed users, rebuild matrix."""
-        if not os.path.exists(DATASET_DIR):
-            self._cache_embeddings, self._cache_labels, self._cache_mtimes = None, [], {}
+    def _refresh_cache(self, db) -> None:
+        from app.models import FaceEmbedding, User
+
+        signature = db.query(
+            func.count(FaceEmbedding.id), func.max(FaceEmbedding.updated_at)
+        ).one()
+
+        if signature == self._cache_signature and self._cache_embeddings is not None:
             return
 
-        per_user = {}
-        changed = False
-        current_ids = set()
-        if self._cache_embeddings is not None:
-            for uid in set(self._cache_labels):
-                rows = self._cache_embeddings[[i for i, l in enumerate(self._cache_labels) if l == uid]]
-                per_user[uid] = rows
+        rows = (
+            db.query(FaceEmbedding, User.unique_id)
+            .join(User, FaceEmbedding.user_id == User.id)
+            .all()
+        )
+        mats, labels = [], []
+        for fe, unique_id in rows:
+            arr = np.frombuffer(fe.embeddings, dtype=np.float32).reshape(fe.count, fe.dim)
+            mats.append(arr)
+            labels.extend([unique_id] * fe.count)
 
-        for user_id in os.listdir(DATASET_DIR):
-            enc = os.path.join(DATASET_DIR, user_id, "encoding.pkl")
-            if not os.path.isfile(enc):
-                continue
-            current_ids.add(user_id)
-            try:
-                mtime = os.path.getmtime(enc)
-            except OSError:
-                continue
-            if self._cache_mtimes.get(user_id) == mtime and user_id in per_user:
-                continue
-            try:
-                with open(enc, "rb") as f:
-                    data = pickle.load(f)
-                if "embeddings" not in data:
-                    logger.warning(f"Skipping legacy/incompatible encoding for {user_id} (re-enroll needed)")
-                    per_user.pop(user_id, None)
-                    continue
-                emb = np.asarray(data["embeddings"], dtype=np.float32)
-                if emb.ndim == 1:
-                    emb = emb.reshape(1, -1)
-                per_user[user_id] = emb
-                self._cache_mtimes[user_id] = mtime
-                changed = True
-            except Exception as e:
-                logger.error(f"Failed to load embeddings for {user_id}: {str(e)}")
+        self._cache_embeddings = np.vstack(mats).astype(np.float32) if mats else None
+        self._cache_labels = labels
+        self._cache_signature = signature
 
-        for uid in list(per_user.keys()):
-            if uid not in current_ids:
-                per_user.pop(uid, None)
-                self._cache_mtimes.pop(uid, None)
-                changed = True
-
-        if changed or self._cache_embeddings is None:
-            labels, mats = [], []
-            for uid, emb in per_user.items():
-                mats.append(emb)
-                labels.extend([uid] * emb.shape[0])
-            self._cache_embeddings = np.vstack(mats).astype(np.float32) if mats else None
-            self._cache_labels = labels
+    def invalidate_cache(self) -> None:
+        self._cache_signature = None
+        self._cache_embeddings = None
+        self._cache_labels = []
 
     # ------------------------------------------------------------------ #
     # Recognition
     # ------------------------------------------------------------------ #
-    def recognize(self, image_path: str) -> Optional[Dict]:
-        """
-        Recognize the primary face. Returns dict with user_id, confidence and
-        similarity, or None if no confident match.
-        """
+    def recognize(self, image_path: str, db) -> Optional[Dict]:
         try:
             q = self.get_embedding(image_path)
             if q is None:
                 logger.info("No face detected for recognition")
                 return None
 
-            self._refresh_cache()
+            self._refresh_cache(db)
             if self._cache_embeddings is None or not self._cache_labels:
                 logger.info("No enrolled embeddings available")
                 return None
 
-            sims = self._cache_embeddings @ q  # cosine similarity (all L2-normalized)
+            sims = self._cache_embeddings @ q
             labels = self._cache_labels
 
             best_per_user: Dict[str, float] = {}
@@ -418,54 +330,40 @@ class FaceRecognitionService:
             top_user = max(best_per_user, key=best_per_user.get)
             top_sim = best_per_user[top_user]
 
-            # k-NN voting: when there are fewer embeddings than k, adjust k
+            # k-NN vote among nearest embeddings; ties broken by best similarity
+            # (favours the highest-confidence user). This guards against a lone
+            # outlier embedding while staying correct on small datasets.
+            from collections import Counter
+
             k = min(self.knn_k, len(labels))
-            if k > 0:
-                top_idx = np.argsort(-sims)[:k]
-                knn_labels = [labels[i] for i in top_idx]
-                # Count votes
-                from collections import Counter
-                vote_counts = Counter(knn_labels)
-                # Get the winner(s) with max count
-                max_count = max(vote_counts.values())
-                winners = [user for user, count in vote_counts.items() if count == max_count]
-                # If tie, prefer the top_user (highest similarity)
-                vote_winner = top_user if top_user in winners else winners[0]
-            else:
-                vote_winner = top_user
+            top_idx = np.argsort(-sims)[:k]
+            knn_labels = [labels[i] for i in top_idx]
+            counts = Counter(knn_labels)
+            max_count = max(counts.values())
+            tied = [lbl for lbl, c in counts.items() if c == max_count]
+            vote_winner = max(tied, key=lambda lbl: best_per_user.get(lbl, -1.0))
 
             confidence = round(max(0.0, min(1.0, top_sim)) * 100, 1)
 
-            # Match only if top similarity meets threshold AND voting agrees
             if top_sim >= self.match_threshold and vote_winner == top_user:
                 logger.info(f"Recognized {top_user} (sim={top_sim:.3f}, conf={confidence}%)")
                 return {"user_id": top_user, "confidence": confidence, "similarity": round(top_sim, 4)}
 
-            logger.info(
-                f"No confident match (best={top_user} sim={top_sim:.3f}, "
-                f"vote={vote_winner}, threshold={self.match_threshold})"
-            )
+            logger.info(f"No confident match (best={top_user} sim={top_sim:.3f})")
             return None
         except Exception as e:
             logger.error(f"Recognition failed: {str(e)}")
             return None
 
-    def recognize_face(self, image_path: str) -> Optional[str]:
-        """Backward-compatible helper returning just the matched user_id."""
-        result = self.recognize(image_path)
+    def recognize_face(self, image_path: str, db) -> Optional[str]:
+        result = self.recognize(image_path, db)
         return result["user_id"] if result else None
 
-    def recognize_frames(self, image_paths: List[str]) -> Optional[Dict]:
-        """
-        Recognize across multiple frames and require majority agreement.
-
-        Reduces false accepts/rejects from a single bad frame: each frame is
-        recognized independently, the most-voted user must win a strict
-        majority, and the returned confidence is the best among agreeing frames.
-        """
+    def recognize_frames(self, image_paths: List[str], db) -> Optional[Dict]:
+        """Recognize across frames; require a strict majority to agree."""
         from collections import Counter
 
-        results = [self.recognize(p) for p in image_paths]
+        results = [self.recognize(p, db) for p in image_paths]
         results = [r for r in results if r]
         if not results:
             return None
@@ -473,13 +371,9 @@ class FaceRecognitionService:
         counts = Counter(r["user_id"] for r in results)
         top_user, top_count = counts.most_common(1)[0]
 
-        # Strict majority of the submitted frames must agree.
         majority = len(image_paths) // 2 + 1
         if top_count < majority:
-            logger.info(
-                f"No frame agreement (top={top_user} {top_count}/{len(image_paths)}, "
-                f"need {majority})"
-            )
+            logger.info(f"No frame agreement (top={top_user} {top_count}/{len(image_paths)})")
             return None
 
         agreeing = [r for r in results if r["user_id"] == top_user]
@@ -496,14 +390,13 @@ class FaceRecognitionService:
     # Duplicate detection (enrollment guard)
     # ------------------------------------------------------------------ #
     def find_duplicate_face(self, image_path: str, db, current_user_id: str) -> Optional[Dict]:
-        """Return user info if this face is already enrolled under a different user."""
         try:
             q = self.get_embedding(image_path)
             if q is None:
                 logger.warning("No face detected during duplicate check")
                 return None
 
-            self._refresh_cache()
+            self._refresh_cache(db)
             if self._cache_embeddings is None or not self._cache_labels:
                 return None
 

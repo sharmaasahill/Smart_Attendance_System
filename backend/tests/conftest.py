@@ -81,6 +81,16 @@ async def client():
         yield ac
 
 
+@pytest.fixture
+def db_session():
+    """A direct DB session for unit-testing services."""
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 # ── Helper: register + log in a user ─────────────────────────────────────────
 
 async def register_user(client: AsyncClient, email: str, password: str, full_name: str = "Test User") -> dict:

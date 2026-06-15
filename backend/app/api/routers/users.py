@@ -1,8 +1,6 @@
 """Current-user (self-service) endpoints."""
 
 import base64
-import json
-import os
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,10 +8,9 @@ from sqlalchemy import extract
 from sqlalchemy.orm import Session
 
 from app.api import deps
-from app.core.config import settings
 from app.core.security import get_password_hash, validate_password_strength, verify_password
 from app.db.session import get_db
-from app.models import Attendance, User
+from app.models import Attendance, FaceImage, User
 from app.schemas import UserChangePassword, UserResponse, UserUpdateProfile
 
 router = APIRouter(prefix="/user", tags=["user"])
@@ -122,57 +119,26 @@ async def get_user_registered_faces(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
-    """Get current user's registered face images with quality scores."""
-    if not current_user.face_registered:
+    """Get the current user's registered face images (stored in the database)."""
+    images = (
+        db.query(FaceImage)
+        .filter(FaceImage.user_id == current_user.id)
+        .order_by(FaceImage.position)
+        .all()
+    )
+    if not images:
         raise HTTPException(status_code=404, detail="No face data registered for this user")
 
-    user_folder = os.path.join(settings.DATASET_DIR, current_user.unique_id)
-    if not os.path.exists(user_folder):
-        raise HTTPException(status_code=404, detail="Face data folder not found")
-
-    face_images = []
-    quality_data = None
-
-    quality_file = os.path.join(user_folder, "quality_scores.json")
-    if os.path.exists(quality_file):
-        with open(quality_file, "r") as f:
-            quality_data = json.load(f)
-
-    for file in os.listdir(user_folder):
-        if file.endswith((".jpg", ".jpeg", ".png")) and file.startswith("face_"):
-            image_path = os.path.join(user_folder, file)
-            with open(image_path, "rb") as img_file:
-                img_data = base64.b64encode(img_file.read()).decode("utf-8")
-
-            file_stats = os.stat(image_path)
-            created_time = datetime.fromtimestamp(file_stats.st_ctime).isoformat()
-            face_num = file.split("_")[1].split(".")[0]
-
-            quality_score = None
-            quality_details = None
-            if quality_data and "faces" in quality_data:
-                for face_quality in quality_data["faces"]:
-                    if str(face_quality.get("face_number")) == face_num or face_quality.get("image") == file:
-                        quality_score = face_quality.get("overall_score")
-                        quality_details = {
-                            "face_size_score": face_quality.get("face_size_score"),
-                            "brightness_score": face_quality.get("brightness_score"),
-                            "sharpness_score": face_quality.get("sharpness_score"),
-                            "pose_score": face_quality.get("pose_score"),
-                            "eye_visibility_score": face_quality.get("eye_visibility_score"),
-                            "accepted": face_quality.get("accepted", True),
-                        }
-                        break
-
-            face_images.append({
-                "filename": file,
-                "image_data": f"data:image/jpeg;base64,{img_data}",
-                "created_at": created_time,
-                "quality_score": quality_score,
-                "quality_details": quality_details,
-            })
-
-    face_images.sort(key=lambda x: int(x["filename"].split("_")[1].split(".")[0]))
+    face_images = [
+        {
+            "filename": f"face_{img.position}.jpg",
+            "image_data": f"data:{img.content_type};base64,{base64.b64encode(img.image_data).decode('utf-8')}",
+            "created_at": img.created_at.isoformat() if img.created_at else None,
+            "quality_score": img.quality_score,
+            "quality_details": None,
+        }
+        for img in images
+    ]
 
     return {
         "user_id": current_user.unique_id,

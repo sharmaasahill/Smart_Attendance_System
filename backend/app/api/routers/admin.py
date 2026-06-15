@@ -2,12 +2,11 @@
 
 import logging
 import os
-import pickle
-import shutil
 import base64
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -20,10 +19,6 @@ from app.services.face_recognition import face_service
 logger = logging.getLogger("smart_attendance.admin")
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-def _user_dir(unique_id: str) -> str:
-    return os.path.join(settings.DATASET_DIR, unique_id)
 
 
 @router.get("/users")
@@ -224,12 +219,8 @@ async def delete_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_dir = _user_dir(user.unique_id)
-    if os.path.exists(user_dir):
-        shutil.rmtree(user_dir)
-
     db.query(Attendance).filter(Attendance.user_id == user.id).delete()
-    db.delete(user)
+    db.delete(user)  # cascades to face_embeddings / face_images
     db.commit()
     return {"message": f"User {user.full_name} deleted successfully"}
 
@@ -239,38 +230,32 @@ async def get_users_face_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
+    from app.models import FaceEmbedding, FaceImage
+
     users = db.query(User).all()
+    # Pre-fetch enrollment data for all users.
+    embeddings = {fe.user_id: fe for fe in db.query(FaceEmbedding).all()}
+    image_counts = dict(
+        db.query(FaceImage.user_id, func.count(FaceImage.id)).group_by(FaceImage.user_id).all()
+    )
+
     users_status = []
     for user in users:
-        user_dir = _user_dir(user.unique_id)
-        encoding_file = os.path.join(user_dir, "encoding.pkl")
-        face_registered = os.path.exists(encoding_file)
-
+        fe = embeddings.get(user.id)
+        face_registered = fe is not None
         registration_details = None
-        if face_registered:
-            try:
-                with open(encoding_file, "rb") as f:
-                    data = pickle.load(f)
-                registration_details = {
-                    "registered_date": datetime.fromtimestamp(os.path.getctime(encoding_file)).isoformat(),
-                    "valid_images": data.get("count", data.get("valid_images", 0)),
-                    "model": data.get("model", "unknown"),
-                    "quality_checked": data.get("quality_checked", True),
-                    "liveness_checked": data.get("liveness_checked", False),
-                }
-            except Exception as e:
-                logger.error(f"Error reading face data for {user.unique_id}: {str(e)}")
-
-        face_images_count = 0
-        if os.path.exists(user_dir):
-            face_images_count = len(
-                [f for f in os.listdir(user_dir) if f.startswith("face_") and f.endswith(".jpg")]
-            )
-
+        if fe is not None:
+            registration_details = {
+                "registered_date": fe.created_at.isoformat() if fe.created_at else None,
+                "valid_images": fe.count,
+                "model": fe.model,
+                "quality_checked": True,
+                "liveness_checked": False,
+            }
         users_status.append({
             "user": UserResponse.model_validate(user),
             "face_registered": face_registered,
-            "face_images_count": face_images_count,
+            "face_images_count": int(image_counts.get(user.id, 0)),
             "registration_details": registration_details,
         })
 
@@ -288,17 +273,19 @@ async def delete_user_face_data(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
+    from app.models import FaceEmbedding, FaceImage
+
     user = db.query(User).filter(User.unique_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_dir = _user_dir(user.unique_id)
-    if not os.path.exists(user_dir):
+    has_data = db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).first()
+    if not has_data:
         raise HTTPException(status_code=404, detail="No face data found for this user")
 
-    shutil.rmtree(user_dir)
+    db.query(FaceImage).filter(FaceImage.user_id == user.id).delete()
+    db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).delete()
     user.face_registered = False
-    user.face_encoding_path = None
     db.commit()
     return {
         "message": f"Face data deleted successfully for {user.full_name}",
@@ -322,27 +309,17 @@ async def admin_register_user_face(
     if len(files) > 20:
         raise HTTPException(status_code=400, detail="Maximum 20 face images allowed")
 
-    user_dir = _user_dir(target_user.unique_id)
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    temp_paths = []
     try:
-        if os.path.exists(user_dir):
-            shutil.rmtree(user_dir)
-        os.makedirs(user_dir, exist_ok=True)
-
-        image_paths = []
         for i, file in enumerate(files):
-            file_path = os.path.join(user_dir, f"face_{i + 1}.jpg")
-            with open(file_path, "wb") as buffer:
+            ts = datetime.now().strftime("%Y%m%d%H%M%S%f")
+            path = os.path.join(settings.UPLOAD_DIR, f"admin_enroll_{target_user.unique_id}_{i}_{ts}.jpg")
+            with open(path, "wb") as buffer:
                 buffer.write(await file.read())
-            image_paths.append(file_path)
+            temp_paths.append(path)
 
-        result = face_service.train_user_face(target_user.unique_id, image_paths, check_liveness=False)
-        if not result.get("success", False):
-            raise HTTPException(status_code=400, detail=result.get("message", "Face registration failed"))
-
-        target_user.face_registered = True
-        target_user.face_encoding_path = os.path.join(user_dir, "encoding.json")
-        db.commit()
-
+        result = face_service.enroll_user(db, target_user, temp_paths)
         stats = result["statistics"]
         return {
             "message": f"Face registration successful for {target_user.full_name}",
@@ -360,9 +337,14 @@ async def admin_register_user_face(
     except HTTPException:
         raise
     except Exception as e:
-        if os.path.exists(user_dir):
-            shutil.rmtree(user_dir)
         raise HTTPException(status_code=500, detail=f"Face registration failed: {str(e)}")
+    finally:
+        for path in temp_paths:
+            if os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
 
 
 @router.get("/user/{user_id}/face/images")
@@ -371,45 +353,40 @@ async def get_user_face_images_admin(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
+    from app.models import FaceEmbedding, FaceImage
+
     target_user = db.query(User).filter(User.unique_id == user_id).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_dir = _user_dir(target_user.unique_id)
-    if not os.path.exists(user_dir):
+    images = (
+        db.query(FaceImage)
+        .filter(FaceImage.user_id == target_user.id)
+        .order_by(FaceImage.position)
+        .all()
+    )
+    if not images:
         raise HTTPException(status_code=404, detail="No face data found for this user")
 
-    face_images = []
-    for filename in os.listdir(user_dir):
-        if filename.startswith("face_") and filename.endswith(".jpg"):
-            file_path = os.path.join(user_dir, filename)
-            try:
-                with open(file_path, "rb") as img_file:
-                    img_data = base64.b64encode(img_file.read()).decode("utf-8")
-                face_images.append({
-                    "filename": filename,
-                    "data": f"data:image/jpeg;base64,{img_data}",
-                    "registered_date": datetime.fromtimestamp(os.path.getctime(file_path)).isoformat(),
-                })
-            except Exception as e:
-                logger.error(f"Error reading image {filename}: {str(e)}")
-                continue
+    face_images = [
+        {
+            "filename": f"face_{img.position}.jpg",
+            "data": f"data:{img.content_type};base64,{base64.b64encode(img.image_data).decode('utf-8')}",
+            "registered_date": img.created_at.isoformat() if img.created_at else None,
+        }
+        for img in images
+    ]
 
-    encoding_file = os.path.join(user_dir, "encoding.pkl")
+    fe = db.query(FaceEmbedding).filter(FaceEmbedding.user_id == target_user.id).first()
     registration_details = None
-    if os.path.exists(encoding_file):
-        try:
-            with open(encoding_file, "rb") as f:
-                data = pickle.load(f)
-            registration_details = {
-                "registered_date": datetime.fromtimestamp(os.path.getctime(encoding_file)).isoformat(),
-                "valid_images": data.get("count", data.get("valid_images", 0)),
-                "model": data.get("model", "unknown"),
-                "quality_checked": data.get("quality_checked", True),
-                "liveness_checked": data.get("liveness_checked", False),
-            }
-        except Exception as e:
-            logger.error(f"Error reading registration details: {str(e)}")
+    if fe is not None:
+        registration_details = {
+            "registered_date": fe.created_at.isoformat() if fe.created_at else None,
+            "valid_images": fe.count,
+            "model": fe.model,
+            "quality_checked": True,
+            "liveness_checked": False,
+        }
 
     return {
         "user_id": target_user.unique_id,
@@ -427,53 +404,48 @@ async def get_user_face_details(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
+    from app.models import FaceEmbedding, FaceImage
+
     user = db.query(User).filter(User.unique_id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user_dir = _user_dir(user.unique_id)
-    encoding_file = os.path.join(user_dir, "encoding.pkl")
-    if not os.path.exists(encoding_file):
+    fe = db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).first()
+    if fe is None:
         return {
             "user": UserResponse.model_validate(user),
             "face_registered": False,
             "message": "No face data registered for this user",
         }
 
-    try:
-        with open(encoding_file, "rb") as f:
-            face_data = pickle.load(f)
-
-        registration_date = datetime.fromtimestamp(os.path.getctime(encoding_file))
-        file_size = os.path.getsize(encoding_file)
-
-        face_images = []
-        if os.path.exists(user_dir):
-            for filename in sorted(os.listdir(user_dir)):
-                if filename.startswith("face_") and filename.endswith(".jpg"):
-                    file_path = os.path.join(user_dir, filename)
-                    face_images.append({
-                        "filename": filename,
-                        "size": os.path.getsize(file_path),
-                        "created": datetime.fromtimestamp(os.path.getctime(file_path)).isoformat(),
-                    })
-
-        return {
-            "user": UserResponse.model_validate(user),
-            "face_registered": True,
-            "registration_info": {
-                "registered_date": registration_date.isoformat(),
-                "file_size_bytes": file_size,
-                "model": face_data.get("model", "unknown"),
-                "valid_images": face_data.get("count", face_data.get("valid_images", 0)),
-                "quality_checked": face_data.get("quality_checked", True),
-                "liveness_checked": face_data.get("liveness_checked", False),
-            },
-            "face_images": face_images,
-            "total_images": len(face_images),
+    images = (
+        db.query(FaceImage)
+        .filter(FaceImage.user_id == user.id)
+        .order_by(FaceImage.position)
+        .all()
+    )
+    face_images = [
+        {
+            "filename": f"face_{img.position}.jpg",
+            "size": len(img.image_data),
+            "created": img.created_at.isoformat() if img.created_at else None,
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to read face data: {str(e)}")
+        for img in images
+    ]
+
+    return {
+        "user": UserResponse.model_validate(user),
+        "face_registered": True,
+        "registration_info": {
+            "registered_date": fe.created_at.isoformat() if fe.created_at else None,
+            "model": fe.model,
+            "valid_images": fe.count,
+            "quality_checked": True,
+            "liveness_checked": False,
+        },
+        "face_images": face_images,
+        "total_images": len(face_images),
+    }
 
 
 @router.post("/faces/bulk-delete")
@@ -482,6 +454,8 @@ async def bulk_delete_face_data(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
+    from app.models import FaceEmbedding, FaceImage
+
     deleted_count = 0
     errors = []
     for user_id in user_ids:
@@ -490,14 +464,14 @@ async def bulk_delete_face_data(
             if not user:
                 errors.append(f"User {user_id} not found")
                 continue
-            user_dir = _user_dir(user.unique_id)
-            if os.path.exists(user_dir):
-                shutil.rmtree(user_dir)
-                user.face_registered = False
-                user.face_encoding_path = None
-                deleted_count += 1
-            else:
+            fe = db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).first()
+            if fe is None:
                 errors.append(f"No face data for user {user_id}")
+                continue
+            db.query(FaceImage).filter(FaceImage.user_id == user.id).delete()
+            db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).delete()
+            user.face_registered = False
+            deleted_count += 1
         except Exception as e:
             errors.append(f"Error deleting {user_id}: {str(e)}")
     db.commit()

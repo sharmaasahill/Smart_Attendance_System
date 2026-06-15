@@ -23,3 +23,10 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     attendances = relationship("Attendance", back_populates="user")
+    face_embedding = relationship(
+        "FaceEmbedding", back_populates="user", uselist=False,
+        cascade="all, delete-orphan",
+    )
+    face_images = relationship(
+        "FaceImage", back_populates="user", cascade="all, delete-orphan",
+    )

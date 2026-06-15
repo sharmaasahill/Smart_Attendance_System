@@ -58,7 +58,7 @@ async def mark_attendance(
             temp_paths.append(path)
         logger.info(f"Attendance frames received: {len(temp_paths)}")
 
-        recognition = face_service.recognize_frames(temp_paths)
+        recognition = face_service.recognize_frames(temp_paths, db)
         if not recognition:
             raise HTTPException(
                 status_code=404,

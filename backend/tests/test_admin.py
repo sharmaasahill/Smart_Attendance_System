@@ -93,7 +93,7 @@ async def test_admin_users_pagination(client, admin_token):
 @pytest.mark.asyncio
 async def test_admin_update_attendance(client, admin_token):
     """Admin can change an attendance record status."""
-    from datetime import date
+    from app.core.time_utils import today_local
 
     # Create a user and register an absence
     reg = await register_user(client, "edit@test.com", "Pass123!", "Edit User")
@@ -104,9 +104,10 @@ async def test_admin_update_attendance(client, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"},
     )
 
-    # Fetch attendance to get the record id
+    # Fetch attendance to get the record id (use the app's local "today" so the
+    # query date matches the timezone the record was stored with).
     att_resp = await client.get(
-        f"/admin/attendance?date={date.today().isoformat()}",
+        f"/admin/attendance?date={today_local().isoformat()}",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     records = att_resp.json()

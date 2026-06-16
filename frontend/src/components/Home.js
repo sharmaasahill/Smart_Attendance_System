@@ -6,8 +6,6 @@ import {
   Button,
   Grid,
   Stack,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   Business,
@@ -25,141 +23,6 @@ import {
 import RadialOrbitalTimeline from './RadialOrbitalTimeline';
 
 const MotionBox = motion(Box);
-
-// FACE LANDMARKS — dots + connecting lines over the face (for hero)
-const FaceLandmarksOverlay = () => {
-  // Landmarks properly aligned to face
-  const points = [
-    // Forehead - top center
-    { top: '40%', left: '50.5%' },
-    { top: '41%', left: '49%' },
-    { top: '41%', left: '52%' },
-    // Left temple area
-    { top: '44%', left: '47%' },
-    // Right temple area
-    { top: '44%', left: '54%' },
-    // Left eyebrow
-    { top: '46%', left: '48%' },
-    { top: '45.5%', left: '49.3%' },
-    { top: '45.5%', left: '50%' },
-    // Right eyebrow
-    { top: '45.5%', left: '51%' },
-    { top: '45.5%', left: '51.7%' },
-    { top: '46%', left: '53%' },
-    // Left eye
-    { top: '49%', left: '48.5%' },
-    { top: '49%', left: '49.7%' },
-    // Right eye
-    { top: '49%', left: '51.3%' },
-    { top: '49%', left: '52.5%' },
-    // Nose bridge
-    { top: '52%', left: '50.5%' },
-    // Nose middle
-    { top: '56%', left: '50.5%' },
-    // Nose bottom/nostrils
-    { top: '59%', left: '49.8%' },
-    { top: '59%', left: '50.5%' },
-    { top: '59%', left: '51.2%' },
-    // Upper lip
-    { top: '62%', left: '49.8%' },
-    { top: '62%', left: '50.5%' },
-    { top: '62%', left: '51.2%' },
-    // Lower lip
-    { top: '65%', left: '50.5%' },
-    // Chin
-    { top: '70%', left: '50.5%' },
-    { top: '73%', left: '50.5%' },
-    // Left jawline
-    { top: '50%', left: '45.5%' },
-    { top: '56%', left: '45%' },
-    { top: '61%', left: '46%' },
-    { top: '67%', left: '48%' },
-    // Right jawline
-    { top: '50%', left: '55.5%' },
-    { top: '56%', left: '56%' },
-    { top: '61%', left: '55%' },
-    { top: '67%', left: '53%' },
-  ];
-
-  const lines = [
-    // Top of head
-    [0, 1], [0, 2],
-    // Forehead to temples
-    [1, 3], [2, 4],
-    // Temples to eyebrows
-    [3, 5], [4, 10],
-    // Left eyebrow
-    [5, 6], [6, 7],
-    // Right eyebrow
-    [8, 9], [9, 10],
-    // Eyebrows to eyes
-    [7, 11], [8, 13],
-    // Eyes
-    [11, 12], [13, 14],
-    // Eyes to nose bridge
-    [12, 15], [14, 15],
-    // Nose
-    [15, 16], [16, 17], [16, 18], [16, 19],
-    // Nose to mouth
-    [17, 20], [18, 21], [19, 22],
-    // Mouth
-    [20, 21], [21, 22], [21, 23],
-    // Mouth to chin
-    [23, 24], [24, 25],
-    // Left jawline (ear to chin)
-    [3, 26], [26, 27], [27, 28], [28, 29], [29, 24],
-    // Right jawline (ear to chin)
-    [4, 30], [30, 31], [31, 32], [32, 33], [33, 24],
-    // Cross connections for facial structure
-    [5, 11], [10, 13], [27, 20], [31, 22],
-    [26, 5], [30, 10], [28, 20], [32, 22],
-    [1, 15], [2, 15],
-  ];
-
-  return (
-    <>
-      {/* SVG Lines */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 2 }}>
-        {lines.map(([from, to], i) => (
-          <motion.line
-            key={i}
-            x1={points[from].left}
-            y1={points[from].top}
-            x2={points[to].left}
-            y2={points[to].top}
-            stroke="rgba(255,255,255,0.7)"
-            strokeWidth="1.5"
-            initial={{ pathLength: 0, opacity: 0 }}
-            animate={{ pathLength: 1, opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.3 + i * 0.02, ease: 'easeOut' }}
-          />
-        ))}
-      </svg>
-      {/* Dots */}
-      {points.map((p, i) => (
-        <MotionBox
-          key={i}
-          initial={{ scale: 0, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.5 + i * 0.015 }}
-          sx={{
-            position: 'absolute',
-            top: p.top,
-            left: p.left,
-            width: 8,
-            height: 8,
-            borderRadius: '50%',
-            background: '#fff',
-            transform: 'translate(-50%, -50%)',
-            boxShadow: '0 0 12px rgba(255,255,255,0.9)',
-            zIndex: 3,
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
-    </>
-  );
-};
 
 // SCROLL UTILITIES
 const ScrollReveal = ({ children, delay = 0, direction = 'up', distance = 50 }) => {
@@ -192,8 +55,6 @@ const StaggerChild = ({ children }) => (
 
 // MAIN HOME
 const Home = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
 
   return (
@@ -226,44 +87,6 @@ const Home = () => {
         />
 
         {/* Face Recognition Landmarks Overlay */}
-        <FaceLandmarksOverlay />
-
-        {/* Detection Corner Brackets around face - reduced height */}
-        <MotionBox
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          sx={{
-            position: 'absolute',
-            top: '38%',
-            left: '44%',
-            width: '13%',
-            height: '36%',
-            zIndex: 3,
-            pointerEvents: 'none',
-          }}
-        >
-          <Box sx={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderTop: '3px solid rgba(255,255,255,0.9)', borderLeft: '3px solid rgba(255,255,255,0.9)' }} />
-          <Box sx={{ position: 'absolute', top: 0, right: 0, width: 30, height: 30, borderTop: '3px solid rgba(255,255,255,0.9)', borderRight: '3px solid rgba(255,255,255,0.9)' }} />
-          <Box sx={{ position: 'absolute', bottom: 0, left: 0, width: 30, height: 30, borderBottom: '3px solid rgba(255,255,255,0.9)', borderLeft: '3px solid rgba(255,255,255,0.9)' }} />
-          <Box sx={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderBottom: '3px solid rgba(255,255,255,0.9)', borderRight: '3px solid rgba(255,255,255,0.9)' }} />
-        </MotionBox>
-
-        {/* Scan line animation */}
-        <MotionBox
-          animate={{ top: ['38%', '74%'] }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'linear', repeatDelay: 0.5 }}
-          sx={{
-            position: 'absolute',
-            left: '44%',
-            width: '13%',
-            height: 3,
-            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent)',
-            boxShadow: '0 0 15px rgba(255,255,255,0.6)',
-            zIndex: 4,
-            pointerEvents: 'none',
-          }}
-        />
 
         <Container maxWidth="lg" sx={{ position: 'relative', height: '100%', zIndex: 5 }}>
           <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', height: '100%', pt: { xs: 12, md: 15 } }}>
@@ -283,10 +106,10 @@ const Home = () => {
                       fontWeight: 700,
                       letterSpacing: '-0.02em',
                       lineHeight: 1.2,
-                      color: '#212E46',
+                      color: '#ffffff',
                       fontSize: { xs: '2.5rem', sm: '3rem', md: '3.75rem' },
                       mb: 2,
-                      textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
+                      textShadow: '0 2px 16px rgba(0,0,0,0.55)',
                     }}
                   >
                     Smart Attendance System
@@ -336,37 +159,35 @@ const Home = () => {
           <Container maxWidth="lg">
             <Box sx={{
               display: 'flex',
-              justifyContent: 'space-between',
+              justifyContent: { xs: 'space-around', md: 'space-between' },
               alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: { xs: 2, md: 3 },
+              flexWrap: 'nowrap',
+              gap: { xs: 1, md: 3 },
             }}>
               <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.9rem', md: '1.3rem' }, color: '#fff' }}>
+                <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1.3rem' }, color: '#fff', whiteSpace: 'nowrap' }}>
                   College Project
                 </Typography>
-                <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)' }}>
+                <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)', display: { xs: 'none', md: 'block' } }}>
                   academic research & development
                 </Typography>
               </Box>
               <Box>
-                <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.9rem', md: '1.3rem' }, color: '#fff' }}>
+                <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1.3rem' }, color: '#fff', whiteSpace: 'nowrap' }}>
                   Deep Learning
                 </Typography>
-                <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)' }}>
+                <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)', display: { xs: 'none', md: 'block' } }}>
                   facial recognition technology
                 </Typography>
               </Box>
-              {!isMobile && (
-                <Box>
-                  <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.9rem', md: '1.3rem' }, color: '#fff' }}>
-                    Contactless
-                  </Typography>
-                  <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)' }}>
-                    touchless verification
-                  </Typography>
-                </Box>
-              )}
+              <Box>
+                <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1.3rem' }, color: '#fff', whiteSpace: 'nowrap' }}>
+                  Contactless
+                </Typography>
+                <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)', display: { xs: 'none', md: 'block' } }}>
+                  touchless verification
+                </Typography>
+              </Box>
             </Box>
           </Container>
         </MotionBox>

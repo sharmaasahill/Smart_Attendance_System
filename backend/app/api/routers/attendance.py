@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.limiter import limiter
+from app.api.deps import get_optional_current_user
 from app.db.session import get_db
 from app.models import Attendance, User
 from app.schemas import AttendanceResponse, UserResponse
@@ -28,6 +29,7 @@ async def mark_attendance(
     files: List[UploadFile] = File(None),
     liveness_verified: bool = Form(False),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
     Mark attendance from one or more captured frames.
@@ -36,6 +38,11 @@ async def mark_attendance(
     agreement (multi-frame voting), which reduces false accepts/rejects from a
     single bad frame. Liveness/anti-spoofing is performed live on the client via
     an active blink challenge; the server rejects frames not liveness-verified.
+
+    When the request is authenticated (a logged-in user), recognition is
+    restricted to that account: showing another person's face is rejected so a
+    user cannot mark attendance for someone else. When unauthenticated (kiosk
+    mode), any registered user can be recognized.
     """
     temp_paths: List[str] = []
     try:
@@ -67,6 +74,19 @@ async def mark_attendance(
 
         confidence = recognition["confidence"]
         recognized_user_id = recognition["user_id"]
+
+        # If the request is authenticated, the recognized face must belong to
+        # the logged-in account. This prevents one user from marking another
+        # user's attendance by showing their face.
+        if current_user is not None and recognized_user_id != current_user.unique_id:
+            logger.info(
+                f"Face mismatch: recognized {recognized_user_id} but logged in as "
+                f"{current_user.unique_id}"
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="This face does not belong to the logged-in account.",
+            )
 
         # Confidence band: matched, but not confident enough → ask to retry.
         if confidence < settings.FACE_ATTENDANCE_MIN_CONFIDENCE:

@@ -30,7 +30,15 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Only force a logout/redirect when a 401 comes from an authenticated
+    // request (i.e. an expired/invalid session). A 401 from the login or
+    // register call is a failed attempt and must surface to the form so it
+    // can show "Invalid email or password" instead of silently reloading.
+    const requestUrl = error.config?.url || '';
+    const isAuthAttempt =
+      requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+    if (error.response?.status === 401 && !isAuthAttempt) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

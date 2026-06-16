@@ -166,26 +166,26 @@ const Home = () => {
             }}>
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1.3rem' }, color: '#fff', whiteSpace: 'nowrap' }}>
-                  College Project
+                  ArcFace
                 </Typography>
                 <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)', display: { xs: 'none', md: 'block' } }}>
-                  academic research & development
+                  512-D deep face embeddings
                 </Typography>
               </Box>
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1.3rem' }, color: '#fff', whiteSpace: 'nowrap' }}>
-                  Deep Learning
+                  Active Liveness
                 </Typography>
                 <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)', display: { xs: 'none', md: 'block' } }}>
-                  facial recognition technology
+                  blink-verified anti-spoofing
                 </Typography>
               </Box>
               <Box>
                 <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.85rem', md: '1.3rem' }, color: '#fff', whiteSpace: 'nowrap' }}>
-                  Contactless
+                  Real-Time
                 </Typography>
                 <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'rgba(255,255,255,0.6)', display: { xs: 'none', md: 'block' } }}>
-                  touchless verification
+                  sub-second recognition
                 </Typography>
               </Box>
             </Box>

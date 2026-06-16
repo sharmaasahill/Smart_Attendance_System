@@ -8,6 +8,7 @@ pydantic>=2.5.0
 pydantic-settings>=2.1.0
 python-dotenv>=1.0.0
 email-validator>=2.0.0
+tzdata>=2024.1                # IANA timezone database (zoneinfo on Windows/slim images)
 
 # ===== Database =====
 sqlalchemy==2.0.23

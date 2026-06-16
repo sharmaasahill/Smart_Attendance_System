@@ -13,7 +13,9 @@ Definitions:
 """
 
 from collections import Counter, defaultdict
-from datetime import datetime, time, timedelta
+from datetime import time, timedelta
+
+from app.core.time_utils import now_local
 
 WORK_START = time(9, 0)
 
@@ -32,7 +34,7 @@ def _format_hour(hour: int) -> str:
 
 def live_stats(users: list, records: list) -> dict:
     """Today's snapshot."""
-    today = datetime.now().date()
+    today = now_local().date()
     today_present = [r for r in records if r.date == today and r.status == "present"]
     present_ids = {r.user_id for r in today_present}
     times = [r.time_in for r in today_present if r.time_in]
@@ -57,7 +59,7 @@ def live_stats(users: list, records: list) -> dict:
 
 def department_breakdown(users: list, records: list) -> list:
     """Per-department present/total for today."""
-    today = datetime.now().date()
+    today = now_local().date()
     present_ids = {r.user_id for r in records if r.date == today and r.status == "present"}
 
     totals = defaultdict(int)

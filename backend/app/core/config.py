@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Smart Attendance System"
     API_VERSION: str = "2.0.0"
     DEBUG: bool = False
+    # IANA timezone used for attendance dates/times (the organization's local
+    # time). Keep this aligned with where attendance is recorded so dates match
+    # what users see in the browser. Override via the APP_TIMEZONE env var.
+    APP_TIMEZONE: str = "Asia/Kolkata"
 
     # ----- Security -----
     SECRET_KEY: str = "change-me-in-production"

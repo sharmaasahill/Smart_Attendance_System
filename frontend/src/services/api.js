@@ -114,7 +114,10 @@ export const userAPI = {
     return api.get(`/user/attendance/stats?${queryParams}`);
   },
   getTodayAttendance: () => {
-    const today = new Date().toISOString().split('T')[0];
+    // Use the browser's LOCAL date (not UTC) so it matches the organization
+    // timezone the backend records attendance in.
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     return api.get(`/user/attendance?start_date=${today}&end_date=${today}`);
   },
   getRegisteredFaces: () => api.get('/user/face/images'),

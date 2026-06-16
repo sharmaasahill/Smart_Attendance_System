@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api import deps
+from app.core.time_utils import now_local
 from app.db.session import get_db
 from app.models import Attendance, User
 from app.services import analytics as svc
@@ -25,7 +26,7 @@ def _period_start(period: str, today: datetime) -> datetime:
 
 
 def _build_dashboard(period: str, db: Session) -> dict:
-    today = datetime.now()
+    today = now_local()
     start_date = _period_start(period, today).date()
     end_date = today.date()
 
@@ -101,7 +102,7 @@ async def generate_automated_report(
     current_user: User = Depends(deps.get_current_admin_user),
 ):
     try:
-        today = datetime.now()
+        today = now_local()
         period_map = {"daily": "day", "monthly": "month"}
         period = period_map.get(report_type, "week")
         title = {"daily": "Daily", "monthly": "Monthly"}.get(report_type, "Weekly") + " Attendance Report"
@@ -137,7 +138,7 @@ async def get_attendance_anomalies(
     current_user: User = Depends(deps.get_current_admin_user),
 ):
     try:
-        start_date = datetime.now() - timedelta(days=days)
+        start_date = now_local() - timedelta(days=days)
         records = db.query(Attendance).filter(Attendance.date >= start_date.date()).all()
         users = db.query(User).all()
 

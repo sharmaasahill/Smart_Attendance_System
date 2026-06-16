@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.limiter import limiter
+from app.core.time_utils import now_local, today_local
 from app.api.deps import get_optional_current_user
 from app.db.session import get_db
 from app.models import Attendance, User
@@ -105,7 +106,7 @@ async def mark_attendance(
         if not user:
             raise HTTPException(status_code=404, detail="User not found in database")
 
-        today = datetime.now().date()
+        today = today_local()
         existing_attendance = (
             db.query(Attendance)
             .filter(Attendance.user_id == user.id, Attendance.date == today)
@@ -115,7 +116,7 @@ async def mark_attendance(
         if existing_attendance:
             if existing_attendance.status == "absent":
                 existing_attendance.status = "present"
-                existing_attendance.time_in = datetime.now().time()
+                existing_attendance.time_in = now_local().time()
                 db.commit()
                 db.refresh(existing_attendance)
                 return {
@@ -138,7 +139,7 @@ async def mark_attendance(
         attendance = Attendance(
             user_id=user.id,
             date=today,
-            time_in=datetime.now().time(),
+            time_in=now_local().time(),
             status="present",
         )
         db.add(attendance)

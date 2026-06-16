@@ -43,6 +43,10 @@ backend/uploads/
 *.pkl
 encoding*.json
 
+# ============ Local data inspection / scratch ============
+backend/db-data-check
+backend/db-data-check/
+
 # ============ Environment Variables ============
 .env
 .env.local

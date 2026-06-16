@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api import deps
 from app.core.config import settings
+from app.core.time_utils import now_local, today_local
 from app.db.session import get_db
 from app.models import Attendance, User
 from app.schemas import AttendanceResponse, UserResponse
@@ -92,7 +93,7 @@ async def mark_absent_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_admin_user),
 ):
-    today = datetime.now().date()
+    today = today_local()
     all_users = db.query(User).filter(User.is_active == True).all()  # noqa: E712
     attended_user_ids = db.query(Attendance.user_id).filter(Attendance.date == today).all()
     attended_user_ids = [uid[0] for uid in attended_user_ids]
@@ -179,7 +180,7 @@ async def mark_user_present(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    today = datetime.now().date()
+    today = today_local()
     attendance = (
         db.query(Attendance)
         .filter(Attendance.user_id == user.id, Attendance.date == today)
@@ -192,7 +193,7 @@ async def mark_user_present(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid time format. Use HH:MM")
     else:
-        time_obj = datetime.now().time()
+        time_obj = now_local().time()
 
     if attendance:
         attendance.status = "present"

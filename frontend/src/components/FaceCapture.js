@@ -25,6 +25,12 @@ import { useAuth } from '../App';
 import { faceAPI, webcamCaptureToFile } from '../services/api';
 import FaceCamera from './FaceCamera';
 
+// Number of face images required for enrollment. Keep in sync with the
+// backend's FACE_MIN_ENCODINGS expectations.
+const REQUIRED_IMAGES = 5;
+const CAPTURE_INTERVAL_MS = 1200;
+const CAPTURE_TIMEOUT_MS = 20000;
+
 const FaceCapture = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -35,8 +41,12 @@ const FaceCapture = () => {
   const [isCapturing, setIsCapturing] = useState(false); // eslint-disable-line no-unused-vars
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [intervalId, setIntervalId] = useState(null);
   const statusRef = useRef({ ready: false, faceDetected: false, quality: 0 });
+  // Refs (not state) so the interval callback always sees current values and
+  // can never be stopped by a stale closure.
+  const intervalRef = useRef(null);
+  const timeoutRef = useRef(null);
+  const captureCountRef = useRef(0);
 
   const steps = ['Camera Setup', 'Capture Images', 'Upload & Train'];
 
@@ -44,85 +54,83 @@ const FaceCapture = () => {
     statusRef.current = status;
   }, []);
 
-  const capture = useCallback((imageSrc, metadata) => {
-    if (imageSrc) {
-      setCapturedImages(prev => {
-        const newImages = [...prev, { imageSrc, metadata }];
-
-        // Check if we have enough images and advance to next step
-        if (newImages.length >= 5) {
-          setStep(2);
-          setIsCapturing(false);
-          if (intervalId) {
-            clearInterval(intervalId);
-            setIntervalId(null);
-          }
-        }
-
-        return newImages;
-      });
+  // Stops the capture loop and clears the safety timeout. Idempotent.
+  const stopCaptureLoop = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-  }, [intervalId]);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    setIsCapturing(false);
+  }, []);
 
   const startCapturing = () => {
+    // Guard against double-starts leaving an orphaned interval behind.
+    stopCaptureLoop();
+
+    captureCountRef.current = 0;
+    setCapturedImages([]); // Reset images
     setIsCapturing(true);
     setStep(1);
-    setCapturedImages([]); // Reset images
 
     // Capture a frame roughly every 1.2s, but only when a real, well-framed
     // face is detected (no simulated detection).
-    const interval = setInterval(() => {
-      const status = statusRef.current;
-      if (status && status.ready && webcamRef.current && webcamRef.current.getScreenshot) {
-        const imageSrc = webcamRef.current.getScreenshot();
-        if (imageSrc) {
-          capture(imageSrc, {
-            faceDetected: true,
-            quality: status.quality,
-            timestamp: new Date().toISOString(),
-          });
-        }
+    intervalRef.current = setInterval(() => {
+      // Hard cap: never collect more than REQUIRED_IMAGES frames.
+      if (captureCountRef.current >= REQUIRED_IMAGES) {
+        stopCaptureLoop();
+        setStep(2);
+        return;
       }
-    }, 1200);
 
-    setIntervalId(interval);
+      const status = statusRef.current;
+      if (!status || !status.ready) return;
+      if (!webcamRef.current || !webcamRef.current.getScreenshot) return;
 
-    // Stop after 20 seconds maximum
-    setTimeout(() => {
-      if (interval) {
-        clearInterval(interval);
-        setIntervalId(null);
-        setIsCapturing(false);
+      const imageSrc = webcamRef.current.getScreenshot();
+      if (!imageSrc) return;
+
+      const metadata = {
+        faceDetected: true,
+        quality: status.quality,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Increment synchronously so a fast interval can't race past the cap
+      // while the state update is still pending.
+      captureCountRef.current += 1;
+      setCapturedImages(prev => [...prev, { imageSrc, metadata }]);
+
+      if (captureCountRef.current >= REQUIRED_IMAGES) {
+        stopCaptureLoop();
         setStep(2);
       }
-    }, 20000);
+    }, CAPTURE_INTERVAL_MS);
+
+    // Safety net: stop after the timeout even if not enough frames were usable.
+    timeoutRef.current = setTimeout(() => {
+      stopCaptureLoop();
+      setStep(2);
+    }, CAPTURE_TIMEOUT_MS);
   };
 
   const resetCapture = () => {
-    // Clear any running interval
-    if (intervalId) {
-      clearInterval(intervalId);
-      setIntervalId(null);
-    }
-    
+    stopCaptureLoop();
+    captureCountRef.current = 0;
     setCapturedImages([]);
     setStep(0);
     setError('');
-    setIsCapturing(false);
   };
 
-  // Cleanup interval on component unmount
-  useEffect(() => {
-    return () => {
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-    };
-  }, [intervalId]);
+  // Cleanup timers on component unmount
+  useEffect(() => stopCaptureLoop, [stopCaptureLoop]);
 
   const uploadImages = async () => {
-    if (capturedImages.length < 5) {
-      setError('Please capture at least 5 face images');
+    if (capturedImages.length < REQUIRED_IMAGES) {
+      setError(`Please capture at least ${REQUIRED_IMAGES} face images`);
       return;
     }
 
@@ -325,7 +333,7 @@ const FaceCapture = () => {
                         <Box>
                           <LinearProgress 
                             variant="determinate" 
-                            value={(capturedImages.length / 5) * 100} 
+                            value={Math.min(100, (capturedImages.length / REQUIRED_IMAGES) * 100)} 
                             sx={{ 
                               mb: 3, 
                               height: 8, 
@@ -338,7 +346,7 @@ const FaceCapture = () => {
                             }}
                           />
                           <Typography variant="h6" fontWeight="700" sx={{ color: '#16a34a', mb: 1, fontFamily: '"Inter", sans-serif' }}>
-                            {capturedImages.length} / 5 images captured
+                            {capturedImages.length} / {REQUIRED_IMAGES} images captured
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
                             Stay still while we capture multiple angles of your face
@@ -413,7 +421,7 @@ const FaceCapture = () => {
                   >
                     <CardContent sx={{ p: 4 }}>
                       <Typography variant="h6" fontWeight="700" gutterBottom sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
-                        Captured Images ({capturedImages.length}/5)
+                        Captured Images ({capturedImages.length}/{REQUIRED_IMAGES})
                       </Typography>
                       
                       <Box 
@@ -442,7 +450,7 @@ const FaceCapture = () => {
                               Captured face images will appear here
                             </Typography>
                             <Typography variant="body2" sx={{ color: '#9ca3af', mt: 1, fontFamily: '"Inter", sans-serif' }}>
-                              We'll capture 5 images for better recognition
+                              We'll capture {REQUIRED_IMAGES} images for better recognition
                             </Typography>
                           </Box>
                         ) : (
@@ -517,7 +525,7 @@ const FaceCapture = () => {
                       'The system will automatically detect and capture your face',
                       'Try to move your head slightly between captures for better training',
                       'Ensure good lighting for optimal recognition accuracy',
-                      'The system captures 5 high-quality images for maximum security'
+                      `The system captures ${REQUIRED_IMAGES} high-quality images for maximum security`
                     ].map((instruction, index) => (
                       <Box key={index} display="flex" alignItems="flex-start" gap={2}>
                         <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: '#f97316', flexShrink: 0, mt: 0.75 }} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -53,20 +53,57 @@ const Navbar = () => {
     handleMobileMenuClose();
   };
 
-  const scrollToSection = (sectionId) => {
+  // Scrolls to a landing-page section. Returns false when the section isn't
+  // in the DOM (i.e. we're not on the home page).
+  const scrollToSection = useCallback((sectionId) => {
     const element = document.getElementById(sectionId);
-    if (element) {
-      const navbarHeight = 80; // Approximate navbar height
-      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-      const offsetPosition = elementPosition - navbarHeight;
+    if (!element) return false;
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-    }
+    const navbarHeight = 80; // Approximate navbar height
+    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+    const offsetPosition = elementPosition - navbarHeight;
+
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth',
+    });
+    return true;
+  }, []);
+
+  // The Features / How It Works / Industries sections only exist on the home
+  // page. From any other route (e.g. /login, /register) navigate home first and
+  // hand the target off via router state, then scroll once it has rendered.
+  const goToSection = (sectionId) => {
     handleMobileMenuClose();
+    if (location.pathname === '/') {
+      scrollToSection(sectionId);
+    } else {
+      navigate('/', { state: { scrollTo: sectionId } });
+    }
   };
+
+  // Consume a pending `scrollTo` handed over by a cross-route section link.
+  useEffect(() => {
+    const target = location.state?.scrollTo;
+    if (!target || location.pathname !== '/') return undefined;
+
+    // Home mounts in the same commit, but wait for the section to actually be
+    // in the DOM before scrolling rather than assuming it is.
+    let frame;
+    let attempts = 0;
+    const attemptScroll = () => {
+      if (scrollToSection(target) || attempts >= 60) {
+        // Clear the state so a refresh or back-navigation doesn't re-scroll.
+        navigate('/', { replace: true, state: null });
+        return;
+      }
+      attempts += 1;
+      frame = requestAnimationFrame(attemptScroll);
+    };
+    frame = requestAnimationFrame(attemptScroll);
+
+    return () => cancelAnimationFrame(frame);
+  }, [location, navigate, scrollToSection]);
 
   const isActivePage = (path) => location.pathname === path;
   
@@ -119,7 +156,7 @@ const Navbar = () => {
             {publicNavigationItems.map((item) => (
               <Button
                 key={item.label}
-                onClick={() => scrollToSection(item.sectionId)}
+                onClick={() => goToSection(item.sectionId)}
                 sx={{
                   px: 3,
                   py: 1.5,
@@ -334,7 +371,7 @@ const Navbar = () => {
           ) : (
             <>
               {publicNavigationItems.map((item) => (
-                <MenuItem key={item.label} onClick={() => scrollToSection(item.sectionId)}>
+                <MenuItem key={item.label} onClick={() => goToSection(item.sectionId)}>
                   <Typography fontWeight="500">{item.label}</Typography>
                 </MenuItem>
               ))}

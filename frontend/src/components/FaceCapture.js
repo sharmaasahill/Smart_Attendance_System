@@ -22,14 +22,20 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../App';
-import { faceAPI, webcamCaptureToFile } from '../services/api';
+import { faceAPI, livenessAPI, webcamCaptureToFile } from '../services/api';
 import FaceCamera from './FaceCamera';
 
 // Number of face images required for enrollment. Keep in sync with the
 // backend's FACE_MIN_ENCODINGS expectations.
 const REQUIRED_IMAGES = 5;
-const CAPTURE_INTERVAL_MS = 1200;
-const CAPTURE_TIMEOUT_MS = 20000;
+// Frames captured across the server-issued head-turn challenge. More than the
+// minimum, because the server needs enough of them spanning the movement to
+// measure the rotation, and the extra poses also improve the enrolled gallery.
+const BURST_FRAMES = 12;
+const BURST_INTERVAL_MS = 200;
+// How long to wait for a live, well-framed face (including the blink) before
+// giving up and telling the user why.
+const READY_TIMEOUT_MS = 25000;
 
 const FaceCapture = () => {
   const navigate = useNavigate();
@@ -45,11 +51,14 @@ const FaceCapture = () => {
   // Mirrored into state so the live prompt ("Blink to confirm...") is actually
   // rendered; the ref alone does not trigger a re-render.
   const [detectMsg, setDetectMsg] = useState('Position your face in the frame');
-  // Refs (not state) so the interval callback always sees current values and
-  // can never be stopped by a stale closure.
-  const intervalRef = useRef(null);
-  const timeoutRef = useRef(null);
-  const captureCountRef = useRef(0);
+  // Liveness challenge state. The challenge is issued by the server and must be
+  // submitted with the images; enrolling without one is refused.
+  const [challengeId, setChallengeId] = useState(null);
+  const [challengePrompt, setChallengePrompt] = useState('');
+  const [burstProgress, setBurstProgress] = useState(0);
+  // Set when the component unmounts or the user resets, so an in-flight capture
+  // sequence stops instead of updating a dead component.
+  const abortRef = useRef(false);
 
   const steps = ['Camera Setup', 'Capture Images', 'Upload & Train'];
 
@@ -58,79 +67,90 @@ const FaceCapture = () => {
     setDetectMsg(status.message);
   }, []);
 
-  // Stops the capture loop and clears the safety timeout. Idempotent.
-  const stopCaptureLoop = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+  /** Wait until the camera reports a live, well-framed face (blink included). */
+  const waitForLiveFace = useCallback(async () => {
+    const start = Date.now();
+    while (Date.now() - start < READY_TIMEOUT_MS) {
+      if (abortRef.current) return false;
+      if (statusRef.current && statusRef.current.ready) return true;
+      // eslint-disable-next-line no-await-in-loop
+      await new Promise((r) => setTimeout(r, 150));
     }
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    setIsCapturing(false);
+    return false;
   }, []);
 
-  const startCapturing = () => {
-    // Guard against double-starts leaving an orphaned interval behind.
-    stopCaptureLoop();
-
-    captureCountRef.current = 0;
-    setCapturedImages([]); // Reset images
+  const startCapturing = async () => {
+    abortRef.current = false;
+    setError('');
+    setChallengeId(null);
+    setCapturedImages([]);
+    setBurstProgress(0);
     setIsCapturing(true);
     setStep(1);
 
-    // Capture a frame roughly every 1.2s, but only when a real, well-framed
-    // face is detected (no simulated detection).
-    intervalRef.current = setInterval(() => {
-      // Hard cap: never collect more than REQUIRED_IMAGES frames.
-      if (captureCountRef.current >= REQUIRED_IMAGES) {
-        stopCaptureLoop();
-        setStep(2);
+    try {
+      // 1. Don't ask the server for a challenge until there is actually a live
+      //    face to challenge, otherwise the nonce burns while the user gets set.
+      const live = await waitForLiveFace();
+      if (abortRef.current) return;
+      if (!live) {
+        setError(
+          'Could not confirm a live face. Centre your face in the frame, make ' +
+          'sure the lighting is good, and blink when prompted.'
+        );
+        setIsCapturing(false);
+        setStep(0);
         return;
       }
 
-      const status = statusRef.current;
-      if (!status || !status.ready) return;
-      if (!webcamRef.current || !webcamRef.current.getScreenshot) return;
+      // 2. The server names a random head movement.
+      const { data: challenge } = await livenessAPI.getChallenge();
+      if (abortRef.current) return;
+      setChallengeId(challenge.challenge_id);
+      setChallengePrompt(challenge.instruction);
 
-      const imageSrc = webcamRef.current.getScreenshot();
-      if (!imageSrc) return;
+      // 3. Capture across the movement so the server can verify the rotation
+      //    really happened. A photo cannot satisfy this.
+      const shots = await webcamRef.current.captureBurst({
+        count: BURST_FRAMES,
+        intervalMs: BURST_INTERVAL_MS,
+        onProgress: (n, total) => setBurstProgress(Math.round((n / total) * 100)),
+      });
+      if (abortRef.current) return;
 
-      const metadata = {
-        faceDetected: true,
-        quality: status.quality,
-        timestamp: new Date().toISOString(),
-      };
-
-      // Increment synchronously so a fast interval can't race past the cap
-      // while the state update is still pending.
-      captureCountRef.current += 1;
-      setCapturedImages(prev => [...prev, { imageSrc, metadata }]);
-
-      if (captureCountRef.current >= REQUIRED_IMAGES) {
-        stopCaptureLoop();
-        setStep(2);
-      }
-    }, CAPTURE_INTERVAL_MS);
-
-    // Safety net: stop after the timeout even if not enough frames were usable.
-    timeoutRef.current = setTimeout(() => {
-      stopCaptureLoop();
+      setChallengePrompt('');
+      setCapturedImages(
+        (shots || []).map((imageSrc) => ({
+          imageSrc,
+          metadata: { timestamp: new Date().toISOString() },
+        }))
+      );
       setStep(2);
-    }, CAPTURE_TIMEOUT_MS);
+    } catch (e) {
+      if (!abortRef.current) {
+        setError('Could not start the liveness check. Please try again.');
+        setStep(0);
+      }
+    } finally {
+      setIsCapturing(false);
+      setBurstProgress(0);
+      setChallengePrompt('');
+    }
   };
 
   const resetCapture = () => {
-    stopCaptureLoop();
-    captureCountRef.current = 0;
+    abortRef.current = true;
     setCapturedImages([]);
+    setChallengeId(null);
+    setChallengePrompt('');
+    setBurstProgress(0);
+    setIsCapturing(false);
     setStep(0);
     setError('');
   };
 
-  // Cleanup timers on component unmount
-  useEffect(() => stopCaptureLoop, [stopCaptureLoop]);
+  // Stop any in-flight capture sequence on unmount.
+  useEffect(() => () => { abortRef.current = true; }, []);
 
   const uploadImages = async () => {
     if (capturedImages.length < REQUIRED_IMAGES) {
@@ -149,8 +169,8 @@ const FaceCapture = () => {
         })
       );
 
-      // Upload to backend
-      await faceAPI.registerFace(files);
+      // The challenge proves these frames came from a live head movement.
+      await faceAPI.registerFace(files, challengeId);
       
       console.log('Face registration completed successfully!');
       navigate('/profile');
@@ -163,8 +183,12 @@ const FaceCapture = () => {
       if (error.response?.status === 409) {
         // Duplicate face detected
         errorMessage = error.response?.data?.detail || 'This face is already registered to another user.';
+      } else if (error.response?.status === 403) {
+        // Liveness challenge failed, expired, or already used.
+        errorMessage = error.response?.data?.detail
+          || 'Liveness could not be confirmed. Please retake with the head movement.';
       } else if (error.response?.status === 400) {
-        // Quality or liveness issues
+        // Quality issues
         errorMessage = error.response?.data?.detail || 'Face quality is too low. Please try again with better lighting.';
       } else if (error.response?.data?.detail) {
         // Other specific errors
@@ -335,9 +359,9 @@ const FaceCapture = () => {
                       
                       {step === 1 && (
                         <Box>
-                          <LinearProgress 
-                            variant="determinate" 
-                            value={Math.min(100, (capturedImages.length / REQUIRED_IMAGES) * 100)} 
+                          <LinearProgress
+                            variant={challengePrompt ? 'determinate' : 'indeterminate'}
+                            value={burstProgress}
                             sx={{ 
                               mb: 3, 
                               height: 8, 
@@ -349,11 +373,11 @@ const FaceCapture = () => {
                               },
                             }}
                           />
-                          <Typography variant="h6" fontWeight="700" sx={{ color: '#16a34a', mb: 1, fontFamily: '"Inter", sans-serif' }}>
-                            {capturedImages.length} / {REQUIRED_IMAGES} images captured
+                          <Typography variant="h6" fontWeight="700" sx={{ color: challengePrompt ? '#f97316' : '#16a34a', mb: 1, fontFamily: '"Inter", sans-serif' }}>
+                            {challengePrompt || 'Preparing liveness check…'}
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
-                            {detectMsg}
+                            {challengePrompt ? 'Keep your face in frame while we check' : detectMsg}
                           </Typography>
                         </Box>
                       )}
@@ -425,7 +449,7 @@ const FaceCapture = () => {
                   >
                     <CardContent sx={{ p: 4 }}>
                       <Typography variant="h6" fontWeight="700" gutterBottom sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif' }}>
-                        Captured Images ({capturedImages.length}/{REQUIRED_IMAGES})
+                        Captured Images ({capturedImages.length})
                       </Typography>
                       
                       <Box 
@@ -454,7 +478,7 @@ const FaceCapture = () => {
                               Captured face images will appear here
                             </Typography>
                             <Typography variant="body2" sx={{ color: '#9ca3af', mt: 1, fontFamily: '"Inter", sans-serif' }}>
-                              We'll capture {REQUIRED_IMAGES} images for better recognition
+                              We'll capture a short sequence while you move your head
                             </Typography>
                           </Box>
                         ) : (
@@ -527,10 +551,10 @@ const FaceCapture = () => {
                     {[
                       'Position your face clearly within the camera frame',
                       'Blink when prompted — capture only starts once a live person is confirmed',
-                      'The system will automatically detect and capture your face',
-                      'Try to move your head slightly between captures for better training',
+                      'Then follow the on-screen prompt and slowly turn your head',
+                      'The head movement is what proves you are a real person and not a photo',
                       'Ensure good lighting for optimal recognition accuracy',
-                      `The system captures ${REQUIRED_IMAGES} high-quality images for maximum security`
+                      `At least ${REQUIRED_IMAGES} usable images are needed to enrol`
                     ].map((instruction, index) => (
                       <Box key={index} display="flex" alignItems="flex-start" gap={2}>
                         <Box sx={{ width: 6, height: 6, borderRadius: '50%', background: '#f97316', flexShrink: 0, mt: 0.75 }} />

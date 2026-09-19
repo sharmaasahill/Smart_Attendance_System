@@ -76,6 +76,43 @@ class Settings(BaseSettings):
     # Matches below this (but above the match threshold) prompt a retry.
     FACE_ATTENDANCE_MIN_CONFIDENCE: float = 50.0
 
+    # ----- Active liveness challenge (server-verified) -----
+    # The server issues a randomized head-turn challenge and verifies from the
+    # submitted frames that the turn actually happened. This is deterministic
+    # rather than statistical: a photo or phone screen cannot change its yaw, so
+    # it fails by geometry regardless of lighting, skin tone, or camera quality.
+    LIVENESS_CHALLENGE_ENABLED: bool = True
+    # How long an issued challenge stays valid. Long enough to read the prompt
+    # and turn, short enough to limit how long a nonce is useful to an attacker.
+    LIVENESS_CHALLENGE_TTL_SECONDS: int = 90
+    # Degrees of yaw the head must sweep across the submitted frames. A live
+    # turn easily exceeds this; a static image sweeps ~0.
+    LIVENESS_MIN_YAW_SWEEP: float = 12.0
+    # Also require the sweep to be predominantly in the direction the server
+    # asked for. This is the part a pre-recorded video cannot reliably satisfy,
+    # since the direction is chosen per attempt.
+    #
+    # OFF by default and intentionally so. The webcam preview is mirrored and
+    # react-webcam mirrors its screenshots too, so the browser's notion of
+    # "left" may be the opposite sign to InsightFace's yaw. Enforcing an
+    # unverified sign would reject every genuine user. The signed figure is
+    # logged as `yaw_directional` on every attempt; once real logs confirm the
+    # sign, set this to true. Blocking static photos does not depend on it —
+    # that comes from the sweep magnitude below, which is sign-independent.
+    LIVENESS_REQUIRE_DIRECTION: bool = False
+    # Frames needed to evidence a turn. Too few and there is no motion to check.
+    LIVENESS_MIN_FRAMES: int = 5
+    LIVENESS_MAX_FRAMES: int = 30
+    # Minimum fraction of submitted frames in which a face must be found, so a
+    # burst of mostly-empty frames cannot dilute the check.
+    LIVENESS_MIN_FACE_FRAME_RATIO: float = 0.6
+    # Planarity (homography residual) check: a flat photo being tilted moves as
+    # a plane, a real head does not. Measured and logged on every attempt but
+    # NOT enforced until calibrated against real-world numbers, because an
+    # uncalibrated threshold here would reject genuine users.
+    LIVENESS_ENFORCE_PLANARITY: bool = False
+    LIVENESS_MIN_PLANAR_RESIDUAL: float = 0.60
+
     # ----- Attendance anti-replay -----
     # Attendance must be submitted as multiple distinct live frames. Requiring
     # more than one frame makes multi-frame voting meaningful (with a single

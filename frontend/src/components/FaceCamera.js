@@ -70,6 +70,27 @@ const FaceCamera = forwardRef(({
       eyesClosedRef.current = false;
       missingFramesRef.current = 0;
     },
+    /**
+     * Capture a timed burst of frames. Used for the server-verified head-turn
+     * challenge: the server needs several frames spanning the movement so it
+     * can measure how far the head actually rotated.
+     *
+     * onProgress(captured, total) fires per frame so the UI can show progress
+     * while the user is still turning.
+     */
+    captureBurst: async ({ count = 10, intervalMs = 220, onProgress } = {}) => {
+      const frames = [];
+      for (let i = 0; i < count; i += 1) {
+        const shot = webcamRef.current?.getScreenshot();
+        if (shot) frames.push(shot);
+        if (onProgress) onProgress(frames.length, count);
+        if (i < count - 1) {
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise((r) => setTimeout(r, intervalMs));
+        }
+      }
+      return frames;
+    },
     get video() {
       return webcamRef.current?.video || null;
     },
@@ -136,6 +157,7 @@ const FaceCamera = forwardRef(({
     let faceDetected = false;
     let centered = false;
     let quality = 0;
+    let yawRatio = 0;
 
     try {
       const result = landmarker.detectForVideo(video, performance.now());
@@ -157,6 +179,16 @@ const FaceCamera = forwardRef(({
         const fh = maxY - minY;
         const cx = (minX + maxX) / 2;
         const cy = (minY + maxY) / 2;
+
+        // Approximate yaw for on-screen guidance only: as the head turns, the
+        // nose tip (landmark 1) shifts away from the centre of the face box.
+        // Normalised to roughly -1..1. The server does the authoritative
+        // measurement from InsightFace pose, so this only needs to be
+        // monotonic, not calibrated.
+        const nose = landmarks[1];
+        if (nose && fw > 0) {
+          yawRatio = Math.max(-1, Math.min(1, ((nose.x - cx) / (fw / 2))));
+        }
 
         // Well framed: reasonable size and roughly centered
         const goodSize = fw > 0.18 && fw < 0.85 && fh > 0.22;
@@ -227,6 +259,7 @@ const FaceCamera = forwardRef(({
         livenessVerified,
         blinkCount: blinkCountRef.current,
         quality,
+        yawRatio,
         ready,
         message,
       });

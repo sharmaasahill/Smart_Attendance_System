@@ -53,13 +53,24 @@ export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
 };
 
+// Liveness APIs
+export const livenessAPI = {
+  // Ask the server for a single-use head-turn challenge. The server decides the
+  // direction and verifies afterwards that the head really moved that way, so
+  // the client cannot simply assert it passed.
+  getChallenge: () => api.post('/liveness/challenge'),
+};
+
 // Face APIs
 export const faceAPI = {
-  registerFace: (files) => {
+  registerFace: (files, challengeId = null) => {
     const formData = new FormData();
     files.forEach((file) => {
       formData.append('files', file);
     });
+    if (challengeId) {
+      formData.append('challenge_id', challengeId);
+    }
     return api.post('/face/register', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -70,12 +81,15 @@ export const faceAPI = {
 
 // Attendance APIs
 export const attendanceAPI = {
-  markAttendance: (imageFiles, livenessVerified = false) => {
+  markAttendance: (imageFiles, livenessVerified = false, challengeId = null) => {
     const formData = new FormData();
     // Accept a single File or an array of Files (multi-frame voting).
     const frames = Array.isArray(imageFiles) ? imageFiles : [imageFiles];
     frames.forEach((f) => formData.append('files', f));
     formData.append('liveness_verified', livenessVerified ? 'true' : 'false');
+    if (challengeId) {
+      formData.append('challenge_id', challengeId);
+    }
     return api.post('/attendance/mark', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

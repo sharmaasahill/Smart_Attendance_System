@@ -17,6 +17,7 @@ from app.db.session import get_db
 from app.models import Attendance, User
 from app.schemas import AttendanceResponse, UserResponse
 from app.services.face_recognition import face_service
+from app.services.liveness import LivenessError, challenge_store, verify_challenge_frames
 
 logger = logging.getLogger("smart_attendance.attendance")
 
@@ -38,23 +39,28 @@ async def mark_attendance(
     file: Optional[UploadFile] = File(None),
     files: List[UploadFile] = File(None),
     liveness_verified: bool = Form(False),
+    challenge_id: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
-    Mark attendance from multiple captured frames.
+    Mark attendance from a burst of captured frames.
 
-    Frames are recognized independently and must reach majority agreement
-    (multi-frame voting), which reduces false accepts/rejects from a single bad
-    frame.
+    Liveness is established server-side, not by the client's word. The caller
+    must first obtain a challenge from ``POST /liveness/challenge``, which names
+    a random direction to turn the head, then submit the frames captured during
+    that movement along with ``challenge_id``. The server re-detects every frame
+    and confirms the head actually swept the required number of degrees in the
+    direction it asked for. A photo or a phone screen cannot change its yaw, so
+    it fails this check by geometry.
 
-    Liveness is checked on both sides. The client runs an active blink challenge
-    (MediaPipe) and reports the result via ``liveness_verified``; because that
-    flag is client-supplied it is treated as a necessary but not sufficient
-    signal. Independently, the server verifies that the submitted frames are
-    genuinely distinct captures, which rejects a client replaying a single still
-    image. See ``face_service.frames_are_distinct`` for the limits of that
-    guard.
+    Two further guards run alongside: the frames must be genuinely distinct
+    captures (``face_service.frames_are_distinct``), and the client's own blink
+    result arrives via ``liveness_verified`` — kept as a secondary signal only,
+    since anything that can post a form can claim it.
+
+    Recognition runs on the most frontal frames from the burst; matching against
+    the gallery on a turned head would needlessly hurt accuracy.
 
     When the request is authenticated (a logged-in user), recognition is
     restricted to that account: showing another person's face is rejected so a
@@ -108,7 +114,29 @@ async def mark_attendance(
                 detail="Liveness not verified. Please look at the camera and blink so we can confirm a live person.",
             )
 
-        recognition = face_service.recognize_frames(temp_paths, db)
+        # Authoritative liveness check: confirm from the pixels that the head
+        # actually performed the movement the server asked for. This is what a
+        # photo or phone screen cannot do.
+        recognition_paths = temp_paths
+        if settings.LIVENESS_CHALLENGE_ENABLED:
+            if not challenge_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail=(
+                        "Liveness challenge required. Please restart the scan so we "
+                        "can confirm a live person."
+                    ),
+                )
+            try:
+                challenge = challenge_store.consume(challenge_id)
+                result = verify_challenge_frames(challenge, temp_paths)
+            except LivenessError as e:
+                logger.warning(f"Liveness challenge failed: {e}")
+                raise HTTPException(status_code=403, detail=str(e))
+            # Prefer the most frontal frames for matching.
+            recognition_paths = result["frontal_paths"][:3] or temp_paths
+
+        recognition = face_service.recognize_frames(recognition_paths, db)
         if not recognition:
             raise HTTPException(
                 status_code=404,

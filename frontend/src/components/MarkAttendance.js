@@ -13,7 +13,7 @@ import {
   useMediaQuery,
   Stack,
 } from '@mui/material';
-import { attendanceAPI, webcamCaptureToFile } from '../services/api';
+import { attendanceAPI, livenessAPI, webcamCaptureToFile } from '../services/api';
 import { format } from 'date-fns';
 import {
   CheckCircleRounded,
@@ -88,6 +88,10 @@ const MarkAttendance = () => {
   const [liveness, setLiveness] = useState(false);
   const [detectReady, setDetectReady] = useState(false);
   const [detectMsg, setDetectMsg] = useState('Position your face in the frame');
+  // Active liveness challenge state. `challengePrompt` is what the user must do
+  // (issued by the server, so it cannot be predicted or pre-recorded).
+  const [challengePrompt, setChallengePrompt] = useState('');
+  const [burstProgress, setBurstProgress] = useState(0);
 
   // --- Auto-capture control ---
   // How long a face must stay steady before we capture (avoids blurry frames)
@@ -96,6 +100,10 @@ const MarkAttendance = () => {
   const RESULT_DISPLAY_MS = 4000;
   // Cooldown before auto-retrying after a failed (not recognized) attempt
   const ERROR_RETRY_MS = 3000;
+  // Frames captured across the head-turn challenge. The server needs enough of
+  // them spanning the movement to measure how far the head actually rotated.
+  const BURST_FRAMES = 12;
+  const BURST_INTERVAL_MS = 200;
 
   const isCapturingRef = useRef(false);      // prevents overlapping requests
   const stabilityTimerRef = useRef(null);    // pending steady-face timer
@@ -148,33 +156,37 @@ const MarkAttendance = () => {
     setError('');
     setSuccess(null);
     setAlreadyMarked(null);
+    setBurstProgress(0);
     setAttendanceStatus('scanning');
 
     try {
-      // Capture multiple frames for multi-frame voting (more robust recognition)
-      const FRAME_COUNT = 3;
-      const FRAME_GAP_MS = 120;
-      const frames = [];
-      for (let i = 0; i < FRAME_COUNT; i++) {
-        const src = webcamRef.current && webcamRef.current.getScreenshot
-          ? webcamRef.current.getScreenshot()
-          : null;
-        if (src) {
-          frames.push(await webcamCaptureToFile(src, `attendance_${i}.jpg`));
-        }
-        if (i < FRAME_COUNT - 1) {
-          await new Promise((r) => setTimeout(r, FRAME_GAP_MS));
-        }
-      }
+      // 1. Ask the server for a challenge. It picks the direction, so a
+      //    pre-recorded clip cannot be prepared for it in advance.
+      const { data: challenge } = await livenessAPI.getChallenge();
+      setChallengePrompt(challenge.instruction);
+      setAttendanceStatus('challenge');
 
-      if (frames.length === 0) {
+      // 2. Capture a burst spanning the movement. The server re-detects every
+      //    frame and confirms the head really rotated; a photo or phone screen
+      //    cannot change its yaw and so fails this check.
+      const shots = await webcamRef.current.captureBurst({
+        count: BURST_FRAMES,
+        intervalMs: BURST_INTERVAL_MS,
+        onProgress: (n, total) => setBurstProgress(Math.round((n / total) * 100)),
+      });
+
+      if (!shots || shots.length === 0) {
         throw new Error('Failed to capture image.');
       }
 
+      const frames = await Promise.all(
+        shots.map((src, i) => webcamCaptureToFile(src, `attendance_${i}.jpg`))
+      );
+
+      setChallengePrompt('');
       setAttendanceStatus('processing');
 
-      // Liveness was verified live (blink) before this capture was allowed
-      const response = await attendanceAPI.markAttendance(frames, true);
+      const response = await attendanceAPI.markAttendance(frames, true, challenge.challenge_id);
 
       setSuccess(response.data);
       setAttendanceStatus('success');
@@ -200,6 +212,8 @@ const MarkAttendance = () => {
       }
     } finally {
       setLoading(false);
+      setChallengePrompt('');
+      setBurstProgress(0);
       isCapturingRef.current = false;
     }
   }, [scheduleReset]);
@@ -294,8 +308,43 @@ const MarkAttendance = () => {
                   onStatus={handleStatus}
                 />
 
+                {/* Active challenge: the server-issued movement the user must
+                    perform. Shown large and centred because completing it is
+                    now required to mark attendance. */}
+                {challengePrompt && (
+                  <Box
+                    sx={{
+                      position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', gap: 2, p: 3,
+                      background: 'rgba(33,46,70,0.55)', backdropFilter: 'blur(2px)',
+                      pointerEvents: 'none', textAlign: 'center',
+                    }}
+                  >
+                    <Typography
+                      variant="h6"
+                      fontWeight="800"
+                      sx={{ color: '#ffffff', fontFamily: '"Inter", sans-serif', textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
+                    >
+                      {challengePrompt}
+                    </Typography>
+                    <Box sx={{ width: '70%', maxWidth: 320 }}>
+                      <LinearProgress
+                        variant="determinate"
+                        value={burstProgress}
+                        sx={{
+                          height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.25)',
+                          '& .MuiLinearProgress-bar': { background: '#fb923c', borderRadius: 4 },
+                        }}
+                      />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontFamily: '"Inter", sans-serif' }}>
+                      Keep your face in frame while we check
+                    </Typography>
+                  </Box>
+                )}
+
                 {/* Liveness hint (blink) before a face is verified */}
-                {!loading && !success && !error && !alreadyMarked && faceDetected && !liveness && (
+                {!challengePrompt && !loading && !success && !error && !alreadyMarked && faceDetected && !liveness && (
                   <Box sx={{ position: 'absolute', bottom: 16, left: 0, right: 0, textAlign: 'center', pointerEvents: 'none' }}>
                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2.5, py: 1, borderRadius: '999px', background: 'rgba(33,46,70,0.85)', backdropFilter: 'blur(6px)' }}>
                       <Box sx={{ width: 8, height: 8, borderRadius: '50%', background: '#fb923c', animation: 'pulse 1.2s ease-in-out infinite' }} />
@@ -423,19 +472,21 @@ const MarkAttendance = () => {
                     }}
                   />
                   <Typography variant="body2" fontWeight="700" sx={{ color: '#212E46', fontFamily: '"Inter", sans-serif', textAlign: 'center' }}>
-                    {loading
-                      ? 'Verifying your identity...'
-                      : success
-                        ? `Welcome, ${success.user?.full_name || ''}`
-                        : alreadyMarked
-                          ? 'Attendance already marked today'
-                          : (error && attendanceStatus === 'error')
-                            ? 'Face not recognized — retrying shortly'
-                            : detectReady
-                              ? 'Hold still — capturing automatically'
-                              : faceDetected && !liveness
-                                ? 'Blink once to confirm you are live'
-                                : detectMsg}
+                    {challengePrompt
+                      ? challengePrompt
+                      : loading
+                        ? 'Verifying your identity...'
+                        : success
+                          ? `Welcome, ${success.user?.full_name || ''}`
+                          : alreadyMarked
+                            ? 'Attendance already marked today'
+                            : (error && attendanceStatus === 'error')
+                              ? 'Face not recognized — retrying shortly'
+                              : detectReady
+                                ? 'Hold still — starting liveness check'
+                                : faceDetected && !liveness
+                                  ? 'Blink once to confirm you are live'
+                                  : detectMsg}
                   </Typography>
                 </Box>
               </Box>

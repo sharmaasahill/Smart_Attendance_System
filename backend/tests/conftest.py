@@ -19,6 +19,11 @@ os.environ.setdefault("DATABASE_URL", TEST_DB_URL)
 os.environ.setdefault("SECRET_KEY", "test-secret-key-which-is-long-enough-32+chars-xyz")
 os.environ.setdefault("ADMIN_EMAIL", "admin@test.com")
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+# The head-turn liveness challenge needs real detectable faces with measurable
+# pose, which synthetic test images do not have. Disabled by default here so the
+# rest of the suite tests its own concerns; tests/test_liveness.py re-enables it
+# explicitly and stubs the frame measurements.
+os.environ.setdefault("LIVENESS_CHALLENGE_ENABLED", "false")
 
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_db  # noqa: E402

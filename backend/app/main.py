@@ -20,6 +20,7 @@ from app.api.routers import (
     attendance,
     auth,
     face,
+    liveness,
     users,
 )
 
@@ -106,7 +107,15 @@ def create_app() -> FastAPI:
     async def health():
         return {"status": "ok"}
 
-    for router in (auth.router, face.router, attendance.router, users.router, admin.router, analytics.router):
+    for router in (
+        auth.router,
+        face.router,
+        liveness.router,
+        attendance.router,
+        users.router,
+        admin.router,
+        analytics.router,
+    ):
         app.include_router(router)
 
     return app

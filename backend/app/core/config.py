@@ -76,6 +76,18 @@ class Settings(BaseSettings):
     # Matches below this (but above the match threshold) prompt a retry.
     FACE_ATTENDANCE_MIN_CONFIDENCE: float = 50.0
 
+    # ----- Attendance anti-replay -----
+    # Attendance must be submitted as multiple distinct live frames. Requiring
+    # more than one frame makes multi-frame voting meaningful (with a single
+    # frame the "majority" is trivially 1) and lets the server verify the
+    # frames actually differ from one another.
+    ATTENDANCE_MIN_FRAMES: int = 2
+    # Mean absolute per-pixel difference (0-255 scale) required between
+    # submitted frames. Consecutive frames from a live camera always differ by
+    # at least sensor noise; a replayed still image duplicated N times does
+    # not. Deliberately low so genuine near-static faces are never rejected.
+    ATTENDANCE_MIN_FRAME_DIFF: float = 0.75
+
     @property
     def cors_origins(self) -> List[str]:
         return [o.strip() for o in self.BACKEND_CORS_ORIGINS.split(",") if o.strip()]

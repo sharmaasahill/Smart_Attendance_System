@@ -11,6 +11,7 @@ user (no averaging) and uses cosine similarity with per-user best-match plus
 k-NN voting and a tuned threshold, returning a real confidence score.
 """
 
+import hashlib
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional
@@ -22,6 +23,14 @@ from sqlalchemy import func
 from app.core.config import settings
 
 logger = logging.getLogger("smart_attendance.face")
+
+
+class FaceEnrollmentError(Exception):
+    """
+    Enrollment could not complete for a reason the user can act on (e.g. too
+    few usable images). Carries a message intended for display, so routers map
+    it to a 400 rather than swallowing it into a generic 500.
+    """
 
 
 class FaceRecognitionService:
@@ -205,6 +214,82 @@ class FaceRecognitionService:
         return face is not None
 
     # ------------------------------------------------------------------ #
+    # Anti-replay: submitted frames must be distinct live captures
+    # ------------------------------------------------------------------ #
+    def frames_are_distinct(self, image_paths: List[str]) -> Dict:
+        """
+        Verify that submitted frames are separate camera captures rather than
+        one still image replayed N times.
+
+        Consecutive frames from a live camera always differ by at least sensor
+        noise, so a small mean per-pixel difference is expected. Identical
+        bytes, or a near-zero pixel difference, means the frames did not come
+        from a live capture sequence.
+
+        This is a replay guard, not full anti-spoofing: it defeats a scripted
+        client posting the same photo repeatedly, but not a printed photo or a
+        screen held up to a real camera. Defeating those requires a passive
+        texture/depth anti-spoofing model.
+        """
+        if len(image_paths) < 2:
+            return {
+                "distinct": False,
+                "reason": "Need at least two frames to verify a live capture sequence",
+                "min_diff": 0.0,
+            }
+
+        # Byte-identical uploads are conclusive and cheap to detect.
+        digests = set()
+        for path in image_paths:
+            try:
+                with open(path, "rb") as f:
+                    digests.add(hashlib.sha256(f.read()).hexdigest())
+            except OSError:
+                return {
+                    "distinct": False,
+                    "reason": "Could not read submitted frame",
+                    "min_diff": 0.0,
+                }
+        if len(digests) < len(image_paths):
+            return {
+                "distinct": False,
+                "reason": "Identical frames submitted",
+                "min_diff": 0.0,
+            }
+
+        # Compare pixels on a common small grayscale canvas. Downscaling keeps
+        # this cheap and removes sensitivity to resolution differences.
+        grays = []
+        for path in image_paths:
+            img = cv2.imread(path)
+            if img is None:
+                return {
+                    "distinct": False,
+                    "reason": "Could not decode submitted frame",
+                    "min_diff": 0.0,
+                }
+            small = cv2.resize(img, (128, 128), interpolation=cv2.INTER_AREA)
+            grays.append(cv2.cvtColor(small, cv2.COLOR_BGR2GRAY).astype(np.float32))
+
+        # The closest pair governs the verdict: every frame must differ from
+        # every other, so duplicating one frame in a larger batch still fails.
+        min_diff = float("inf")
+        for i in range(len(grays)):
+            for j in range(i + 1, len(grays)):
+                diff = float(np.mean(np.abs(grays[i] - grays[j])))
+                min_diff = min(min_diff, diff)
+
+        threshold = settings.ATTENDANCE_MIN_FRAME_DIFF
+        if min_diff < threshold:
+            return {
+                "distinct": False,
+                "reason": "Frames are not distinct live captures",
+                "min_diff": round(min_diff, 4),
+            }
+
+        return {"distinct": True, "reason": None, "min_diff": round(min_diff, 4)}
+
+    # ------------------------------------------------------------------ #
     # Enrollment (writes embeddings + images to the database)
     # ------------------------------------------------------------------ #
     def enroll_user(self, db, user, image_paths: List[str]) -> Dict:
@@ -228,7 +313,7 @@ class FaceRecognitionService:
 
         acceptable = len(embeddings)
         if acceptable < self.min_required_encodings:
-            raise Exception(
+            raise FaceEnrollmentError(
                 f"Only {acceptable} usable face image(s); need at least "
                 f"{self.min_required_encodings}. Retake with clear, well-lit, front-facing photos."
             )

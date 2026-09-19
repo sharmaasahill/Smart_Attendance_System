@@ -1,7 +1,7 @@
 """Current-user (self-service) endpoints."""
 
 import base64
-from datetime import datetime
+from datetime import date as date_type
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import extract
@@ -55,16 +55,18 @@ async def change_password(
 
 @router.get("/attendance")
 async def get_user_attendance(
-    start_date: str = None,
-    end_date: str = None,
+    # Typed as dates so FastAPI validates the format and returns 422 on bad
+    # input, instead of strptime raising and surfacing as an unhandled 500.
+    start_date: date_type = None,
+    end_date: date_type = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(deps.get_current_user),
 ):
     query = db.query(Attendance).filter(Attendance.user_id == current_user.id)
     if start_date:
-        query = query.filter(Attendance.date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+        query = query.filter(Attendance.date >= start_date)
     if end_date:
-        query = query.filter(Attendance.date <= datetime.strptime(end_date, "%Y-%m-%d").date())
+        query = query.filter(Attendance.date <= end_date)
 
     records = query.order_by(Attendance.date.desc()).all()
     result = [

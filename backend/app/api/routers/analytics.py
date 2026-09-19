@@ -1,5 +1,6 @@
 """Admin analytics, reporting, and anomaly endpoints (real data only)."""
 
+import logging
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,6 +12,8 @@ from app.core.time_utils import now_local
 from app.db.session import get_db
 from app.models import Attendance, User
 from app.services import analytics as svc
+
+logger = logging.getLogger("smart_attendance.analytics")
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
@@ -54,8 +57,9 @@ async def get_analytics_dashboard(
 ):
     try:
         return _build_dashboard(period, db)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analytics calculation failed: {str(e)}")
+    except Exception:
+        logger.exception("Analytics calculation failed")
+        raise HTTPException(status_code=500, detail="Analytics calculation failed.")
 
 
 @router.get("/export")
@@ -91,8 +95,9 @@ async def export_analytics_data(
             )
 
         return data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+    except Exception:
+        logger.exception("Analytics export failed")
+        raise HTTPException(status_code=500, detail="Export failed.")
 
 
 @router.get("/reports/automated")
@@ -126,8 +131,9 @@ async def generate_automated_report(
             "recommendations": svc.recommendations(records, users),
             "topPerformers": svc.user_performance(users, records)[:3],
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
+    except Exception:
+        logger.exception("Report generation failed")
+        raise HTTPException(status_code=500, detail="Report generation failed.")
 
 
 @router.get("/anomalies")
@@ -152,5 +158,6 @@ async def get_attendance_anomalies(
             "period": f"Last {days} days",
             "severityFilter": severity,
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Anomaly detection failed: {str(e)}")
+    except Exception:
+        logger.exception("Anomaly detection failed")
+        raise HTTPException(status_code=500, detail="Anomaly detection failed.")

@@ -5,8 +5,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.config import settings, validate_security
 from app.core.limiter import limiter
@@ -66,6 +68,35 @@ def create_app() -> FastAPI:
         if not settings.DEBUG:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
+
+    # ── Error handling ───────────────────────────────────────────────────
+    # Unhandled exceptions must not echo internal details (exception text, SQL,
+    # file paths) back to the client. The full traceback is logged server-side;
+    # the response carries a generic message.
+
+    @app.exception_handler(IntegrityError)
+    async def integrity_error_handler(request: Request, exc: IntegrityError):
+        logger.warning(f"Integrity error on {request.method} {request.url.path}", exc_info=exc)
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "That change conflicts with an existing record."},
+        )
+
+    @app.exception_handler(SQLAlchemyError)
+    async def database_error_handler(request: Request, exc: SQLAlchemyError):
+        logger.error(f"Database error on {request.method} {request.url.path}", exc_info=exc)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "A database error occurred. Please try again."},
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(request: Request, exc: Exception):
+        logger.exception(f"Unhandled error on {request.method} {request.url.path}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "An internal error occurred. Please try again."},
+        )
 
     @app.get("/", tags=["health"])
     async def root():

@@ -3,7 +3,7 @@
 import logging
 import os
 import base64
-from datetime import datetime
+from datetime import date as date_type, datetime
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from sqlalchemy import func
@@ -15,7 +15,7 @@ from app.core.time_utils import now_local, today_local
 from app.db.session import get_db
 from app.models import Attendance, User
 from app.schemas import AttendanceResponse, UserResponse
-from app.services.face_recognition import face_service
+from app.services.face_recognition import FaceEnrollmentError, face_service
 
 logger = logging.getLogger("smart_attendance.admin")
 
@@ -47,7 +47,9 @@ async def get_all_users(
 @router.get("/attendance")
 async def get_attendance_records(
     response: Response,
-    date: str = None,
+    # Typed as a date so FastAPI validates the format and returns 422 on bad
+    # input, instead of strptime raising and surfacing as an unhandled 500.
+    date: date_type = None,
     user_id: str = None,
     limit: int = Query(None, ge=1, le=500),
     offset: int = Query(0, ge=0),
@@ -58,7 +60,7 @@ async def get_attendance_records(
     Total count is returned in the X-Total-Count header."""
     query = db.query(Attendance).join(User)
     if date:
-        query = query.filter(Attendance.date == datetime.strptime(date, "%Y-%m-%d").date())
+        query = query.filter(Attendance.date == date)
     if user_id:
         user = db.query(User).filter(User.unique_id == user_id).first()
         if user:
@@ -337,8 +339,12 @@ async def admin_register_user_face(
         }
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Face registration failed: {str(e)}")
+    except FaceEnrollmentError as e:
+        # Actionable message (e.g. too few usable images) — surface it as-is.
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception(f"Admin face registration failed for {target_user.unique_id}")
+        raise HTTPException(status_code=500, detail="Face registration failed. Please try again.")
     finally:
         for path in temp_paths:
             if os.path.exists(path):
@@ -473,8 +479,9 @@ async def bulk_delete_face_data(
             db.query(FaceEmbedding).filter(FaceEmbedding.user_id == user.id).delete()
             user.face_registered = False
             deleted_count += 1
-        except Exception as e:
-            errors.append(f"Error deleting {user_id}: {str(e)}")
+        except Exception:
+            logger.exception(f"Bulk face delete failed for {user_id}")
+            errors.append(f"Error deleting {user_id}")
     db.commit()
     return {
         "message": f"Deleted face data for {deleted_count} users",

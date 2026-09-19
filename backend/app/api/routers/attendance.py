@@ -1,4 +1,4 @@
-"""Attendance marking endpoint (kiosk; liveness verified client-side)."""
+"""Attendance marking endpoint (kiosk; liveness verified on client and server)."""
 
 import logging
 import os
@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -22,6 +23,14 @@ logger = logging.getLogger("smart_attendance.attendance")
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 
 
+def _already_marked(user: User, record: Attendance) -> HTTPException:
+    """Build the 'already marked today' 400 for an existing attendance row."""
+    detail = f"Attendance already marked for {user.full_name} today as {record.status}"
+    if record.time_in:
+        detail += f" at {record.time_in.strftime('%I:%M %p')}"
+    return HTTPException(status_code=400, detail=detail)
+
+
 @router.post("/mark")
 @limiter.limit(settings.RATE_LIMIT_ATTENDANCE)
 async def mark_attendance(
@@ -33,12 +42,19 @@ async def mark_attendance(
     current_user: Optional[User] = Depends(get_optional_current_user),
 ):
     """
-    Mark attendance from one or more captured frames.
+    Mark attendance from multiple captured frames.
 
-    Multiple frames are recognized independently and must reach majority
-    agreement (multi-frame voting), which reduces false accepts/rejects from a
-    single bad frame. Liveness/anti-spoofing is performed live on the client via
-    an active blink challenge; the server rejects frames not liveness-verified.
+    Frames are recognized independently and must reach majority agreement
+    (multi-frame voting), which reduces false accepts/rejects from a single bad
+    frame.
+
+    Liveness is checked on both sides. The client runs an active blink challenge
+    (MediaPipe) and reports the result via ``liveness_verified``; because that
+    flag is client-supplied it is treated as a necessary but not sufficient
+    signal. Independently, the server verifies that the submitted frames are
+    genuinely distinct captures, which rejects a client replaying a single still
+    image. See ``face_service.frames_are_distinct`` for the limits of that
+    guard.
 
     When the request is authenticated (a logged-in user), recognition is
     restricted to that account: showing another person's face is rejected so a
@@ -47,16 +63,20 @@ async def mark_attendance(
     """
     temp_paths: List[str] = []
     try:
-        if not liveness_verified:
-            raise HTTPException(
-                status_code=403,
-                detail="Liveness not verified. Please look at the camera and blink so we can confirm a live person.",
-            )
-
         # Accept either a single `file` or a list of `files`.
         uploads = [f for f in ([file] + (files or [])) if f is not None]
         if not uploads:
             raise HTTPException(status_code=422, detail="No image frame provided.")
+
+        min_frames = settings.ATTENDANCE_MIN_FRAMES
+        if len(uploads) < min_frames:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Attendance requires at least {min_frames} live camera frames; "
+                    f"received {len(uploads)}."
+                ),
+            )
 
         for i, upload in enumerate(uploads):
             timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
@@ -65,6 +85,28 @@ async def mark_attendance(
                 buffer.write(await upload.read())
             temp_paths.append(path)
         logger.info(f"Attendance frames received: {len(temp_paths)}")
+
+        # Server-side replay guard. Checked before the client's own claim so a
+        # forged `liveness_verified=true` cannot stand on its own.
+        diversity = face_service.frames_are_distinct(temp_paths)
+        if not diversity["distinct"]:
+            logger.warning(
+                f"Attendance replay guard rejected submission: {diversity['reason']} "
+                f"(min_diff={diversity['min_diff']})"
+            )
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Liveness could not be confirmed from the submitted frames. "
+                    "Please look at the camera and blink so we can capture a live sequence."
+                ),
+            )
+
+        if not liveness_verified:
+            raise HTTPException(
+                status_code=403,
+                detail="Liveness not verified. Please look at the camera and blink so we can confirm a live person.",
+            )
 
         recognition = face_service.recognize_frames(temp_paths, db)
         if not recognition:
@@ -125,16 +167,7 @@ async def mark_attendance(
                     "attendance": AttendanceResponse.model_validate(existing_attendance),
                     "confidence": confidence,
                 }
-            time_str = (
-                existing_attendance.time_in.strftime("%I:%M %p")
-                if existing_attendance.time_in
-                else existing_attendance.status
-            )
-            raise HTTPException(
-                status_code=400,
-                detail=f"Attendance already marked for {user.full_name} today as {existing_attendance.status}"
-                + (f" at {time_str}" if existing_attendance.time_in else ""),
-            )
+            raise _already_marked(user, existing_attendance)
 
         attendance = Attendance(
             user_id=user.id,
@@ -143,7 +176,23 @@ async def mark_attendance(
             status="present",
         )
         db.add(attendance)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            # A concurrent request inserted today's row between the check above
+            # and this commit. The uq_attendance_user_date constraint is what
+            # stops the duplicate; resolve the race by reporting the row that
+            # won, so the caller sees the same result as a sequential retry.
+            db.rollback()
+            winner = (
+                db.query(Attendance)
+                .filter(Attendance.user_id == user.id, Attendance.date == today)
+                .first()
+            )
+            logger.info(f"Concurrent attendance mark for {user.unique_id} resolved to existing row")
+            if winner is None:
+                raise
+            raise _already_marked(user, winner)
         db.refresh(attendance)
         logger.info(f"Attendance marked for {user.full_name} ({user.unique_id})")
 
@@ -155,9 +204,9 @@ async def mark_attendance(
         }
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Attendance marking failed")
-        raise HTTPException(status_code=500, detail=f"Attendance marking failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Attendance marking failed. Please try again.")
     finally:
         for path in temp_paths:
             if os.path.exists(path):

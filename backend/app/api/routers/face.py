@@ -11,7 +11,7 @@ from app.api import deps
 from app.core.config import settings
 from app.db.session import get_db
 from app.models import User
-from app.services.face_recognition import face_service
+from app.services.face_recognition import FaceEnrollmentError, face_service
 
 logger = logging.getLogger("smart_attendance.face")
 
@@ -37,8 +37,9 @@ async def check_liveness_endpoint(
             "timestamp": datetime.now().isoformat(),
             "status": "live_person" if liveness_result["is_live"] else "spoof_detected",
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Liveness check failed: {str(e)}")
+    except Exception:
+        logger.exception("Liveness check failed")
+        raise HTTPException(status_code=500, detail="Liveness check failed. Please try again.")
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
@@ -59,8 +60,9 @@ async def check_face_quality_endpoint(
 
         quality_result = face_service.check_image_quality(temp_path)
         return {"quality_check": quality_result, "timestamp": datetime.now().isoformat()}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Quality check failed: {str(e)}")
+    except Exception:
+        logger.exception("Quality check failed")
+        raise HTTPException(status_code=500, detail="Quality check failed. Please try again.")
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
@@ -118,8 +120,12 @@ async def register_face(
         }
     except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Face registration failed: {str(e)}")
+    except FaceEnrollmentError as e:
+        # Actionable message (e.g. too few usable images) — surface it as-is.
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Face registration failed")
+        raise HTTPException(status_code=500, detail="Face registration failed. Please try again.")
     finally:
         for path in temp_paths:
             if os.path.exists(path):

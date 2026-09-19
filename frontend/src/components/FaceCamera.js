@@ -15,9 +15,14 @@ import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
  * FaceLandmarker (468 landmarks + blink blendshapes), running locally in the
  * browser via WASM. No simulated/heuristic detection.
  *
- * Modes:
- *   - "attendance": gates readiness on a genuine blink (anti-spoofing).
- *   - "capture":    gates on a well-framed face (registration); no blink needed.
+ * Both modes ("attendance" and "capture"/registration) require a genuine blink
+ * before reporting ready; the mode only affects the prompt wording. The blink
+ * verdict expires as soon as the subject leaves the frame, so it cannot be
+ * transferred from a real person to a photo presented straight afterwards.
+ *
+ * Note this is an ACTIVE liveness challenge and is not by itself sufficient
+ * against a replayed video or a moving photo that happens to trigger the blink
+ * blendshapes. Passive anti-spoofing (texture/depth) belongs server-side.
  *
  * Imperative handle: getScreenshot(), resetLiveness(), video.
  * onStatus(status) reports { cameraReady, modelReady, faceDetected, centered,
@@ -26,6 +31,10 @@ import { FilesetResolver, FaceLandmarker } from '@mediapipe/tasks-vision';
 const BLINK_CLOSE = 0.5;   // blendshape score above which an eye is "closed"
 const BLINK_OPEN = 0.25;   // and below which it is "open" again
 const STATUS_THROTTLE_MS = 120;
+// Frames without a face before the liveness verdict is discarded. At ~30fps
+// this is roughly a third of a second: long enough to survive a dropped
+// detection, short enough that a face swap cannot reuse the previous blink.
+const FACE_LOST_GRACE_FRAMES = 10;
 
 const FaceCamera = forwardRef(({
   mode = 'attendance',
@@ -43,6 +52,9 @@ const FaceCamera = forwardRef(({
   const livenessRef = useRef(false);
   const lastStatusRef = useRef(0);
   const runningRef = useRef(false);
+  // Consecutive frames with no face. Used to expire the liveness verdict once
+  // the subject leaves, without reacting to a single dropped detection.
+  const missingFramesRef = useRef(0);
 
   const [cameraReady, setCameraReady] = useState(false);
   const [modelReady, setModelReady] = useState(false);
@@ -56,6 +68,7 @@ const FaceCamera = forwardRef(({
       blinkCountRef.current = 0;
       livenessRef.current = false;
       eyesClosedRef.current = false;
+      missingFramesRef.current = 0;
     },
     get video() {
       return webcamRef.current?.video || null;
@@ -130,6 +143,7 @@ const FaceCamera = forwardRef(({
 
       if (landmarks && landmarks.length) {
         faceDetected = true;
+        missingFramesRef.current = 0;
 
         // Bounding box from normalized landmarks
         let minX = 1, minY = 1, maxX = 0, maxY = 0;
@@ -170,17 +184,28 @@ const FaceCamera = forwardRef(({
           livenessRef.current = true;
         }
       } else {
-        // Lost the face — require liveness to be re-established
+        // The subject left the frame. Expire the liveness verdict entirely
+        // after a short grace period (long enough to ride out an occasional
+        // dropped detection). Previously only `eyesClosedRef` was cleared, so
+        // `livenessRef` stayed true for the rest of the session — meaning one
+        // real blink could be inherited by whatever appeared next, such as a
+        // photo held up to the camera immediately afterwards.
         eyesClosedRef.current = false;
+        missingFramesRef.current += 1;
+        if (missingFramesRef.current >= FACE_LOST_GRACE_FRAMES) {
+          blinkCountRef.current = 0;
+          livenessRef.current = false;
+        }
       }
     } catch (e) {
       // transient detection error; keep looping
     }
 
     const livenessVerified = livenessRef.current;
-    const ready = mode === 'attendance'
-      ? (faceDetected && centered && livenessVerified)
-      : (faceDetected && centered);
+    // Liveness is required for enrollment as well as attendance. Enrolling from
+    // a photo is worse than a single bad attendance mark: it permanently puts a
+    // spoofable identity in the gallery, which every later match trusts.
+    const ready = faceDetected && centered && livenessVerified;
 
     const now = performance.now();
     if (now - lastStatusRef.current >= STATUS_THROTTLE_MS) {
@@ -188,7 +213,11 @@ const FaceCamera = forwardRef(({
       let message;
       if (!faceDetected) message = 'No face detected';
       else if (!centered) message = 'Move closer and center your face';
-      else if (mode === 'attendance' && !livenessVerified) message = 'Please blink to confirm liveness';
+      else if (!livenessVerified) {
+        message = mode === 'capture'
+          ? 'Blink to confirm a live person before we capture'
+          : 'Please blink to confirm liveness';
+      }
       else message = 'Ready';
       emitStatus({
         cameraReady: true,

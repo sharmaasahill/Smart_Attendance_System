@@ -42,6 +42,9 @@ const FaceCapture = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const statusRef = useRef({ ready: false, faceDetected: false, quality: 0 });
+  // Mirrored into state so the live prompt ("Blink to confirm...") is actually
+  // rendered; the ref alone does not trigger a re-render.
+  const [detectMsg, setDetectMsg] = useState('Position your face in the frame');
   // Refs (not state) so the interval callback always sees current values and
   // can never be stopped by a stale closure.
   const intervalRef = useRef(null);
@@ -52,6 +55,7 @@ const FaceCapture = () => {
 
   const handleStatus = useCallback((status) => {
     statusRef.current = status;
+    setDetectMsg(status.message);
   }, []);
 
   // Stops the capture loop and clears the safety timeout. Idempotent.
@@ -349,7 +353,7 @@ const FaceCapture = () => {
                             {capturedImages.length} / {REQUIRED_IMAGES} images captured
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#78716c', fontFamily: '"Inter", sans-serif' }}>
-                            Stay still while we capture multiple angles of your face
+                            {detectMsg}
                           </Typography>
                         </Box>
                       )}
@@ -522,6 +526,7 @@ const FaceCapture = () => {
                   <Stack spacing={2}>
                     {[
                       'Position your face clearly within the camera frame',
+                      'Blink when prompted — capture only starts once a live person is confirmed',
                       'The system will automatically detect and capture your face',
                       'Try to move your head slightly between captures for better training',
                       'Ensure good lighting for optimal recognition accuracy',

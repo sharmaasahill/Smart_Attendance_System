@@ -65,9 +65,13 @@ const AdminFaceManagement = () => {
   const webcamRef = useRef(null);
   const [intervalId, setIntervalId] = useState(null);
   const statusRef = useRef({ ready: false, faceDetected: false, quality: 0 });
+  // Mirrored into state so the live prompt ("Blink to confirm...") is rendered;
+  // enrollment now requires a blink, so the admin needs to see the instruction.
+  const [detectMsg, setDetectMsg] = useState('Position the face in the frame');
 
   const handleStatus = (status) => {
     statusRef.current = status;
+    setDetectMsg(status.message);
   };
 
   // Statistics
@@ -498,7 +502,14 @@ const AdminFaceManagement = () => {
                     onStatus={handleStatus}
                   />
                 </Box>
-                
+
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 1.5, textAlign: 'center', color: '#78716c', fontFamily: '"Inter", sans-serif' }}
+                >
+                  {detectMsg}
+                </Typography>
+
                 <Box sx={{ mt: 2 }}>
                   {!isCapturing && capturedImages.length < 6 && (
                     <Button
